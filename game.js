@@ -1,62 +1,52 @@
 const canvas = document.getElementById('gameCanvas');
-const context = canvas.getContext('2d');
+const ctx = canvas.getContext('2d');
+let dinoStage = 1;
+let dinoImages = [];
+let clicks = 0;
+let boostActive = false;
 const boostButton = document.getElementById('boostButton');
-let coins = 0;
-let dinoImage = new Image();
-dinoImage.src = 'images/dino1.png'; // Dinozor resmini değiştirin
 
-let lastBoostTime = 0;
-const BOOST_INTERVAL = 8 * 3600 * 1000; // 8 saat
+function loadImages() {
+    for (let i = 1; i <= 5; i++) {
+        const img = new Image();
+        img.src = `dino${i}.png`;
+        dinoImages.push(img);
+    }
+}
 
 function drawDino() {
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(dinoImage, (canvas.width - dinoImage.width) / 2, (canvas.height - dinoImage.height) / 2);
-    context.fillStyle = '#fff';
-    context.font = '20px Arial';
-    context.fillText(`Coins: ${coins}`, 20, 30);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(dinoImages[dinoStage - 1], canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
 }
 
-function onCanvasClick() {
-    coins += 1;
+function evolveDino() {
+    clicks++;
+    if (boostActive) {
+        clicks += 2; // Double clicks during boost
+    }
+    if (clicks >= 10) {
+        dinoStage++;
+        clicks = 0;
+    }
+    if (dinoStage > 5) {
+        dinoStage = 1;
+    }
     drawDino();
-    checkDinoStage();
 }
 
-function checkDinoStage() {
-    if (coins >= 100000 && coins < 250000) {
-        dinoImage.src = 'images/dino2.png';
-    } else if (coins >= 250000 && coins < 500000) {
-        dinoImage.src = 'images/dino3.png';
-    } else if (coins >= 500000 && coins < 1000000) {
-        dinoImage.src = 'images/dino4.png';
-    } else if (coins >= 1000000) {
-        dinoImage.src = 'images/dino5.png';
-    }
-}
-
-function updateBoostButton() {
-    const currentTime = Date.now();
-    if (currentTime - lastBoostTime >= BOOST_INTERVAL) {
-        boostButton.classList.remove('disabled');
-    } else {
+function activateBoost() {
+    if (!boostActive) {
+        boostActive = true;
         boostButton.classList.add('disabled');
-        const remainingTime = BOOST_INTERVAL - (currentTime - lastBoostTime);
-        boostButton.innerText = `Boost (${Math.ceil(remainingTime / 1000 / 60)} min)`;
+        setTimeout(() => {
+            boostActive = false;
+            boostButton.classList.remove('disabled');
+        }, 5000); // Boost lasts for 5 seconds
     }
 }
 
-function onBoostClick() {
-    if (Date.now() - lastBoostTime >= BOOST_INTERVAL) {
-        coins += 10000;
-        lastBoostTime = Date.now();
-        boostButton.classList.add('disabled');
-        drawDino();
-        updateBoostButton();
-    }
-}
+canvas.addEventListener('click', evolveDino);
+boostButton.addEventListener('click', activateBoost);
 
-canvas.addEventListener('click', onCanvasClick);
-boostButton.addEventListener('click', onBoostClick);
-
-setInterval(updateBoostButton, 1000);
+loadImages();
 drawDino();
