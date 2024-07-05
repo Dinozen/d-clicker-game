@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dinozen Clicker Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -12,9 +13,10 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #282c34;
+            background: url('background.gif') no-repeat center center fixed;
+            background-size: cover;
             color: #61dafb;
-            font-family: Arial, sans-serif;
+            font-family: 'Press Start 2P', cursive;
             overflow: hidden;
         }
         #gameCanvas {
@@ -53,6 +55,7 @@
     </style>
 </head>
 <body>
+    <canvas id="backgroundCanvas"></canvas>
     <canvas id="gameCanvas"></canvas>
     <div id="gameInfo">
         <span id="tokenDisplay"></span>
