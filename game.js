@@ -11,9 +11,7 @@ let telegramId = '';
 
 // DOM elementleri
 const canvas = document.getElementById('gameCanvas');
-const backgroundCanvas = document.getElementById('backgroundCanvas');
 const ctx = canvas.getContext('2d');
-const bgCtx = backgroundCanvas.getContext('2d');
 
 // Resimleri yükleme
 let dinoImages = [];
@@ -72,14 +70,11 @@ function startGame(userTelegramId) {
     resizeCanvas();
     setupGameUI();
     gameLoop();
-    animateBackground();
 }
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    backgroundCanvas.width = window.innerWidth;
-    backgroundCanvas.height = window.innerHeight;
 }
 
 function setupGameUI() {
@@ -122,6 +117,7 @@ function createClickEffect(x, y) {
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (dinoImages.length > 0) {
+        // Resmin boyutunu ayarla
         const dinoImage = dinoImages[level - 1];
         const dinoWidth = Math.min(canvas.width * 0.5, dinoImage.width);
         const dinoHeight = dinoImage.height * (dinoWidth / dinoImage.width);
@@ -141,33 +137,25 @@ function updateUI() {
 
 window.addEventListener('resize', resizeCanvas);
 
-// Arkaplan animasyonu için yıldızlar
-const stars = [];
-for (let i = 0; i < 100; i++) {
-    stars.push({
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
-        radius: Math.random() * 1.5,
-        speed: Math.random() * 0.5 + 0.2
-    });
-}
-
-function animateBackground() {
-    bgCtx.clearRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
-    bgCtx.fillStyle = '#ffffff';
-    stars.forEach(star => {
-        bgCtx.beginPath();
-        bgCtx.arc(star.x, star.y, star.radius, 0, 2 * Math.PI);
-        bgCtx.fill();
-        star.y += star.speed;
-        if (star.y > window.innerHeight) {
-            star.y = 0;
-        }
-    });
-    requestAnimationFrame(animateBackground);
-}
-
 console.log("Initializing game...");
 loadImages().then(loadedImages => {
     console.log("Images loading process completed");
-   
+    dinoImages = loadedImages.filter(img => img.width > 0);
+    console.log(`Successfully loaded ${dinoImages.length} out of ${dinoImagePaths.length} images`);
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const telegramId = urlParams.get('telegramId');
+    console.log("URL parameters:", urlParams.toString());
+    console.log("Telegram ID from URL:", telegramId);
+    
+    if (telegramId) {
+        console.log("Telegram ID found in URL:", telegramId);
+        startGame(telegramId);
+    } else {
+        console.log('No Telegram ID provided in URL, using default');
+        startGame('default_user');
+    }
+}).catch(error => {
+    console.error("Error in game initialization:", error);
+    document.body.innerHTML = `<h1>Error initializing game: ${error.message || 'Unknown error'}</h1>`;
+});
