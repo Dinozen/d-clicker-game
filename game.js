@@ -52,6 +52,17 @@ function loadUserData() {
     updateUI();
 }
 
+function saveUserData() {
+    const data = {
+        tokens,
+        level,
+        energy,
+        lastEnergyRefillTime,
+        clicksRemaining
+    };
+    localStorage.setItem(telegramId, JSON.stringify(data));
+}
+
 function startGame(userTelegramId) {
     console.log("Starting game for telegramId:", userTelegramId);
     telegramId = userTelegramId;
@@ -77,15 +88,30 @@ function setupGameUI() {
     canvas.addEventListener('click', handleClick);
 }
 
-function handleClick() {
+function handleClick(event) {
     if (energy > 0 && clicksRemaining > 0) {
         tokens++;
         clicksRemaining--;
         if (clicksRemaining % 100 === 0) {
             energy--;
         }
+        createClickEffect(event.clientX, event.clientY);
         updateUI();
+        saveUserData();
     }
+}
+
+function createClickEffect(x, y) {
+    const clickEffect = document.createElement('div');
+    clickEffect.className = 'clickEffect';
+    clickEffect.style.left = `${x}px`;
+    clickEffect.style.top = `${y}px`;
+    clickEffect.textContent = '+1';
+    document.body.appendChild(clickEffect);
+
+    setTimeout(() => {
+        clickEffect.remove();
+    }, 1000);
 }
 
 function gameLoop() {
