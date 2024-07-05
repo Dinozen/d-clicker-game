@@ -1,5 +1,6 @@
 console.log("Game script loaded");
 
+// Hata yakalama
 window.onerror = function(message, source, lineno, colno, error) {
     console.log("Error: " + message);
     console.log("Source: " + source);
@@ -15,7 +16,7 @@ let level = 1;
 let energy = 3;
 let maxEnergy = 3;
 let lastEnergyRefillTime = Date.now();
-let clicksRemaining = 300; // Her enerji için 100 tıklama hakkı
+let clicksRemaining = 300;
 let telegramId = '';
 
 // DOM elementleri
@@ -62,15 +63,68 @@ function loadUserData() {
     updateUI();
 }
 
-// ... (diğer fonksiyonlar aynı kalabilir)
-
 // Oyunu başlatma
 function startGame(userTelegramId) {
     console.log("Starting game for telegramId:", userTelegramId);
     telegramId = userTelegramId;
     loadUserData();
     resizeCanvas();
+    setupGameUI();
     gameLoop();
+}
+
+// Canvas'ı yeniden boyutlandırma
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+// Oyun arayüzünü kurma
+function setupGameUI() {
+    // Oyun arayüzü elemanlarını oluştur
+    const gameInfo = document.createElement('div');
+    gameInfo.id = 'gameInfo';
+    gameInfo.innerHTML = `
+        <span id="tokenDisplay">Tokens: ${tokens}</span>
+        <span id="energyDisplay">Energy: ${energy}/${maxEnergy}</span>
+        <span id="clicksDisplay">Clicks: ${clicksRemaining}</span>
+        <span id="levelDisplay">Level: ${level}</span>
+    `;
+    document.body.appendChild(gameInfo);
+
+    // Tıklama olayını ekle
+    canvas.addEventListener('click', handleClick);
+}
+
+// Tıklama işleme
+function handleClick(event) {
+    if (energy > 0 && clicksRemaining > 0) {
+        tokens++;
+        clicksRemaining--;
+        if (clicksRemaining % 100 === 0) {
+            energy--;
+        }
+        updateUI();
+    }
+}
+
+// Oyun döngüsü
+function gameLoop() {
+    // Oyun mantığı ve çizim işlemleri
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Dino resmini çiz
+    if (dinoImages.length > 0) {
+        ctx.drawImage(dinoImages[level - 1], canvas.width / 2 - 100, canvas.height / 2 - 100, 200, 200);
+    }
+    requestAnimationFrame(gameLoop);
+}
+
+// UI güncelleme
+function updateUI() {
+    document.getElementById('tokenDisplay').textContent = `Tokens: ${tokens}`;
+    document.getElementById('energyDisplay').textContent = `Energy: ${energy}/${maxEnergy}`;
+    document.getElementById('clicksDisplay').textContent = `Clicks: ${clicksRemaining}`;
+    document.getElementById('levelDisplay').textContent = `Level: ${level}`;
 }
 
 // Event listener'lar
@@ -81,15 +135,19 @@ console.log("Initializing game...");
 loadImages().then(loadedImages => {
     console.log("Images loaded successfully");
     dinoImages = loadedImages;
-    // URL'den Telegram ID'sini al
     const urlParams = new URLSearchParams(window.location.search);
     const telegramId = urlParams.get('telegramId');
+    console.log("URL parameters:", urlParams.toString());
+    console.log("Telegram ID from URL:", telegramId);
+    
     if (telegramId) {
         console.log("Telegram ID found in URL:", telegramId);
         startGame(telegramId);
     } else {
-        console.error('No Telegram ID provided in URL');
+        console.log('No Telegram ID provided in URL, using default');
+        startGame('default_user');
     }
 }).catch(error => {
-    console.error("Error loading images:", error);
+    console.error("Error loading game:", error);
+    document.body.innerHTML = `<h1>Error loading game: ${error.message}</h1>`;
 });
