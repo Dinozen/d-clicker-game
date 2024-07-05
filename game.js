@@ -1,15 +1,5 @@
 console.log("Game script loaded");
 
-// Hata yakalama
-window.onerror = function(message, source, lineno, colno, error) {
-    console.log("Error: " + message);
-    console.log("Source: " + source);
-    console.log("Line: " + lineno);
-    console.log("Column: " + colno);
-    console.log("Error object: ", error);
-    return true;
-};
-
 // Oyun değişkenleri
 let tokens = 0;
 let level = 1;
@@ -30,22 +20,21 @@ let dinoImagePaths = ["dino1.png", "dino2.png", "dino3.png", "dino4.png", "dino5
 function loadImages() {
     console.log("Loading images...");
     return Promise.all(dinoImagePaths.map(path => {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
-                console.log(`Image loaded: ${path}`);
+                console.log(`Image loaded successfully: ${path}`);
                 resolve(img);
             };
             img.onerror = (e) => {
                 console.error(`Error loading image: ${path}`, e);
-                reject(e);
+                resolve(new Image()); // Boş bir resim objesi döndür
             };
             img.src = path;
         });
     }));
 }
 
-// Verileri yükleme
 function loadUserData() {
     console.log("Loading user data for telegramId:", telegramId);
     const savedData = localStorage.getItem(telegramId);
@@ -63,7 +52,6 @@ function loadUserData() {
     updateUI();
 }
 
-// Oyunu başlatma
 function startGame(userTelegramId) {
     console.log("Starting game for telegramId:", userTelegramId);
     telegramId = userTelegramId;
@@ -73,31 +61,23 @@ function startGame(userTelegramId) {
     gameLoop();
 }
 
-// Canvas'ı yeniden boyutlandırma
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 }
 
-// Oyun arayüzünü kurma
 function setupGameUI() {
-    // Oyun arayüzü elemanlarını oluştur
-    const gameInfo = document.createElement('div');
-    gameInfo.id = 'gameInfo';
+    const gameInfo = document.getElementById('gameInfo');
     gameInfo.innerHTML = `
         <span id="tokenDisplay">Tokens: ${tokens}</span>
         <span id="energyDisplay">Energy: ${energy}/${maxEnergy}</span>
         <span id="clicksDisplay">Clicks: ${clicksRemaining}</span>
         <span id="levelDisplay">Level: ${level}</span>
     `;
-    document.body.appendChild(gameInfo);
-
-    // Tıklama olayını ekle
     canvas.addEventListener('click', handleClick);
 }
 
-// Tıklama işleme
-function handleClick(event) {
+function handleClick() {
     if (energy > 0 && clicksRemaining > 0) {
         tokens++;
         clicksRemaining--;
@@ -108,18 +88,14 @@ function handleClick(event) {
     }
 }
 
-// Oyun döngüsü
 function gameLoop() {
-    // Oyun mantığı ve çizim işlemleri
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Dino resmini çiz
     if (dinoImages.length > 0) {
         ctx.drawImage(dinoImages[level - 1], canvas.width / 2 - 100, canvas.height / 2 - 100, 200, 200);
     }
     requestAnimationFrame(gameLoop);
 }
 
-// UI güncelleme
 function updateUI() {
     document.getElementById('tokenDisplay').textContent = `Tokens: ${tokens}`;
     document.getElementById('energyDisplay').textContent = `Energy: ${energy}/${maxEnergy}`;
@@ -127,14 +103,14 @@ function updateUI() {
     document.getElementById('levelDisplay').textContent = `Level: ${level}`;
 }
 
-// Event listener'lar
 window.addEventListener('resize', resizeCanvas);
 
-// Oyunu yükleme ve başlatma
 console.log("Initializing game...");
 loadImages().then(loadedImages => {
-    console.log("Images loaded successfully");
-    dinoImages = loadedImages;
+    console.log("Images loading process completed");
+    dinoImages = loadedImages.filter(img => img.width > 0);
+    console.log(`Successfully loaded ${dinoImages.length} out of ${dinoImagePaths.length} images`);
+    
     const urlParams = new URLSearchParams(window.location.search);
     const telegramId = urlParams.get('telegramId');
     console.log("URL parameters:", urlParams.toString());
@@ -148,6 +124,6 @@ loadImages().then(loadedImages => {
         startGame('default_user');
     }
 }).catch(error => {
-    console.error("Error loading game:", error);
-    document.body.innerHTML = `<h1>Error loading game: ${error.message}</h1>`;
+    console.error("Error in game initialization:", error);
+    document.body.innerHTML = `<h1>Error initializing game: ${error.message || 'Unknown error'}</h1>`;
 });
