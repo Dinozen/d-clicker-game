@@ -117,7 +117,13 @@ function createClickEffect(x, y) {
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (dinoImages.length > 0) {
-        ctx.drawImage(dinoImages[level - 1], canvas.width / 2 - 100, canvas.height / 2 - 100, 200, 200);
+        // Resmin boyutunu ayarla
+        const dinoImage = dinoImages[level - 1];
+        const dinoWidth = Math.min(canvas.width * 0.5, dinoImage.width);
+        const dinoHeight = dinoImage.height * (dinoWidth / dinoImage.width);
+        const dinoX = (canvas.width - dinoWidth) / 2;
+        const dinoY = (canvas.height - dinoHeight) / 2;
+        ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
     }
     requestAnimationFrame(gameLoop);
 }
