@@ -40,6 +40,8 @@ function loadImages() {
         });
     })).then(images => {
         console.log("All images loaded:", images);
+        dinoImages = images;
+        drawDino(); // Resimler yüklendikten sonra dinozoru çiz
         return images;
     });
 }
@@ -52,7 +54,7 @@ function loadUserData() {
         tokens = data.tokens;
         level = data.level;
         energy = data.energy;
-        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime);
+        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime();
         clicksRemaining = data.clicksRemaining;
         boostAvailable = data.boostAvailable;
         console.log("User data loaded:", data);
@@ -79,12 +81,7 @@ function startGame(userTelegramId) {
     console.log("Starting game for telegramId:", userTelegramId);
     telegramId = userTelegramId;
     loadUserData();
-    loadImages().then(images => {
-        dinoImages = images;
-        console.log("Loaded images:", dinoImages);
-        if (dinoImages.some(img => img.width === 0)) {
-            console.error("Some images failed to load properly");
-        }
+    loadImages().then(() => {
         resizeCanvas();
         setupGameUI();
         gameLoop();
@@ -138,7 +135,7 @@ function createClickEffect(x, y) {
 }
 
 function drawDino() {
-    if (dinoImages.length > 0 && dinoImages[level - 1].complete) {
+    if (dinoImages.length > 0 && dinoImages[level - 1] && dinoImages[level - 1].complete) {
         const dinoImage = dinoImages[level - 1];
         const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
         const dinoWidth = dinoImage.width * scale;
@@ -146,6 +143,7 @@ function drawDino() {
         const dinoX = (canvas.width - dinoWidth) / 2;
         const dinoY = (canvas.height - dinoHeight) / 2;
         
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
@@ -164,7 +162,6 @@ function drawDino() {
 }
 
 function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawDino();
     requestAnimationFrame(gameLoop);
 }
@@ -210,6 +207,7 @@ function updateBoostTimer() {
         const seconds = Math.floor((timeRemaining % 60000) / 1000);
         boostTimer.textContent = `Boost available in: ${hours}:${minutes}:${seconds}`;
     }
+    saveUserData(); // Her güncellemede kullanıcı verilerini kaydet
 }
 
 // Pencere boyutu değiştiğinde canvas'ı yeniden boyutlandır
@@ -217,3 +215,14 @@ window.addEventListener('resize', resizeCanvas);
 
 // Kullanıcı verilerini her saniye güncelle
 setInterval(updateBoostTimer, 1000);
+
+// Oyunu başlat
+window.onload = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const userTelegramId = urlParams.get('id');
+    if (userTelegramId) {
+        startGame(userTelegramId);
+    } else {
+        console.error("Telegram ID not provided");
+    }
+};
