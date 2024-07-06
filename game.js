@@ -88,6 +88,7 @@ function startGame(userTelegramId) {
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    drawDino();
 }
 
 function setupGameUI() {
@@ -127,21 +128,24 @@ function createClickEffect(x, y) {
     }, 1000);
 }
 
-function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function drawDino() {
     if (dinoImages.length > 0) {
-        // Resmin boyutunu ayarla
         const dinoImage = dinoImages[level - 1];
         const dinoWidth = Math.min(canvas.width * 0.5, dinoImage.width);
         const dinoHeight = dinoImage.height * (dinoWidth / dinoImage.width);
         const dinoX = (canvas.width - dinoWidth) / 2;
-        const dinoY = (canvas.height - dinoHeight) / 2 + 50; // Bir tık aşağıya taşıma
+        const dinoY = (canvas.height - dinoHeight) / 2 + 50;
         ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
-        // Gölgeyi çiz
+        
         const shadowWidth = dinoWidth;
         const shadowHeight = shadowImage.height * (shadowWidth / shadowImage.width);
         ctx.drawImage(shadowImage, dinoX, dinoY + dinoHeight - shadowHeight / 2, shadowWidth, shadowHeight);
     }
+}
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawDino();
     requestAnimationFrame(gameLoop);
 }
 
@@ -187,6 +191,9 @@ function updateBoostTimer() {
         boostTimer.textContent = `Boost available in: ${hours}:${minutes}:${seconds}`;
     }
 }
+
+// Pencere boyutu değiştiğinde canvas'ı yeniden boyutlandır
+window.addEventListener('resize', resizeCanvas);
 
 // Kullanıcı verilerini her saniye güncelle
 setInterval(updateBoostTimer, 1000);
