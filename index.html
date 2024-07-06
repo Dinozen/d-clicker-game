@@ -15,7 +15,7 @@
             align-items: center;
             height: 100vh;
             background-color: #000;
-            color: #61dafb;
+            color: #ffffff;
             font-family: 'Honk', cursive;
             overflow: hidden;
         }
@@ -37,11 +37,17 @@
             z-index: 1;
         }
         #gameInfo {
-            position: absolute;
+            position: fixed;
             top: 10px;
             left: 10px;
-            font-size: 24px;
+            font-size: 18px;
             z-index: 10;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            width: calc(100% - 20px);
+            box-sizing: border-box;
+            border: 2px solid #ffffff;
         }
         #gameInfo span {
             display: block;
