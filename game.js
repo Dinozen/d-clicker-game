@@ -7,7 +7,7 @@ let energy = 3;
 let maxEnergy = 3;
 let lastEnergyRefillTime = Date.now();
 let clicksRemaining = 300;
-let telegramId = '';
+let telegramId = 'default'; // Varsayılan bir değer kullanıyoruz
 let boostAvailable = true;
 const boostCooldown = 3 * 60 * 60 * 1000; // 3 saat
 
@@ -77,9 +77,8 @@ function saveUserData() {
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
 
-function startGame(userTelegramId) {
-    console.log("Starting game for telegramId:", userTelegramId);
-    telegramId = userTelegramId;
+function startGame() {
+    console.log("Starting game");
     loadUserData();
     loadImages().then(() => {
         resizeCanvas();
@@ -219,9 +218,7 @@ window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
     const userTelegramId = urlParams.get('id');
     if (userTelegramId) {
-        startGame(userTelegramId);
-    } else {
-        console.error("No Telegram ID provided. Please add '?id=yourTelegramId' to the URL.");
-        alert("Please add your Telegram ID to the URL. Example: '?id=yourTelegramId'");
+        telegramId = userTelegramId;
     }
+    startGame();
 };
