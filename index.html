@@ -43,6 +43,9 @@
             font-size: 24px;
             z-index: 10;
             color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 10px;
         }
         #gameInfo span {
             display: block;
@@ -55,6 +58,7 @@
             font-weight: bold;
             font-family: 'K2D', sans-serif;
             animation: fadeOut 1s forwards;
+            z-index: 20;
         }
         @keyframes fadeOut {
             0% {
@@ -67,7 +71,7 @@
             }
         }
         #boostButton {
-            position: absolute;
+            position: fixed;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
@@ -86,7 +90,7 @@
             cursor: not-allowed;
         }
         #boostTimer {
-            position: absolute;
+            position: fixed;
             bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
