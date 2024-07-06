@@ -78,10 +78,13 @@ function startGame(userTelegramId) {
     loadUserData();
     loadImages().then(images => {
         dinoImages = images;
+        console.log("Loaded images:", dinoImages);
         resizeCanvas();
         setupGameUI();
         gameLoop();
         boostButton.addEventListener('click', handleBoost);
+    }).catch(error => {
+        console.error("Error loading images:", error);
     });
 }
 
