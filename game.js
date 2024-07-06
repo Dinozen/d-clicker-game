@@ -26,7 +26,7 @@ shadowImage.src = 'shadow.png';
 function loadImages() {
     console.log("Loading images...");
     return Promise.all(dinoImagePaths.map(path => {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => {
                 console.log(`Image loaded successfully: ${path}`);
@@ -34,7 +34,7 @@ function loadImages() {
             };
             img.onerror = (e) => {
                 console.error(`Error loading image: ${path}`, e);
-                resolve(new Image()); // Boş bir resim objesi döndür
+                reject(new Error(`Failed to load image: ${path}`));
             };
             img.src = path;
         });
@@ -138,17 +138,28 @@ function createClickEffect(x, y) {
 }
 
 function drawDino() {
-    if (dinoImages.length > 0) {
+    if (dinoImages.length > 0 && dinoImages[level - 1].complete) {
         const dinoImage = dinoImages[level - 1];
-        const dinoWidth = Math.min(canvas.width * 0.5, dinoImage.width);
-        const dinoHeight = dinoImage.height * (dinoWidth / dinoImage.width);
+        const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
+        const dinoWidth = dinoImage.width * scale;
+        const dinoHeight = dinoImage.height * scale;
         const dinoX = (canvas.width - dinoWidth) / 2;
-        const dinoY = (canvas.height - dinoHeight) / 2 + 50;
-        ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
+        const dinoY = (canvas.height - dinoHeight) / 2;
         
-        const shadowWidth = dinoWidth;
-        const shadowHeight = shadowImage.height * (shadowWidth / shadowImage.width);
-        ctx.drawImage(shadowImage, dinoX, dinoY + dinoHeight - shadowHeight / 2, shadowWidth, shadowHeight);
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
+        ctx.restore();
+        
+        console.log("Drawing dino:", dinoX, dinoY, dinoWidth, dinoHeight);
+        
+        if (shadowImage.complete) {
+            const shadowWidth = dinoWidth;
+            const shadowHeight = shadowImage.height * (shadowWidth / shadowImage.width);
+            ctx.drawImage(shadowImage, dinoX, dinoY + dinoHeight - shadowHeight / 2, shadowWidth, shadowHeight);
+        }
+    } else {
+        console.log("Dino image not ready or not found");
     }
 }
 
