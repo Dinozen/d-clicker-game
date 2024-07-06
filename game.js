@@ -76,10 +76,13 @@ function startGame(userTelegramId) {
     console.log("Starting game for telegramId:", userTelegramId);
     telegramId = userTelegramId;
     loadUserData();
-    resizeCanvas();
-    setupGameUI();
-    gameLoop();
-    boostButton.addEventListener('click', handleBoost);
+    loadImages().then(images => {
+        dinoImages = images;
+        resizeCanvas();
+        setupGameUI();
+        gameLoop();
+        boostButton.addEventListener('click', handleBoost);
+    });
 }
 
 function resizeCanvas() {
@@ -145,4 +148,5 @@ function gameLoop() {
 function updateUI() {
     document.getElementById('tokenDisplay').textContent = `Tokens: ${tokens}`;
     document.getElementById('energyDisplay').textContent = `Energy: ${energy}/${maxEnergy}`;
-    document.getElementById('clicksDisplay').textContent = `Clicks: ${click
+    document.getElementById('clicksDisplay').textContent = `Clicks: ${clicksRemaining}`;
+    document.getElementById('levelDisplay').textContent
