@@ -38,13 +38,16 @@ function startGame() {
 }
 
 function createScaledDinoImage() {
-    scaledDinoImage = document.createElement('canvas');
-    const scaledCtx = scaledDinoImage.getContext('2d');
     const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
-    scaledDinoImage.width = Math.round(dinoImage.width * scale);
-    scaledDinoImage.height = Math.round(dinoImage.height * scale);
+    const width = Math.round(dinoImage.width * scale);
+    const height = Math.round(dinoImage.height * scale);
+
+    scaledDinoImage = document.createElement('canvas');
+    scaledDinoImage.width = width;
+    scaledDinoImage.height = height;
+    const scaledCtx = scaledDinoImage.getContext('2d');
     scaledCtx.imageSmoothingEnabled = false;
-    scaledCtx.drawImage(dinoImage, 0, 0, scaledDinoImage.width, scaledDinoImage.height);
+    scaledCtx.drawImage(dinoImage, 0, 0, width, height);
 }
 
 function loadUserData() {
@@ -81,10 +84,10 @@ function saveUserData() {
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    if (scaledDinoImage) {
+    if (dinoImage.complete) {
         createScaledDinoImage();
+        drawDino();
     }
-    drawDino();
 }
 
 function drawDino() {
@@ -93,9 +96,9 @@ function drawDino() {
         const x = Math.round((canvas.width - scaledDinoImage.width) / 2);
         const y = Math.round((canvas.height - scaledDinoImage.height) / 2);
 
-        // Yöntem 1: Doğrudan çizim (önceden ölçeklendirilmiş resim kullanarak)
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(scaledDinoImage, x, y);
+        // Piksel bazlı çizim
+        const imageData = scaledDinoImage.getContext('2d').getImageData(0, 0, scaledDinoImage.width, scaledDinoImage.height);
+        ctx.putImageData(imageData, x, y);
 
         console.log("Dino drawn at:", x, y, scaledDinoImage.width, scaledDinoImage.height);
     } else {
