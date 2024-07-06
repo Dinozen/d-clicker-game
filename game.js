@@ -7,7 +7,7 @@ let energy = 3;
 let maxEnergy = 3;
 let lastEnergyRefillTime = Date.now();
 let clicksRemaining = 300;
-let telegramId = 'default'; // Varsayılan bir değer kullanıyoruz
+let telegramId = 'default';
 let boostAvailable = true;
 const boostCooldown = 3 * 60 * 60 * 1000; // 3 saat
 
@@ -34,13 +34,13 @@ function loadImages() {
             };
             img.onerror = (e) => {
                 console.error(`Error loading image: ${path}`, e);
-                resolve(null); // Hata durumunda null döndür
+                resolve(null);
             };
             img.src = path;
         });
     })).then(images => {
         console.log("All images loaded:", images);
-        dinoImages = images.filter(img => img !== null); // Null olmayan resimleri filtrele
+        dinoImages = images.filter(img => img !== null);
         console.log("Valid images:", dinoImages.length);
         if (dinoImages.length > 0) {
             drawDino();
@@ -144,10 +144,10 @@ function drawDino() {
         const dinoImage = dinoImages[dinoIndex];
         if (dinoImage && dinoImage.complete) {
             const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
-            const dinoWidth = dinoImage.width * scale;
-            const dinoHeight = dinoImage.height * scale;
-            const dinoX = (canvas.width - dinoWidth) / 2;
-            const dinoY = (canvas.height - dinoHeight) / 2;
+            const dinoWidth = Math.round(dinoImage.width * scale);
+            const dinoHeight = Math.round(dinoImage.height * scale);
+            const dinoX = Math.round((canvas.width - dinoWidth) / 2);
+            const dinoY = Math.round((canvas.height - dinoHeight) / 2);
             
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
@@ -157,14 +157,9 @@ function drawDino() {
             
             console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
             
-            // Debug: Çerçeve çizme
-            ctx.strokeStyle = 'red';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(dinoX, dinoY, dinoWidth, dinoHeight);
-            
             if (shadowImage.complete) {
                 const shadowWidth = dinoWidth;
-                const shadowHeight = shadowImage.height * (shadowWidth / shadowImage.width);
+                const shadowHeight = Math.round(shadowImage.height * (shadowWidth / shadowImage.width));
                 ctx.drawImage(shadowImage, dinoX, dinoY + dinoHeight - shadowHeight / 2, shadowWidth, shadowHeight);
             }
         } else {
@@ -176,12 +171,20 @@ function drawDino() {
 }
 
 function gameLoop() {
-    console.log("Game loop iteration");
     drawDino();
     requestAnimationFrame(gameLoop);
 }
 
 function updateUI() {
+    const elements = ['tokenDisplay', 'energyDisplay', 'clicksDisplay', 'levelDisplay'];
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.style.color = 'white';
+            element.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
+        }
+    });
+
     document.getElementById('tokenDisplay').textContent = `Tokens: ${tokens}`;
     document.getElementById('energyDisplay').textContent = `Energy: ${energy}/${maxEnergy}`;
     document.getElementById('clicksDisplay').textContent = `Clicks: ${clicksRemaining}`;
