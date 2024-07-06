@@ -21,14 +21,30 @@ const boostTimer = document.getElementById('boostTimer');
 const dinoImage = new Image();
 dinoImage.src = 'dino1.png';
 
+// Ölçeklendirilmiş dinozor resmi
+let scaledDinoImage;
+
 function startGame() {
     console.log("Starting game");
     loadUserData();
     resizeCanvas();
-    dinoImage.onload = drawDino;
+    dinoImage.onload = () => {
+        createScaledDinoImage();
+        drawDino();
+    };
     setupClickHandler();
     setupGameUI();
     boostButton.addEventListener('click', handleBoost);
+}
+
+function createScaledDinoImage() {
+    scaledDinoImage = document.createElement('canvas');
+    const scaledCtx = scaledDinoImage.getContext('2d');
+    const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
+    scaledDinoImage.width = Math.round(dinoImage.width * scale);
+    scaledDinoImage.height = Math.round(dinoImage.height * scale);
+    scaledCtx.imageSmoothingEnabled = false;
+    scaledCtx.drawImage(dinoImage, 0, 0, scaledDinoImage.width, scaledDinoImage.height);
 }
 
 function loadUserData() {
@@ -65,34 +81,25 @@ function saveUserData() {
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    if (scaledDinoImage) {
+        createScaledDinoImage();
+    }
     drawDino();
 }
 
 function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (dinoImage.complete && dinoImage.naturalWidth > 0) {
-        const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
-        const width = Math.round(dinoImage.width * scale);
-        const height = Math.round(dinoImage.height * scale);
-        const x = Math.round((canvas.width - width) / 2);
-        const y = Math.round((canvas.height - height) / 2);
-        
-        // Geçici canvas oluştur
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = width * 2;
-        tempCanvas.height = height * 2;
-        
-        // Resmi geçici canvas'a büyük boyutta çiz
-        tempCtx.drawImage(dinoImage, 0, 0, tempCanvas.width, tempCanvas.height);
-        
-        // Geçici canvas'ı ana canvas'a küçülterek çiz
-        ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(tempCanvas, x, y, width, height);
-        
-        console.log("Dino drawn at:", x, y, width, height);
+    if (scaledDinoImage) {
+        const x = Math.round((canvas.width - scaledDinoImage.width) / 2);
+        const y = Math.round((canvas.height - scaledDinoImage.height) / 2);
+
+        // Yöntem 1: Doğrudan çizim (önceden ölçeklendirilmiş resim kullanarak)
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(scaledDinoImage, x, y);
+
+        console.log("Dino drawn at:", x, y, scaledDinoImage.width, scaledDinoImage.height);
     } else {
-        console.log("Dino image not ready, drawing placeholder");
+        console.log("Scaled dino image not ready, drawing placeholder");
         ctx.fillStyle = 'green';
         ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
     }
