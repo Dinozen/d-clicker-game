@@ -8,14 +8,20 @@ let maxEnergy = 3;
 let lastEnergyRefillTime = Date.now();
 let clicksRemaining = 300;
 let telegramId = '';
+let boostAvailable = true;
+const boostCooldown = 3 * 60 * 60 * 1000; // 3 saat
 
 // DOM elementleri
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const boostButton = document.getElementById('boostButton');
+const boostTimer = document.getElementById('boostTimer');
 
 // Resimleri yükleme
 let dinoImages = [];
 let dinoImagePaths = ["dino1.png", "dino2.png", "dino3.png", "dino4.png", "dino5.png"];
+let shadowImage = new Image();
+shadowImage.src = 'shadow.png';
 
 function loadImages() {
     console.log("Loading images...");
@@ -45,11 +51,13 @@ function loadUserData() {
         energy = data.energy;
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime);
         clicksRemaining = data.clicksRemaining;
+        boostAvailable = data.boostAvailable;
         console.log("User data loaded:", data);
     } else {
         console.log("No saved data found for this user");
     }
     updateUI();
+    updateBoostButton();
 }
 
 function saveUserData() {
@@ -58,7 +66,8 @@ function saveUserData() {
         level,
         energy,
         lastEnergyRefillTime,
-        clicksRemaining
+        clicksRemaining,
+        boostAvailable
     };
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
@@ -70,6 +79,7 @@ function startGame(userTelegramId) {
     resizeCanvas();
     setupGameUI();
     gameLoop();
+    boostButton.addEventListener('click', handleBoost);
 }
 
 function resizeCanvas() {
@@ -124,6 +134,10 @@ function gameLoop() {
         const dinoX = (canvas.width - dinoWidth) / 2;
         const dinoY = (canvas.height - dinoHeight) / 2;
         ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
+        // Gölgeli resim ekle
+        const shadowWidth = dinoWidth;
+        const shadowHeight = dinoHeight * 0.1;
+        ctx.drawImage(shadowImage, dinoX, dinoY + dinoHeight - shadowHeight / 2, shadowWidth, shadowHeight);
     }
     requestAnimationFrame(gameLoop);
 }
@@ -135,27 +149,18 @@ function updateUI() {
     document.getElementById('levelDisplay').textContent = `Level: ${level}`;
 }
 
-window.addEventListener('resize', resizeCanvas);
-
-console.log("Initializing game...");
-loadImages().then(loadedImages => {
-    console.log("Images loading process completed");
-    dinoImages = loadedImages.filter(img => img.width > 0);
-    console.log(`Successfully loaded ${dinoImages.length} out of ${dinoImagePaths.length} images`);
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const telegramId = urlParams.get('telegramId');
-    console.log("URL parameters:", urlParams.toString());
-    console.log("Telegram ID from URL:", telegramId);
-    
-    if (telegramId) {
-        console.log("Telegram ID found in URL:", telegramId);
-        startGame(telegramId);
-    } else {
-        console.log('No Telegram ID provided in URL, using default');
-        startGame('default_user');
+function handleBoost() {
+    if (boostAvailable) {
+        energy = maxEnergy;
+        boostAvailable = false;
+        updateBoostButton();
+        saveUserData();
+        startBoostCooldown();
     }
-}).catch(error => {
-    console.error("Error in game initialization:", error);
-    document.body.innerHTML = `<h1>Error initializing game: ${error.message || 'Unknown error'}</h1>`;
-});
+}
+
+function updateBoostButton() {
+    if (boostAvailable) {
+        boostButton.classList.remove('disabled');
+        boostButton.textContent = 'Boost';
+        boostTimer.textContent
