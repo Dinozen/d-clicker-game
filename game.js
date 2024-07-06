@@ -17,50 +17,19 @@ const ctx = canvas.getContext('2d');
 const boostButton = document.getElementById('boostButton');
 const boostTimer = document.getElementById('boostTimer');
 
-// Resimleri yükleme
-let dinoImages = [];
-let dinoImagePaths = ["dino1.png", "dino2.png", "dino3.png", "dino4.png", "dino5.png"];
-let shadowImage = new Image();
-shadowImage.src = 'shadow.png';
+// Dinozor resmi
+const dinoImage = new Image();
+dinoImage.src = 'dino1.png';
 
-function loadImages() {
-    console.log("Loading images...");
-    return Promise.all(dinoImagePaths.map(path => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-                console.log(`Image loaded successfully: ${path}`);
-                resolve(img);
-            };
-            img.onerror = (e) => {
-                console.error(`Error loading image: ${path}`, e);
-                // Hata durumunda yedek bir resim yükle
-                const backupImg = new Image();
-                backupImg.src = 'backup_dino.png'; // Yedek bir dinozor resmi ekleyin
-                backupImg.onload = () => resolve(backupImg);
-                backupImg.onerror = () => resolve(null);
-            };
-            img.src = path;
-        });
-    })).then(images => {
-        console.log("All images loaded:", images);
-        dinoImages = images.filter(img => img !== null);
-        console.log("Valid images:", dinoImages.length);
-        if (dinoImages.length > 0) {
-            drawDino();
-        } else {
-            console.error("No valid images loaded");
-            // Hiç resim yüklenemezse, basit bir şekil çiz
-            drawSimpleDino();
-        }
-        return dinoImages;
-    });
-}
-
-function drawSimpleDino() {
-    console.log("Drawing simple dino shape");
-    ctx.fillStyle = 'green';
-    ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
+function startGame() {
+    console.log("Starting game");
+    loadUserData();
+    resizeCanvas();
+    dinoImage.onload = drawDino;
+    setupClickHandler();
+    setupGameUI();
+    gameLoop();
+    boostButton.addEventListener('click', handleBoost);
 }
 
 function loadUserData() {
@@ -94,46 +63,27 @@ function saveUserData() {
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
 
-function startGame() {
-    console.log("Starting game");
-    loadUserData();
-    loadImages().then(() => {
-        resizeCanvas();
-        setupGameUI();
-        setupClickHandler();
-        gameLoop();
-        boostButton.addEventListener('click', handleBoost);
-    }).catch(error => {
-        console.error("Error loading images:", error);
-    });
-}
-
 function resizeCanvas() {
-    const scale = window.devicePixelRatio || 1;
-    canvas.width = window.innerWidth * scale;
-    canvas.height = window.innerHeight * scale;
-    canvas.style.width = window.innerWidth + 'px';
-    canvas.style.height = window.innerHeight + 'px';
-    ctx.scale(scale, scale);
-    console.log("Canvas resized to:", canvas.width, canvas.height);
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     drawDino();
 }
 
-function setupGameUI() {
-    updateUI();
-}
-
-function handleClick(event) {
-    if (energy > 0) {
-        if (clicksRemaining <= 0) {
-            energy--;
-            clicksRemaining = 300;
-        }
-        tokens++;
-        clicksRemaining--;
-        createClickEffect(event.clientX, event.clientY);
-        updateUI();
-        saveUserData();
+function drawDino() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (dinoImage.complete && dinoImage.naturalWidth > 0) {
+        const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
+        const width = dinoImage.width * scale;
+        const height = dinoImage.height * scale;
+        const x = (canvas.width - width) / 2;
+        const y = (canvas.height - height) / 2;
+        
+        ctx.drawImage(dinoImage, x, y, width, height);
+        console.log("Dino drawn at:", x, y, width, height);
+    } else {
+        console.log("Dino image not ready, drawing placeholder");
+        ctx.fillStyle = 'green';
+        ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
     }
 }
 
@@ -150,6 +100,20 @@ function setupClickHandler() {
     });
 }
 
+function handleClick(event) {
+    if (energy > 0) {
+        if (clicksRemaining <= 0) {
+            energy--;
+            clicksRemaining = 300;
+        }
+        tokens++;
+        clicksRemaining--;
+        createClickEffect(event.clientX, event.clientY);
+        updateUI();
+        saveUserData();
+    }
+}
+
 function createClickEffect(x, y) {
     const clickEffect = document.createElement('div');
     clickEffect.className = 'clickEffect';
@@ -163,45 +127,8 @@ function createClickEffect(x, y) {
     }, 1000);
 }
 
-function drawDino() {
-    console.log("Drawing dino...");
-    console.log("Canvas dimensions:", canvas.width, canvas.height);
-    console.log("Current level:", level);
-    console.log("dinoImages:", dinoImages);
-
-    if (dinoImages.length > 0) {
-        const dinoIndex = Math.min(level - 1, dinoImages.length - 1);
-        const dinoImage = dinoImages[dinoIndex];
-        if (dinoImage && dinoImage.complete) {
-            const maxWidth = canvas.width * 0.8;
-            const maxHeight = canvas.height * 0.8;
-            const scale = Math.min(maxWidth / dinoImage.width, maxHeight / dinoImage.height);
-            const dinoWidth = Math.round(dinoImage.width * scale);
-            const dinoHeight = Math.round(dinoImage.height * scale);
-            const dinoX = Math.round((canvas.width - dinoWidth) / 2);
-            const dinoY = Math.round((canvas.height - dinoHeight) / 2);
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
-            ctx.restore();
-            
-            console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
-            
-            if (shadowImage.complete) {
-                const shadowWidth = dinoWidth;
-                const shadowHeight = Math.round(shadowImage.height * (shadowWidth / shadowImage.width));
-                ctx.drawImage(shadowImage, dinoX, dinoY + dinoHeight - shadowHeight / 2, shadowWidth, shadowHeight);
-            }
-        } else {
-            console.log("Selected dino image not ready, drawing simple shape");
-            drawSimpleDino();
-        }
-    } else {
-        console.log("No valid dino images available, drawing simple shape");
-        drawSimpleDino();
-    }
+function setupGameUI() {
+    updateUI();
 }
 
 function gameLoop() {
