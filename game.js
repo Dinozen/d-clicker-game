@@ -145,22 +145,4 @@ function gameLoop() {
 function updateUI() {
     document.getElementById('tokenDisplay').textContent = `Tokens: ${tokens}`;
     document.getElementById('energyDisplay').textContent = `Energy: ${energy}/${maxEnergy}`;
-    document.getElementById('clicksDisplay').textContent = `Clicks: ${clicksRemaining}`;
-    document.getElementById('levelDisplay').textContent = `Level: ${level}`;
-}
-
-function handleBoost() {
-    if (boostAvailable) {
-        energy = maxEnergy;
-        boostAvailable = false;
-        updateBoostButton();
-        saveUserData();
-        startBoostCooldown();
-    }
-}
-
-function updateBoostButton() {
-    if (boostAvailable) {
-        boostButton.classList.remove('disabled');
-        boostButton.textContent = 'Boost';
-        boostTimer.textContent
+    document.getElementById('clicksDisplay').textContent = `Clicks: ${click
