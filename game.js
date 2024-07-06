@@ -72,13 +72,24 @@ function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (dinoImage.complete && dinoImage.naturalWidth > 0) {
         const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
-        const width = dinoImage.width * scale;
-        const height = dinoImage.height * scale;
-        const x = (canvas.width - width) / 2;
-        const y = (canvas.height - height) / 2;
+        const width = Math.round(dinoImage.width * scale);
+        const height = Math.round(dinoImage.height * scale);
+        const x = Math.round((canvas.width - width) / 2);
+        const y = Math.round((canvas.height - height) / 2);
         
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(dinoImage, x, y, width, height);
+        // Geçici canvas oluştur
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = width * 2;
+        tempCanvas.height = height * 2;
+        
+        // Resmi geçici canvas'a büyük boyutta çiz
+        tempCtx.drawImage(dinoImage, 0, 0, tempCanvas.width, tempCanvas.height);
+        
+        // Geçici canvas'ı ana canvas'a küçülterek çiz
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(tempCanvas, x, y, width, height);
+        
         console.log("Dino drawn at:", x, y, width, height);
     } else {
         console.log("Dino image not ready, drawing placeholder");
