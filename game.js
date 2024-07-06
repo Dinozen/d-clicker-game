@@ -96,8 +96,12 @@ function startGame() {
 }
 
 function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const scale = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * scale;
+    canvas.height = window.innerHeight * scale;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.scale(scale, scale);
     console.log("Canvas resized to:", canvas.width, canvas.height);
     drawDino();
 }
@@ -108,12 +112,13 @@ function setupGameUI() {
 }
 
 function handleClick(event) {
-    if (energy > 0 && clicksRemaining > 0) {
+    if (energy > 0) {
+        if (clicksRemaining <= 0) {
+            energy--;
+            clicksRemaining = 300;
+        }
         tokens++;
         clicksRemaining--;
-        if (clicksRemaining % 100 === 0) {
-            energy--;
-        }
         createClickEffect(event.clientX, event.clientY);
         updateUI();
         saveUserData();
