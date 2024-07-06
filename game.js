@@ -26,7 +26,7 @@ shadowImage.src = 'shadow.png';
 function loadImages() {
     console.log("Loading images...");
     return Promise.all(dinoImagePaths.map(path => {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
                 console.log(`Image loaded successfully: ${path}`);
@@ -34,15 +34,20 @@ function loadImages() {
             };
             img.onerror = (e) => {
                 console.error(`Error loading image: ${path}`, e);
-                reject(new Error(`Failed to load image: ${path}`));
+                resolve(null); // Hata durumunda null döndür
             };
             img.src = path;
         });
     })).then(images => {
         console.log("All images loaded:", images);
-        dinoImages = images;
-        drawDino();
-        return images;
+        dinoImages = images.filter(img => img !== null); // Null olmayan resimleri filtrele
+        console.log("Valid images:", dinoImages.length);
+        if (dinoImages.length > 0) {
+            drawDino();
+        } else {
+            console.error("No valid images loaded");
+        }
+        return dinoImages;
     });
 }
 
@@ -93,6 +98,7 @@ function startGame() {
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    console.log("Canvas resized to:", canvas.width, canvas.height);
     drawDino();
 }
 
@@ -133,33 +139,44 @@ function drawDino() {
     console.log("Current level:", level);
     console.log("dinoImages:", dinoImages);
 
-    if (dinoImages.length > 0 && dinoImages[level - 1] && dinoImages[level - 1].complete) {
-        const dinoImage = dinoImages[level - 1];
-        const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
-        const dinoWidth = dinoImage.width * scale;
-        const dinoHeight = dinoImage.height * scale;
-        const dinoX = (canvas.width - dinoWidth) / 2;
-        const dinoY = (canvas.height - dinoHeight) / 2;
-        
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.save();
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
-        ctx.restore();
-        
-        console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
-        
-        if (shadowImage.complete) {
-            const shadowWidth = dinoWidth;
-            const shadowHeight = shadowImage.height * (shadowWidth / shadowImage.width);
-            ctx.drawImage(shadowImage, dinoX, dinoY + dinoHeight - shadowHeight / 2, shadowWidth, shadowHeight);
+    if (dinoImages.length > 0) {
+        const dinoIndex = Math.min(level - 1, dinoImages.length - 1);
+        const dinoImage = dinoImages[dinoIndex];
+        if (dinoImage && dinoImage.complete) {
+            const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
+            const dinoWidth = dinoImage.width * scale;
+            const dinoHeight = dinoImage.height * scale;
+            const dinoX = (canvas.width - dinoWidth) / 2;
+            const dinoY = (canvas.height - dinoHeight) / 2;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
+            ctx.restore();
+            
+            console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
+            
+            // Debug: Çerçeve çizme
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(dinoX, dinoY, dinoWidth, dinoHeight);
+            
+            if (shadowImage.complete) {
+                const shadowWidth = dinoWidth;
+                const shadowHeight = shadowImage.height * (shadowWidth / shadowImage.width);
+                ctx.drawImage(shadowImage, dinoX, dinoY + dinoHeight - shadowHeight / 2, shadowWidth, shadowHeight);
+            }
+        } else {
+            console.log("Selected dino image not ready");
         }
     } else {
-        console.log("Dino image not ready or not found");
+        console.log("No valid dino images available");
     }
 }
 
 function gameLoop() {
+    console.log("Game loop iteration");
     drawDino();
     requestAnimationFrame(gameLoop);
 }
