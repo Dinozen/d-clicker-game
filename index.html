@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dinozen Clicker Game</title>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Honk&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=K2D:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -15,7 +16,7 @@
             height: 100vh;
             background-color: #000;
             color: #61dafb;
-            font-family: 'Press Start 2P', cursive;
+            font-family: 'Honk', cursive;
             overflow: hidden;
         }
         #backgroundGif {
@@ -48,6 +49,7 @@
             color: #ff6b6b;
             font-size: 24px;
             font-weight: bold;
+            font-family: 'K2D', sans-serif;
             animation: fadeOut 1s forwards;
         }
         @keyframes fadeOut {
@@ -59,6 +61,30 @@
                 opacity: 0;
                 transform: translateY(-20px);
             }
+        }
+        #boostButton {
+            position: absolute;
+            bottom: 20px;
+            font-size: 24px;
+            padding: 10px 20px;
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            font-family: 'K2D', sans-serif;
+            cursor: pointer;
+            z-index: 10;
+        }
+        #boostButton.disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+        #boostTimer {
+            position: absolute;
+            bottom: 80px;
+            font-size: 18px;
+            z-index: 10;
+            font-family: 'K2D', sans-serif;
         }
     </style>
 </head>
@@ -72,6 +98,8 @@
         <span id="levelDisplay"></span>
         <span id="refillTimer"></span>
     </div>
+    <button id="boostButton">Boost</button>
+    <div id="boostTimer"></div>
     <script src="game.js"></script>
 </body>
 </html>
