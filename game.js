@@ -12,10 +12,10 @@ let boostAvailable = true;
 const boostCooldown = 3 * 60 * 60 * 1000; // 3 saat
 
 // DOM elementleri
-let canvas;
-let ctx;
-let boostButton;
-let boostTimer;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const boostButton = document.getElementById('boostButton');
+const boostTimer = document.getElementById('boostTimer');
 
 // Resimleri yükleme
 let dinoImages = [];
@@ -80,10 +80,6 @@ function saveUserData() {
 function startGame(userTelegramId) {
     console.log("Starting game for telegramId:", userTelegramId);
     telegramId = userTelegramId;
-    canvas = document.getElementById('gameCanvas');
-    ctx = canvas.getContext('2d');
-    boostButton = document.getElementById('boostButton');
-    boostTimer = document.getElementById('boostTimer');
     loadUserData();
     loadImages().then(() => {
         resizeCanvas();
