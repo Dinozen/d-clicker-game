@@ -17,21 +17,17 @@ const ctx = canvas.getContext('2d');
 const boostButton = document.getElementById('boostButton');
 const boostTimer = document.getElementById('boostTimer');
 
-// Dinozor ve gölge resimleri
+// Dinozor resmi
 const dinoImage = new Image();
 dinoImage.src = 'dino1.png';
-const shadowImage = new Image();
-shadowImage.src = 'shadow.png';
 
 function startGame() {
     console.log("Starting game");
     loadUserData();
     resizeCanvas();
-    dinoImage.onload = drawGame;
-    shadowImage.onload = drawGame;
+    dinoImage.onload = drawDino;
     setupClickHandler();
     setupGameUI();
-    gameLoop();
     boostButton.addEventListener('click', handleBoost);
 }
 
@@ -67,28 +63,19 @@ function saveUserData() {
 }
 
 function resizeCanvas() {
-    const scale = window.devicePixelRatio || 1;
-    canvas.width = window.innerWidth * scale;
-    canvas.height = window.innerHeight * scale;
-    canvas.style.width = window.innerWidth + 'px';
-    canvas.style.height = window.innerHeight + 'px';
-    ctx.scale(scale, scale);
-    drawGame();
-}
-
-function drawGame() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawShadow();
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     drawDino();
 }
 
 function drawDino() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (dinoImage.complete && dinoImage.naturalWidth > 0) {
         const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
-        const width = Math.round(dinoImage.width * scale);
-        const height = Math.round(dinoImage.height * scale);
-        const x = Math.round((canvas.width - width) / 2);
-        const y = Math.round((canvas.height - height) / 2);
+        const width = dinoImage.width * scale;
+        const height = dinoImage.height * scale;
+        const x = (canvas.width - width) / 2;
+        const y = (canvas.height - height) / 2;
         
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(dinoImage, x, y, width, height);
@@ -100,29 +87,9 @@ function drawDino() {
     }
 }
 
-function drawShadow() {
-    if (shadowImage.complete && shadowImage.naturalWidth > 0) {
-        const dinoScale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
-        const dinoWidth = Math.round(dinoImage.width * dinoScale);
-        const dinoHeight = Math.round(dinoImage.height * dinoScale);
-        const dinoX = Math.round((canvas.width - dinoWidth) / 2);
-        const dinoY = Math.round((canvas.height - dinoHeight) / 2);
-
-        const shadowWidth = dinoWidth;
-        const shadowHeight = Math.round(shadowImage.height * (shadowWidth / shadowImage.width));
-        const shadowX = dinoX;
-        const shadowY = dinoY + dinoHeight - shadowHeight / 2;
-
-        ctx.drawImage(shadowImage, shadowX, shadowY, shadowWidth, shadowHeight);
-        console.log("Shadow drawn at:", shadowX, shadowY, shadowWidth, shadowHeight);
-    } else {
-        console.log("Shadow image not ready");
-    }
-}
-
 function setupClickHandler() {
     let lastClickTime = 0;
-    const clickCooldown = 10; // 10 milisaniye
+    const clickCooldown = 1; // 1 milisaniye
 
     canvas.addEventListener('click', (event) => {
         const currentTime = Date.now();
@@ -162,11 +129,6 @@ function createClickEffect(x, y) {
 
 function setupGameUI() {
     updateUI();
-}
-
-function gameLoop() {
-    drawGame();
-    requestAnimationFrame(gameLoop);
 }
 
 function updateUI() {
