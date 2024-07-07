@@ -139,8 +139,7 @@ function drawDino() {
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.save();
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
+        ctx.imageSmoothingEnabled = false;
         ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
         ctx.restore();
         
@@ -204,13 +203,16 @@ function updateBoostTimer() {
     }
 }
 
+// Pencere boyutu değiştiğinde canvas'ı yeniden boyutlandır
 window.addEventListener('resize', resizeCanvas);
 
+// Kullanıcı verilerini her saniye güncelle
 setInterval(() => {
     updateBoostTimer();
     saveUserData();
 }, 1000);
 
+// Oyunu başlat
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const userTelegramId = urlParams.get('id');
@@ -218,6 +220,5 @@ document.addEventListener('DOMContentLoaded', () => {
         startGame(userTelegramId);
     } else {
         console.error("No Telegram ID provided");
-        startGame('default_user'); // Telegram ID yoksa varsayılan bir kullanıcı ile başlat
     }
 });
