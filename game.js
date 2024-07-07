@@ -71,7 +71,7 @@ function resizeCanvas() {
 function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (dinoImage.complete && dinoImage.naturalWidth > 0) {
-        const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
+        const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.25;
         const width = Math.round(dinoImage.width * scale);
         const height = Math.round(dinoImage.height * scale);
         const x = Math.round((canvas.width - width) / 2);
