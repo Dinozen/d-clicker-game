@@ -2,12 +2,20 @@ console.log("Game script loaded");
 
 // Oyun değişkenleri
 let tokens = 0;
+let level = 1;
 let energy = 3;
+let maxEnergy = 3;
+let lastEnergyRefillTime = Date.now();
 let clicksRemaining = 300;
+let telegramId = 'default';
+let boostAvailable = true;
+const boostCooldown = 3 * 60 * 60 * 1000; // 3 saat
 
 // DOM elementleri
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const boostButton = document.getElementById('boostButton');
+const boostTimer = document.getElementById('boostTimer');
 
 // Dinozor resmi
 const dinoImage = new Image();
@@ -17,11 +25,45 @@ let dinoX, dinoY, dinoWidth, dinoHeight; // Dinozorun konumu ve boyutu
 
 function startGame() {
     console.log("Starting game");
+    loadUserData();
     resizeCanvas();
     dinoImage.onload = () => {
         drawDino();
         setupClickHandler(); // Resim yüklendikten sonra tıklama olayını ayarla
     };
+    setupGameUI();
+    boostButton.addEventListener('click', handleBoost);
+}
+
+function loadUserData() {
+    console.log("Loading user data for telegramId:", telegramId);
+    const savedData = localStorage.getItem(telegramId);
+    if (savedData) {
+        const data = JSON.parse(savedData);
+        tokens = data.tokens;
+        level = data.level;
+        energy = data.energy;
+        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime();
+        clicksRemaining = data.clicksRemaining;
+        boostAvailable = data.boostAvailable;
+        console.log("User data loaded:", data);
+    } else {
+        console.log("No saved data found for this user");
+    }
+    updateUI();
+    updateBoostButton();
+}
+
+function saveUserData() {
+    const data = {
+        tokens,
+        level,
+        energy,
+        lastEnergyRefillTime,
+        clicksRemaining,
+        boostAvailable
+    };
+    localStorage.setItem(telegramId, JSON.stringify(data));
 }
 
 function resizeCanvas() {
@@ -70,14 +112,12 @@ function setupClickHandler() {
 
 function handleClick(event) {
     const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * window.devicePixelRatio;
-    const y = (event.clientY - rect.top) * window.devicePixelRatio;
-
-    console.log(`Click at: (${x}, ${y})`);
-    console.log(`Dino bounds: x=${dinoX}, y=${dinoY}, width=${dinoWidth}, height=${dinoHeight}`);
-
-    if (x >= dinoX && x <= dinoX + dinoWidth && y >= dinoY && y <= dinoY + dinoHeight) {
-        console.log("Dino clicked!");
+    const scale = window.devicePixelRatio;
+    const x = (event.clientX - rect.left) * scale;
+    const y = (event.clientY - rect.top) * scale;
+    
+    if (x >= dinoX * scale && x <= (dinoX + dinoWidth) * scale && 
+        y >= dinoY * scale && y <= (dinoY + dinoHeight) * scale) {
         if (energy > 0) {
             if (clicksRemaining <= 0) {
                 energy--;
@@ -87,6 +127,7 @@ function handleClick(event) {
             clicksRemaining--;
             createClickEffect(event.clientX, event.clientY);
             updateUI();
+            saveUserData();
         }
     }
 }
@@ -104,15 +145,74 @@ function createClickEffect(x, y) {
     }, 1000);
 }
 
+function setupGameUI() {
+    updateUI();
+}
+
 function updateUI() {
+    const elements = ['tokenDisplay', 'energyDisplay', 'clicksDisplay', 'levelDisplay'];
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.style.color = 'white';
+            element.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
+        }
+    });
+
     document.getElementById('tokenDisplay').textContent = `Tokens: ${tokens}`;
-    document.getElementById('energyDisplay').textContent = `Energy: ${energy}/3`;
+    document.getElementById('energyDisplay').textContent = `Energy: ${energy}/${maxEnergy}`;
     document.getElementById('clicksDisplay').textContent = `Clicks: ${clicksRemaining}`;
-    document.getElementById('levelDisplay').textContent = `Level: 1`;
+    document.getElementById('levelDisplay').textContent = `Level: ${level}`;
+}
+
+function handleBoost() {
+    if (boostAvailable && energy < maxEnergy) {
+        energy = maxEnergy;
+        boostAvailable = false;
+        lastEnergyRefillTime = Date.now();
+        updateBoostButton();
+        saveUserData();
+        updateUI();
+    }
+}
+
+function updateBoostButton() {
+    if (boostAvailable) {
+        boostButton.classList.remove('disabled');
+        boostButton.textContent = 'Boost';
+    } else {
+        boostButton.classList.add('disabled');
+        boostButton.textContent = 'Boost Unavailable';
+    }
+}
+
+function updateBoostTimer() {
+    const timeElapsed = Date.now() - lastEnergyRefillTime;
+    const timeRemaining = boostCooldown - timeElapsed;
+    if (timeRemaining <= 0) {
+        boostAvailable = true;
+        updateBoostButton();
+        boostTimer.textContent = '';
+    } else {
+        const hours = Math.floor(timeRemaining / 3600000);
+        const minutes = Math.floor((timeRemaining % 3600000) / 60000);
+        const seconds = Math.floor((timeRemaining % 60000) / 1000);
+        boostTimer.textContent = `Boost available in: ${hours}:${minutes}:${seconds}`;
+    }
 }
 
 window.addEventListener('resize', resizeCanvas);
 
+setInterval(() => {
+    updateBoostTimer();
+    saveUserData();
+}, 1000);
+
 window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const userTelegramId = urlParams.get('id');
+    if (userTelegramId) {
+        telegramId = userTelegramId;
+    }
     startGame();
 };
