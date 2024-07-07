@@ -71,16 +71,12 @@ function resizeCanvas() {
 function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (dinoImage.complete && dinoImage.naturalWidth > 0) {
-        const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 1;
-        const width = Math.round(dinoImage.width * scale);
-        const height = Math.round(dinoImage.height * scale);
+        const scale = Math.min(canvas.width / dinoImage.naturalWidth, canvas.height / dinoImage.naturalHeight) * 0.8;
+        const width = Math.round(dinoImage.naturalWidth * scale);
+        const height = Math.round(dinoImage.naturalHeight * scale);
         const x = Math.round((canvas.width - width) / 2);
         const y = Math.round((canvas.height - height) / 2);
-    }
-}
-
-    }
-}
+        
         // Geçici canvas oluştur
         const tempCanvas = document.createElement('canvas');
         const tempCtx = tempCanvas.getContext('2d');
