@@ -17,21 +17,32 @@ const ctx = canvas.getContext('2d');
 const boostButton = document.getElementById('boostButton');
 const boostTimer = document.getElementById('boostTimer');
 
-// Dinozor resimleri
-const dinoImages = [];
-const dinoImagePaths = ["dino1.png", "dino2.png", "dino3.png", "dino4.png", "dino5.png"];
+// Resimleri yükleme
+let dinoImages = [];
+let dinoImagePaths = ["dino1.png", "dino2.png", "dino3.png", "dino4.png", "dino5.png"];
+let shadowImage = new Image();
+shadowImage.src = 'shadow.png';
 
 function loadImages() {
     console.log("Loading images...");
-    dinoImagePaths.forEach((path, index) => {
-        const img = new Image();
-        img.onload = () => {
-            console.log(`Image loaded successfully: ${path}`);
-            dinoImages[index] = img;
-            if (index === 0) drawDino(); // İlk resim yüklendiğinde çiz
-        };
-        img.onerror = (e) => console.error(`Error loading image: ${path}`, e);
-        img.src = path;
+    return Promise.all(dinoImagePaths.map(path => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                console.log(`Image loaded successfully: ${path}`);
+                resolve(img);
+            };
+            img.onerror = (e) => {
+                console.error(`Error loading image: ${path}`, e);
+                reject(new Error(`Failed to load image: ${path}`));
+            };
+            img.src = path;
+        });
+    })).then(images => {
+        console.log("All images loaded:", images);
+        dinoImages = images;
+        drawDino();
+        return images;
     });
 }
 
@@ -55,7 +66,14 @@ function loadUserData() {
 }
 
 function saveUserData() {
-    const data = { tokens, level, energy, lastEnergyRefillTime, clicksRemaining, boostAvailable };
+    const data = {
+        tokens,
+        level,
+        energy,
+        lastEnergyRefillTime,
+        clicksRemaining,
+        boostAvailable
+    };
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
 
@@ -63,10 +81,14 @@ function startGame(userTelegramId) {
     console.log("Starting game for telegramId:", userTelegramId);
     telegramId = userTelegramId;
     loadUserData();
-    loadImages();
-    resizeCanvas();
-    setupGameUI();
-    boostButton.addEventListener('click', handleBoost);
+    loadImages().then(() => {
+        resizeCanvas();
+        setupGameUI();
+        gameLoop();
+        boostButton.addEventListener('click', handleBoost);
+    }).catch(error => {
+        console.error("Error loading images:", error);
+    });
 }
 
 function resizeCanvas() {
@@ -84,7 +106,9 @@ function handleClick(event) {
     if (energy > 0 && clicksRemaining > 0) {
         tokens++;
         clicksRemaining--;
-        if (clicksRemaining % 100 === 0) energy--;
+        if (clicksRemaining % 100 === 0) {
+            energy--;
+        }
         createClickEffect(event.clientX, event.clientY);
         updateUI();
         saveUserData();
@@ -98,27 +122,43 @@ function createClickEffect(x, y) {
     clickEffect.style.top = `${y}px`;
     clickEffect.textContent = '+1';
     document.body.appendChild(clickEffect);
-    setTimeout(() => clickEffect.remove(), 1000);
+
+    setTimeout(() => {
+        clickEffect.remove();
+    }, 1000);
 }
 
 function drawDino() {
-    if (dinoImages[level - 1] && dinoImages[level - 1].complete) {
-        const img = dinoImages[level - 1];
-        const scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.8;
-        const width = img.width * scale;
-        const height = img.height * scale;
-        const x = (canvas.width - width) / 2;
-        const y = (canvas.height - height) / 2;
+    if (dinoImages.length > 0 && dinoImages[level - 1] && dinoImages[level - 1].complete) {
+        const dinoImage = dinoImages[level - 1];
+        const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
+        const dinoWidth = dinoImage.width * scale;
+        const dinoHeight = dinoImage.height * scale;
+        const dinoX = (canvas.width - dinoWidth) / 2;
+        const dinoY = (canvas.height - dinoHeight) / 2;
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, x, y, width, height);
+        ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
+        ctx.restore();
         
-        console.log("Dino drawn at:", x, y, width, height);
+        console.log("Drawing dino:", dinoX, dinoY, dinoWidth, dinoHeight);
+        
+        if (shadowImage.complete) {
+            const shadowWidth = dinoWidth;
+            const shadowHeight = shadowImage.height * (shadowWidth / shadowImage.width);
+            ctx.drawImage(shadowImage, dinoX, dinoY + dinoHeight - shadowHeight / 2, shadowWidth, shadowHeight);
+        }
     } else {
         console.log("Dino image not ready or not found");
     }
+}
+
+function gameLoop() {
+    drawDino();
+    requestAnimationFrame(gameLoop);
 }
 
 function updateUI() {
@@ -178,5 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
         startGame(userTelegramId);
     } else {
         console.error("No Telegram ID provided");
+        startGame('default_user'); // Telegram ID yoksa varsayılan bir kullanıcı ile başlat
     }
 });
