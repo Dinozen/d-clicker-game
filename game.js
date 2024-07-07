@@ -25,8 +25,10 @@ function startGame() {
     console.log("Starting game");
     loadUserData();
     resizeCanvas();
-    dinoImage.onload = drawDino;
-    setupClickHandler();
+    dinoImage.onload = () => {
+        drawDino();
+        setupClickHandler(); // Resim yüklendikten sonra tıklama olayını ayarla
+    };
     setupGameUI();
     boostButton.addEventListener('click', handleBoost);
 }
@@ -63,19 +65,23 @@ function saveUserData() {
 }
 
 function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const scale = window.devicePixelRatio; // Cihazın piksel oranını al
+    canvas.width = window.innerWidth * scale;
+    canvas.height = window.innerHeight * scale;
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+    ctx.scale(scale, scale); // Çizim bağlamını ölçekle
     drawDino();
 }
 
 function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (dinoImage.complete && dinoImage.naturalWidth > 0) {
-        const scale = Math.min(canvas.width / dinoImage.naturalWidth, canvas.height / dinoImage.naturalHeight) * 0.8;
+        const scale = Math.min(window.innerWidth / dinoImage.naturalWidth, window.innerHeight / dinoImage.naturalHeight) * 0.8;
         const width = Math.round(dinoImage.naturalWidth * scale);
         const height = Math.round(dinoImage.naturalHeight * scale);
-        const x = Math.round((canvas.width - width) / 2);
-        const y = Math.round((canvas.height - height) / 2);
+        const x = Math.round((window.innerWidth - width) / 2);
+        const y = Math.round((window.innerHeight - height) / 2);
         
         // Geçici canvas oluştur
         const tempCanvas = document.createElement('canvas');
@@ -109,17 +115,26 @@ function setupClickHandler() {
             lastClickTime = currentTime;
         }
     });
+
+    canvas.addEventListener('click', (event) => {
+        if (event.target === canvas) {
+            handleClick(event);
+        }
+    });
 }
 
 function handleClick(event) {
     if (energy > 0) {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
         if (clicksRemaining <= 0) {
             energy--;
             clicksRemaining = 300;
         }
         tokens++;
         clicksRemaining--;
-        createClickEffect(event.clientX, event.clientY);
+        createClickEffect(x, y);
         updateUI();
         saveUserData();
     }
