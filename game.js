@@ -77,18 +77,10 @@ function drawDino() {
         const x = Math.round((canvas.width - width) / 2);
         const y = Math.round((canvas.height - height) / 2);
         
-        // Geçici canvas oluştur
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = width * 2;
-        tempCanvas.height = height * 2;
-        
-        // Resmi geçici canvas'a büyük boyutta çiz
-        tempCtx.drawImage(dinoImage, 0, 0, tempCanvas.width, tempCanvas.height);
-        
-        // Geçici canvas'ı ana canvas'a küçülterek çiz
-        ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(tempCanvas, x, y, width, height);
+        // Keskinleştirme filtresi uygula
+        ctx.filter = 'contrast(1.4) saturate(1.2) brightness(1.1)';
+        ctx.drawImage(dinoImage, x, y, width, height);
+        ctx.filter = 'none';  // Filtreyi sıfırla
         
         console.log("Dino drawn at:", x, y, width, height);
     } else {
