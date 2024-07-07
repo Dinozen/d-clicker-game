@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dinozen Clicker Game</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Honk&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=K2D:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -15,11 +16,11 @@
             height: 100vh;
             background-color: #000;
             color: #ffffff;
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Honk', cursive;
             overflow: hidden;
         }
         #backgroundGif {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
@@ -39,12 +40,9 @@
             position: fixed;
             top: 10px;
             left: 10px;
-            font-size: 18px;
+            font-size: 24px;
             z-index: 10;
             color: white;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 10px;
         }
         #gameInfo span {
             display: block;
@@ -53,11 +51,10 @@
         .clickEffect {
             position: absolute;
             color: #ff6b6b;
-            font-size: 24px;
+            font-size: 32px;
             font-weight: bold;
+            font-family: 'K2D', sans-serif;
             animation: fadeOut 1s forwards;
-            z-index: 20;
-            pointer-events: none;
         }
         @keyframes fadeOut {
             0% {
@@ -70,17 +67,17 @@
             }
         }
         #boostButton {
-            position: fixed;
+            position: absolute;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 18px;
+            font-size: 24px;
             padding: 10px 20px;
             background-color: #61dafb;
             color: #000;
             border: none;
             border-radius: 10px;
-            font-family: 'Roboto', sans-serif;
+            font-family: 'K2D', sans-serif;
             cursor: pointer;
             z-index: 10;
         }
@@ -89,14 +86,14 @@
             cursor: not-allowed;
         }
         #boostTimer {
-            position: fixed;
+            position: absolute;
             bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 16px;
+            font-size: 24px;
             z-index: 10;
-            font-family: 'Roboto', sans-serif;
-            background-color: rgba(0, 0, 0, 0.7);
+            font-family: 'K2D', sans-serif;
+            background-color: rgba(0, 0, 0, 0.5);
             padding: 10px;
             border-radius: 10px;
             border: 2px solid rgba(255, 255, 255, 0.5);
