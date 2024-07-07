@@ -21,6 +21,8 @@ const boostTimer = document.getElementById('boostTimer');
 const dinoImage = new Image();
 dinoImage.src = 'dino1.png';
 
+let dinoX, dinoY, dinoWidth, dinoHeight; // Dinozorun konumu ve boyutu
+
 function startGame() {
     console.log("Starting game");
     loadUserData();
@@ -78,29 +80,29 @@ function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (dinoImage.complete && dinoImage.naturalWidth > 0) {
         const scale = Math.min(window.innerWidth / dinoImage.naturalWidth, window.innerHeight / dinoImage.naturalHeight) * 0.8;
-        const width = Math.round(dinoImage.naturalWidth * scale);
-        const height = Math.round(dinoImage.naturalHeight * scale);
-        const x = Math.round((window.innerWidth - width) / 2);
-        const y = Math.round((window.innerHeight - height) / 2);
+        dinoWidth = Math.round(dinoImage.naturalWidth * scale);
+        dinoHeight = Math.round(dinoImage.naturalHeight * scale);
+        dinoX = Math.round((window.innerWidth - dinoWidth) / 2);
+        dinoY = Math.round((window.innerHeight - dinoHeight) / 2);
         
         // Geçici canvas oluştur
         const tempCanvas = document.createElement('canvas');
         const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = width * 2;
-        tempCanvas.height = height * 2;
+        tempCanvas.width = dinoWidth * 2;
+        tempCanvas.height = dinoHeight * 2;
         
         // Resmi geçici canvas'a büyük boyutta çiz
         tempCtx.drawImage(dinoImage, 0, 0, tempCanvas.width, tempCanvas.height);
         
         // Geçici canvas'ı ana canvas'a küçülterek çiz
         ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(tempCanvas, x, y, width, height);
+        ctx.drawImage(tempCanvas, dinoX, dinoY, dinoWidth, dinoHeight);
         
-        console.log("Dino drawn at:", x, y, width, height);
+        console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
     } else {
         console.log("Dino image not ready, drawing placeholder");
         ctx.fillStyle = 'green';
-        ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
+        ctx.fillRect(window.innerWidth / 2 - 50, window.innerHeight / 2 - 50, 100, 100);
     }
 }
 
@@ -115,28 +117,25 @@ function setupClickHandler() {
             lastClickTime = currentTime;
         }
     });
-
-    canvas.addEventListener('click', (event) => {
-        if (event.target === canvas) {
-            handleClick(event);
-        }
-    });
 }
 
 function handleClick(event) {
     if (energy > 0) {
         const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        if (clicksRemaining <= 0) {
-            energy--;
-            clicksRemaining = 300;
+        const x = (event.clientX - rect.left) * window.devicePixelRatio;
+        const y = (event.clientY - rect.top) * window.devicePixelRatio;
+        
+        if (x >= dinoX && x <= dinoX + dinoWidth && y >= dinoY && y <= dinoY + dinoHeight) {
+            if (clicksRemaining <= 0) {
+                energy--;
+                clicksRemaining = 300;
+            }
+            tokens++;
+            clicksRemaining--;
+            createClickEffect(event.clientX, event.clientY);
+            updateUI();
+            saveUserData();
         }
-        tokens++;
-        clicksRemaining--;
-        createClickEffect(x, y);
-        updateUI();
-        saveUserData();
     }
 }
 
