@@ -107,16 +107,7 @@ function drawDino() {
 }
 
 function setupClickHandler() {
-    let lastClickTime = 0;
-    const clickCooldown = 1; // 1 milisaniye
-
-    canvas.addEventListener('click', (event) => {
-        const currentTime = Date.now();
-        if (currentTime - lastClickTime >= clickCooldown) {
-            handleClick(event);
-            lastClickTime = currentTime;
-        }
-    });
+    canvas.addEventListener('click', handleClick);
 }
 
 function handleClick(event) {
