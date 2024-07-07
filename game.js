@@ -17,54 +17,22 @@ const ctx = canvas.getContext('2d');
 const boostButton = document.getElementById('boostButton');
 const boostTimer = document.getElementById('boostTimer');
 
-// Resimleri yükleme
-let dinoImages = [];
-let downsampledDinoImages = [];
-let dinoImagePaths = ["dino1.png", "dino2.png", "dino3.png", "dino4.png", "dino5.png"];
-let shadowImage = new Image();
-shadowImage.src = 'shadow.png';
+// Dinozor resimleri
+const dinoImages = [];
+const dinoImagePaths = ["dino1.png", "dino2.png", "dino3.png", "dino4.png", "dino5.png"];
 
 function loadImages() {
     console.log("Loading images...");
-    return Promise.all(dinoImagePaths.map(path => {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => {
-                console.log(`Image loaded successfully: ${path}`);
-                resolve(img);
-            };
-            img.onerror = (e) => {
-                console.error(`Error loading image: ${path}`, e);
-                reject(new Error(`Failed to load image: ${path}`));
-            };
-            img.src = path;
-        });
-    })).then(images => {
-        console.log("All images loaded:", images);
-        dinoImages = images;
-        downsampledDinoImages = images.map(createDownsampledImage);
-        drawDino();
-        return images;
+    dinoImagePaths.forEach((path, index) => {
+        const img = new Image();
+        img.onload = () => {
+            console.log(`Image loaded successfully: ${path}`);
+            dinoImages[index] = img;
+            if (index === 0) drawDino(); // İlk resim yüklendiğinde çiz
+        };
+        img.onerror = (e) => console.error(`Error loading image: ${path}`, e);
+        img.src = path;
     });
-}
-
-function createDownsampledImage(img) {
-    const scale = 0.25; // Resmin %25'ini kullan
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCanvas.width = Math.round(img.width * scale);
-    tempCanvas.height = Math.round(img.height * scale);
-    
-    tempCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
-    
-    const downsampledCanvas = document.createElement('canvas');
-    downsampledCanvas.width = img.width;
-    downsampledCanvas.height = img.height;
-    const ctx = downsampledCanvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(tempCanvas, 0, 0, downsampledCanvas.width, downsampledCanvas.height);
-    
-    return downsampledCanvas;
 }
 
 function loadUserData() {
@@ -87,14 +55,7 @@ function loadUserData() {
 }
 
 function saveUserData() {
-    const data = {
-        tokens,
-        level,
-        energy,
-        lastEnergyRefillTime,
-        clicksRemaining,
-        boostAvailable
-    };
+    const data = { tokens, level, energy, lastEnergyRefillTime, clicksRemaining, boostAvailable };
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
 
@@ -102,14 +63,10 @@ function startGame(userTelegramId) {
     console.log("Starting game for telegramId:", userTelegramId);
     telegramId = userTelegramId;
     loadUserData();
-    loadImages().then(() => {
-        resizeCanvas();
-        setupGameUI();
-        gameLoop();
-        boostButton.addEventListener('click', handleBoost);
-    }).catch(error => {
-        console.error("Error loading images:", error);
-    });
+    loadImages();
+    resizeCanvas();
+    setupGameUI();
+    boostButton.addEventListener('click', handleBoost);
 }
 
 function resizeCanvas() {
@@ -127,9 +84,7 @@ function handleClick(event) {
     if (energy > 0 && clicksRemaining > 0) {
         tokens++;
         clicksRemaining--;
-        if (clicksRemaining % 100 === 0) {
-            energy--;
-        }
+        if (clicksRemaining % 100 === 0) energy--;
         createClickEffect(event.clientX, event.clientY);
         updateUI();
         saveUserData();
@@ -143,43 +98,27 @@ function createClickEffect(x, y) {
     clickEffect.style.top = `${y}px`;
     clickEffect.textContent = '+1';
     document.body.appendChild(clickEffect);
-
-    setTimeout(() => {
-        clickEffect.remove();
-    }, 1000);
+    setTimeout(() => clickEffect.remove(), 1000);
 }
 
 function drawDino() {
-    if (downsampledDinoImages.length > 0 && downsampledDinoImages[level - 1]) {
-        const dinoImage = downsampledDinoImages[level - 1];
-        const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
-        const dinoWidth = dinoImage.width * scale;
-        const dinoHeight = dinoImage.height * scale;
-        const dinoX = (canvas.width - dinoWidth) / 2;
-        const dinoY = (canvas.height - dinoHeight) / 2;
+    if (dinoImages[level - 1] && dinoImages[level - 1].complete) {
+        const img = dinoImages[level - 1];
+        const scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.8;
+        const width = img.width * scale;
+        const height = img.height * scale;
+        const x = (canvas.width - width) / 2;
+        const y = (canvas.height - height) / 2;
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.save();
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
-        ctx.restore();
+        ctx.drawImage(img, x, y, width, height);
         
-        console.log("Drawing dino:", dinoX, dinoY, dinoWidth, dinoHeight);
-        
-        if (shadowImage.complete) {
-            const shadowWidth = dinoWidth;
-            const shadowHeight = shadowImage.height * (shadowWidth / shadowImage.width);
-            ctx.drawImage(shadowImage, dinoX, dinoY + dinoHeight - shadowHeight / 2, shadowWidth, shadowHeight);
-        }
+        console.log("Dino drawn at:", x, y, width, height);
     } else {
-        console.log("Downsampled dino image not ready or not found");
+        console.log("Dino image not ready or not found");
     }
-}
-
-function gameLoop() {
-    drawDino();
-    requestAnimationFrame(gameLoop);
 }
 
 function updateUI() {
