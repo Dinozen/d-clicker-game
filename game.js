@@ -27,10 +27,21 @@ function startGame() {
     console.log("Starting game");
     loadUserData();
     resizeCanvas();
-    dinoImage.onload = () => {
+    if (dinoImage.complete) {
+        console.log("Dino image already loaded");
         drawDino();
-        setupClickHandler(); // Resim yüklendikten sonra tıklama olayını ayarla
-    };
+        setupClickHandler();
+    } else {
+        console.log("Waiting for dino image to load");
+        dinoImage.onload = () => {
+            console.log("Dino image loaded");
+            drawDino();
+            setupClickHandler();
+        };
+        dinoImage.onerror = () => {
+            console.error("Failed to load dino image");
+        };
+    }
     setupGameUI();
     boostButton.addEventListener('click', handleBoost);
 }
@@ -107,18 +118,23 @@ function drawDino() {
 }
 
 function setupClickHandler() {
-    canvas.addEventListener('click', handleClick);
+    canvas.addEventListener('click', (event) => {
+        console.log("Canvas clicked");
+        handleClick(event);
+    });
 }
 
 function handleClick(event) {
     const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * window.devicePixelRatio;
-    const y = (event.clientY - rect.top) * window.devicePixelRatio;
+    const scale = window.devicePixelRatio;
+    const x = (event.clientX - rect.left) * scale;
+    const y = (event.clientY - rect.top) * scale;
 
     console.log(`Click at: (${x}, ${y})`);
-    console.log(`Dino bounds: x=${dinoX}, y=${dinoY}, width=${dinoWidth}, height=${dinoHeight}`);
+    console.log(`Dino bounds: x=${dinoX * scale}, y=${dinoY * scale}, width=${dinoWidth * scale}, height=${dinoHeight * scale}`);
 
-    if (x >= dinoX && x <= dinoX + dinoWidth && y >= dinoY && y <= dinoY + dinoHeight) {
+    if (x >= dinoX * scale && x <= (dinoX + dinoWidth) * scale && 
+        y >= dinoY * scale && y <= (dinoY + dinoHeight) * scale) {
         console.log("Dino clicked!");
         if (energy > 0) {
             if (clicksRemaining <= 0) {
