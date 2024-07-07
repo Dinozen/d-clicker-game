@@ -43,6 +43,10 @@
             font-size: 24px;
             z-index: 10;
             color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
         }
         #gameInfo span {
             display: block;
@@ -50,11 +54,12 @@
         }
         .clickEffect {
             position: absolute;
-            color: #ff6b6b;
+            color: white;
             font-size: 32px;
             font-weight: bold;
             font-family: 'K2D', sans-serif;
             animation: fadeOut 1s forwards;
+            pointer-events: none;
         }
         @keyframes fadeOut {
             0% {
@@ -93,7 +98,7 @@
             font-size: 24px;
             z-index: 10;
             font-family: 'K2D', sans-serif;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.7);
             padding: 10px;
             border-radius: 10px;
             border: 2px solid rgba(255, 255, 255, 0.5);
