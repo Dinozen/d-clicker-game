@@ -7,7 +7,7 @@ let energy = 3;
 let maxEnergy = 3;
 let lastEnergyRefillTime = Date.now();
 let clicksRemaining = 300;
-let telegramId = 'default';
+let telegramId = '';
 let boostAvailable = true;
 const boostCooldown = 3 * 60 * 60 * 1000; // 3 saat
 
@@ -17,37 +17,54 @@ const ctx = canvas.getContext('2d');
 const boostButton = document.getElementById('boostButton');
 const boostTimer = document.getElementById('boostTimer');
 
-// Dinozor resmi
-const dinoImage = new Image();
-dinoImage.src = 'dino1.png';
+// Resimleri yükleme
+let dinoImages = [];
+let downsampledDinoImages = [];
+let dinoImagePaths = ["dino1.png", "dino2.png", "dino3.png", "dino4.png", "dino5.png"];
+let shadowImage = new Image();
+shadowImage.src = 'shadow.png';
 
-// Ölçeklendirilmiş dinozor resmi
-let scaledDinoImage;
-
-function startGame() {
-    console.log("Starting game");
-    loadUserData();
-    resizeCanvas();
-    dinoImage.onload = () => {
-        createScaledDinoImage();
+function loadImages() {
+    console.log("Loading images...");
+    return Promise.all(dinoImagePaths.map(path => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                console.log(`Image loaded successfully: ${path}`);
+                resolve(img);
+            };
+            img.onerror = (e) => {
+                console.error(`Error loading image: ${path}`, e);
+                reject(new Error(`Failed to load image: ${path}`));
+            };
+            img.src = path;
+        });
+    })).then(images => {
+        console.log("All images loaded:", images);
+        dinoImages = images;
+        downsampledDinoImages = images.map(createDownsampledImage);
         drawDino();
-    };
-    setupClickHandler();
-    setupGameUI();
-    boostButton.addEventListener('click', handleBoost);
+        return images;
+    });
 }
 
-function createScaledDinoImage() {
-    const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
-    const width = Math.round(dinoImage.width * scale);
-    const height = Math.round(dinoImage.height * scale);
-
-    scaledDinoImage = document.createElement('canvas');
-    scaledDinoImage.width = width;
-    scaledDinoImage.height = height;
-    const scaledCtx = scaledDinoImage.getContext('2d');
-    scaledCtx.imageSmoothingEnabled = false;
-    scaledCtx.drawImage(dinoImage, 0, 0, width, height);
+function createDownsampledImage(img) {
+    const scale = 0.25; // Resmin %25'ini kullan
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCanvas.width = Math.round(img.width * scale);
+    tempCanvas.height = Math.round(img.height * scale);
+    
+    tempCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
+    
+    const downsampledCanvas = document.createElement('canvas');
+    downsampledCanvas.width = img.width;
+    downsampledCanvas.height = img.height;
+    const ctx = downsampledCanvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(tempCanvas, 0, 0, downsampledCanvas.width, downsampledCanvas.height);
+    
+    return downsampledCanvas;
 }
 
 function loadUserData() {
@@ -81,53 +98,38 @@ function saveUserData() {
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
 
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    if (dinoImage.complete) {
-        createScaledDinoImage();
-        drawDino();
-    }
-}
-
-function drawDino() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (scaledDinoImage) {
-        const x = Math.round((canvas.width - scaledDinoImage.width) / 2);
-        const y = Math.round((canvas.height - scaledDinoImage.height) / 2);
-
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(scaledDinoImage, x, y);
-
-        console.log("Dino drawn at:", x, y, scaledDinoImage.width, scaledDinoImage.height);
-    } else {
-        console.log("Scaled dino image not ready, drawing placeholder");
-        ctx.fillStyle = 'green';
-        ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
-    }
-}
-
-function setupClickHandler() {
-    let lastClickTime = 0;
-    const clickCooldown = 1; // 1 milisaniye
-
-    canvas.addEventListener('click', (event) => {
-        const currentTime = Date.now();
-        if (currentTime - lastClickTime >= clickCooldown) {
-            handleClick(event);
-            lastClickTime = currentTime;
-        }
+function startGame(userTelegramId) {
+    console.log("Starting game for telegramId:", userTelegramId);
+    telegramId = userTelegramId;
+    loadUserData();
+    loadImages().then(() => {
+        resizeCanvas();
+        setupGameUI();
+        gameLoop();
+        boostButton.addEventListener('click', handleBoost);
+    }).catch(error => {
+        console.error("Error loading images:", error);
     });
 }
 
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    drawDino();
+}
+
+function setupGameUI() {
+    updateUI();
+    canvas.addEventListener('click', handleClick);
+}
+
 function handleClick(event) {
-    if (energy > 0) {
-        if (clicksRemaining <= 0) {
-            energy--;
-            clicksRemaining = 300;
-        }
+    if (energy > 0 && clicksRemaining > 0) {
         tokens++;
         clicksRemaining--;
+        if (clicksRemaining % 100 === 0) {
+            energy--;
+        }
         createClickEffect(event.clientX, event.clientY);
         updateUI();
         saveUserData();
@@ -147,20 +149,40 @@ function createClickEffect(x, y) {
     }, 1000);
 }
 
-function setupGameUI() {
-    updateUI();
+function drawDino() {
+    if (downsampledDinoImages.length > 0 && downsampledDinoImages[level - 1]) {
+        const dinoImage = downsampledDinoImages[level - 1];
+        const scale = Math.min(canvas.width / dinoImage.width, canvas.height / dinoImage.height) * 0.8;
+        const dinoWidth = dinoImage.width * scale;
+        const dinoHeight = dinoImage.height * scale;
+        const dinoX = (canvas.width - dinoWidth) / 2;
+        const dinoY = (canvas.height - dinoHeight) / 2;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
+        ctx.restore();
+        
+        console.log("Drawing dino:", dinoX, dinoY, dinoWidth, dinoHeight);
+        
+        if (shadowImage.complete) {
+            const shadowWidth = dinoWidth;
+            const shadowHeight = shadowImage.height * (shadowWidth / shadowImage.width);
+            ctx.drawImage(shadowImage, dinoX, dinoY + dinoHeight - shadowHeight / 2, shadowWidth, shadowHeight);
+        }
+    } else {
+        console.log("Downsampled dino image not ready or not found");
+    }
+}
+
+function gameLoop() {
+    drawDino();
+    requestAnimationFrame(gameLoop);
 }
 
 function updateUI() {
-    const elements = ['tokenDisplay', 'energyDisplay', 'clicksDisplay', 'levelDisplay'];
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.style.color = 'white';
-            element.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
-        }
-    });
-
     document.getElementById('tokenDisplay').textContent = `Tokens: ${tokens}`;
     document.getElementById('energyDisplay').textContent = `Energy: ${energy}/${maxEnergy}`;
     document.getElementById('clicksDisplay').textContent = `Clicks: ${clicksRemaining}`;
@@ -210,11 +232,12 @@ setInterval(() => {
     saveUserData();
 }, 1000);
 
-window.onload = function() {
+document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const userTelegramId = urlParams.get('id');
     if (userTelegramId) {
-        telegramId = userTelegramId;
+        startGame(userTelegramId);
+    } else {
+        console.error("No Telegram ID provided");
     }
-    startGame();
-};
+});
