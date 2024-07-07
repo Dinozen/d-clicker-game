@@ -67,42 +67,32 @@ function saveUserData() {
 }
 
 function resizeCanvas() {
-    const scale = window.devicePixelRatio; // Cihazın piksel oranını al
+    const scale = window.devicePixelRatio;
     canvas.width = window.innerWidth * scale;
     canvas.height = window.innerHeight * scale;
     canvas.style.width = `${window.innerWidth}px`;
     canvas.style.height = `${window.innerHeight}px`;
-    ctx.scale(scale, scale); // Çizim bağlamını ölçekle
+    ctx.scale(scale, scale);
     drawDino();
 }
 
 function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (dinoImage.complete && dinoImage.naturalWidth > 0) {
-        const scale = Math.min(window.innerWidth / dinoImage.naturalWidth, window.innerHeight / dinoImage.naturalHeight) * 0.8;
+        const scale = Math.min(canvas.width / dinoImage.naturalWidth, canvas.height / dinoImage.naturalHeight) * 0.8;
         dinoWidth = Math.round(dinoImage.naturalWidth * scale);
         dinoHeight = Math.round(dinoImage.naturalHeight * scale);
-        dinoX = Math.round((window.innerWidth - dinoWidth) / 2);
-        dinoY = Math.round((window.innerHeight - dinoHeight) / 2);
+        dinoX = Math.round((canvas.width - dinoWidth) / 2);
+        dinoY = Math.round((canvas.height - dinoHeight) / 2);
         
-        // Geçici canvas oluştur
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = dinoWidth * 2;
-        tempCanvas.height = dinoHeight * 2;
-        
-        // Resmi geçici canvas'a büyük boyutta çiz
-        tempCtx.drawImage(dinoImage, 0, 0, tempCanvas.width, tempCanvas.height);
-        
-        // Geçici canvas'ı ana canvas'a küçülterek çiz
         ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(tempCanvas, dinoX, dinoY, dinoWidth, dinoHeight);
+        ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
         
         console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
     } else {
         console.log("Dino image not ready, drawing placeholder");
         ctx.fillStyle = 'green';
-        ctx.fillRect(window.innerWidth / 2 - 50, window.innerHeight / 2 - 50, 100, 100);
+        ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
     }
 }
 
@@ -116,8 +106,11 @@ function handleClick(event) {
     const x = (event.clientX - rect.left) * scale;
     const y = (event.clientY - rect.top) * scale;
     
-    if (x >= dinoX * scale && x <= (dinoX + dinoWidth) * scale && 
-        y >= dinoY * scale && y <= (dinoY + dinoHeight) * scale) {
+    console.log("Click at:", x, y);
+    console.log("Dino area:", dinoX, dinoY, dinoWidth, dinoHeight);
+
+    if (x >= dinoX && x <= dinoX + dinoWidth && y >= dinoY && y <= dinoY + dinoHeight) {
+        console.log("Click on dino detected");
         if (energy > 0) {
             if (clicksRemaining <= 0) {
                 energy--;
