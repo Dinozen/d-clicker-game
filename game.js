@@ -109,34 +109,10 @@ function drawDino() {
         dinoX = Math.round((window.innerWidth - dinoWidth) / 2);
         dinoY = Math.round((window.innerHeight - dinoHeight) / 2);
         
-        // Geçici canvas oluştur
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = dinoWidth;
-        tempCanvas.height = dinoHeight;
-        
-        // Resmi geçici canvas'a çiz
-        tempCtx.drawImage(currentDinoImage, 0, 0, tempCanvas.width, tempCanvas.height);
-        
-        // Dinozor resminin gerçek sınırlarını bul
-        const imageData = tempCtx.getImageData(0, 0, dinoWidth, dinoHeight);
-        let minX = dinoWidth, minY = dinoHeight, maxX = 0, maxY = 0;
-        for (let y = 0; y < dinoHeight; y++) {
-            for (let x = 0; x < dinoWidth; x++) {
-                const alpha = imageData.data[(y * dinoWidth + x) * 4 + 3];
-                if (alpha > 0) {
-                    minX = Math.min(minX, x);
-                    minY = Math.min(minY, y);
-                    maxX = Math.max(maxX, x);
-                    maxY = Math.max(maxY, y);
-                }
-            }
-        }
-        
         // Arka plan dairesi çiz
-        const centerX = dinoX + (minX + maxX) / 2 - 10;
-        const centerY = dinoY + (minY + maxY) / 2;
-        const circleRadius = Math.max(maxX - minX, maxY - minY) / 2 + 12;
+        const centerX = dinoX + dinoWidth / 2;
+        const centerY = dinoY + dinoHeight / 2;
+        const circleRadius = Math.max(dinoWidth, dinoHeight) / 2 + 10;
         
         // Gradient oluştur
         const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, circleRadius);
@@ -153,9 +129,7 @@ function drawDino() {
         ctx.lineWidth = 3;
         ctx.stroke();
         
-        // Geçici canvas'ı ana canvas'a çiz
-        ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(tempCanvas, dinoX, dinoY, dinoWidth, dinoHeight);
+        ctx.drawImage(currentDinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
         
         console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
     } else {
