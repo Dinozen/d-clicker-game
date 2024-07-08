@@ -11,17 +11,25 @@ let telegramId = 'default';
 let boostAvailable = true;
 const boostCooldown = 3 * 60 * 60 * 1000; // 3 saat
 
+// Level gereksinimleri
+const levelRequirements = [0, 2000, 5000, 10000, 20000];
+
 // DOM elementleri
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const boostButton = document.getElementById('boostButton');
 const boostTimer = document.getElementById('boostTimer');
 
-// Dinozor resmi
-const dinoImage = new Image();
-dinoImage.src = 'dino1.png';
+// Dinozor resimleri
+const dinoImages = [];
+for (let i = 1; i <= 5; i++) {
+    const img = new Image();
+    img.src = `dino${i}.png`;
+    dinoImages.push(img);
+}
 
-let dinoX, dinoY, dinoWidth, dinoHeight; // Dinozorun konumu ve boyutu
+let currentDinoImage = dinoImages[0];
+let dinoX, dinoY, dinoWidth, dinoHeight;
 let isClicking = false;
 let clickScale = 1;
 
@@ -29,18 +37,18 @@ function startGame() {
     console.log("Starting game");
     loadUserData();
     resizeCanvas();
-    if (dinoImage.complete) {
+    if (currentDinoImage.complete) {
         console.log("Dino image already loaded");
         drawDino();
         setupClickHandler();
     } else {
         console.log("Waiting for dino image to load");
-        dinoImage.onload = () => {
+        currentDinoImage.onload = () => {
             console.log("Dino image loaded");
             drawDino();
             setupClickHandler();
         };
-        dinoImage.onerror = () => {
+        currentDinoImage.onerror = () => {
             console.error("Failed to load dino image");
         };
     }
@@ -66,6 +74,7 @@ function loadUserData() {
     }
     updateUI();
     updateBoostButton();
+    updateDinoImage();
 }
 
 function saveUserData() {
@@ -93,10 +102,10 @@ function resizeCanvas() {
 function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    if (dinoImage.complete && dinoImage.naturalWidth > 0) {
-        const scale = Math.min(window.innerWidth / dinoImage.naturalWidth, window.innerHeight / dinoImage.naturalHeight) * 0.56;
-        dinoWidth = Math.round(dinoImage.naturalWidth * scale * clickScale);
-        dinoHeight = Math.round(dinoImage.naturalHeight * scale * clickScale);
+    if (currentDinoImage.complete && currentDinoImage.naturalWidth > 0) {
+        const scale = Math.min(window.innerWidth / currentDinoImage.naturalWidth, window.innerHeight / currentDinoImage.naturalHeight) * 0.56;
+        dinoWidth = Math.round(currentDinoImage.naturalWidth * scale * clickScale);
+        dinoHeight = Math.round(currentDinoImage.naturalHeight * scale * clickScale);
         dinoX = Math.round((window.innerWidth - dinoWidth) / 2);
         dinoY = Math.round((window.innerHeight - dinoHeight) / 2);
         
@@ -107,7 +116,7 @@ function drawDino() {
         tempCanvas.height = dinoHeight;
         
         // Resmi geçici canvas'a çiz
-        tempCtx.drawImage(dinoImage, 0, 0, tempCanvas.width, tempCanvas.height);
+        tempCtx.drawImage(currentDinoImage, 0, 0, tempCanvas.width, tempCanvas.height);
         
         // Dinozor resminin gerçek sınırlarını bul
         const imageData = tempCtx.getImageData(0, 0, dinoWidth, dinoHeight);
@@ -186,6 +195,7 @@ function handleClick(event) {
             isClicking = true;
             clickScale = 1.1;
             updateUI();
+            checkLevelUp();
             saveUserData();
         }
     }
@@ -261,6 +271,39 @@ function animateDino() {
         drawDino();
     }
     requestAnimationFrame(animateDino);
+}
+
+function checkLevelUp() {
+    const newLevel = levelRequirements.findIndex(req => tokens < req);
+    if (newLevel !== level) {
+        level = newLevel;
+        updateDinoImage();
+        createLevelUpEffect();
+    }
+}
+
+function updateDinoImage() {
+    currentDinoImage = dinoImages[level - 1];
+    drawDino();
+}
+
+function createLevelUpEffect() {
+    const levelUpEffect = document.createElement('div');
+    levelUpEffect.className = 'levelUpEffect';
+    levelUpEffect.style.position = 'absolute';
+    levelUpEffect.style.left = '50%';
+    levelUpEffect.style.top = '50%';
+    levelUpEffect.style.transform = 'translate(-50%, -50%)';
+    levelUpEffect.style.fontSize = '48px';
+    levelUpEffect.style.color = 'gold';
+    levelUpEffect.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
+    levelUpEffect.style.zIndex = '1000';
+    levelUpEffect.textContent = `Level Up! ${level}`;
+    document.body.appendChild(levelUpEffect);
+
+    setTimeout(() => {
+        levelUpEffect.remove();
+    }, 2000);
 }
 
 window.addEventListener('resize', resizeCanvas);
