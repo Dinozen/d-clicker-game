@@ -22,6 +22,8 @@ const dinoImage = new Image();
 dinoImage.src = 'dino1.png';
 
 let dinoX, dinoY, dinoWidth, dinoHeight; // Dinozorun konumu ve boyutu
+let isClicking = false;
+let clickScale = 1;
 
 function startGame() {
     console.log("Starting game");
@@ -44,6 +46,7 @@ function startGame() {
     }
     setupGameUI();
     boostButton.addEventListener('click', handleBoost);
+    animateDino();
 }
 
 function loadUserData() {
@@ -78,34 +81,70 @@ function saveUserData() {
 }
 
 function resizeCanvas() {
-    const scale = window.devicePixelRatio; // Cihazın piksel oranını al
+    const scale = window.devicePixelRatio;
     canvas.width = window.innerWidth * scale;
     canvas.height = window.innerHeight * scale;
     canvas.style.width = `${window.innerWidth}px`;
     canvas.style.height = `${window.innerHeight}px`;
-    ctx.scale(scale, scale); // Çizim bağlamını ölçekle
+    ctx.scale(scale, scale);
     drawDino();
 }
 
 function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
     if (dinoImage.complete && dinoImage.naturalWidth > 0) {
-        const scale = Math.min(window.innerWidth / dinoImage.naturalWidth, window.innerHeight / dinoImage.naturalHeight) * 0.8;
-        dinoWidth = Math.round(dinoImage.naturalWidth * scale);
-        dinoHeight = Math.round(dinoImage.naturalHeight * scale);
+        const scale = Math.min(window.innerWidth / dinoImage.naturalWidth, window.innerHeight / dinoImage.naturalHeight) * 0.56;
+        dinoWidth = Math.round(dinoImage.naturalWidth * scale * clickScale);
+        dinoHeight = Math.round(dinoImage.naturalHeight * scale * clickScale);
         dinoX = Math.round((window.innerWidth - dinoWidth) / 2);
         dinoY = Math.round((window.innerHeight - dinoHeight) / 2);
         
         // Geçici canvas oluştur
         const tempCanvas = document.createElement('canvas');
         const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = dinoWidth * 2;
-        tempCanvas.height = dinoHeight * 2;
+        tempCanvas.width = dinoWidth;
+        tempCanvas.height = dinoHeight;
         
-        // Resmi geçici canvas'a büyük boyutta çiz
+        // Resmi geçici canvas'a çiz
         tempCtx.drawImage(dinoImage, 0, 0, tempCanvas.width, tempCanvas.height);
         
-        // Geçici canvas'ı ana canvas'a küçülterek çiz
+        // Dinozor resminin gerçek sınırlarını bul
+        const imageData = tempCtx.getImageData(0, 0, dinoWidth, dinoHeight);
+        let minX = dinoWidth, minY = dinoHeight, maxX = 0, maxY = 0;
+        for (let y = 0; y < dinoHeight; y++) {
+            for (let x = 0; x < dinoWidth; x++) {
+                const alpha = imageData.data[(y * dinoWidth + x) * 4 + 3];
+                if (alpha > 0) {
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    maxX = Math.max(maxX, x);
+                    maxY = Math.max(maxY, y);
+                }
+            }
+        }
+        
+        // Arka plan dairesi çiz
+        const centerX = dinoX + (minX + maxX) / 2 - 10;
+        const centerY = dinoY + (minY + maxY) / 2;
+        const circleRadius = Math.max(maxX - minX, maxY - minY) / 2 + 12;
+        
+        // Gradient oluştur
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, circleRadius);
+        gradient.addColorStop(0, 'rgba(137, 207, 240, 0.8)');
+        gradient.addColorStop(1, 'rgba(100, 149, 237, 0.6)');
+        
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        
+        // Daha kontrastlı kenarlık
+        ctx.strokeStyle = 'rgba(25, 25, 112, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Geçici canvas'ı ana canvas'a çiz
         ctx.imageSmoothingEnabled = true;
         ctx.drawImage(tempCanvas, dinoX, dinoY, dinoWidth, dinoHeight);
         
@@ -144,6 +183,8 @@ function handleClick(event) {
             tokens++;
             clicksRemaining--;
             createClickEffect(event.clientX, event.clientY);
+            isClicking = true;
+            clickScale = 1.1;
             updateUI();
             saveUserData();
         }
@@ -208,6 +249,18 @@ function updateBoostTimer() {
         const seconds = Math.floor((timeRemaining % 60000) / 1000);
         boostTimer.textContent = `Boost available in: ${hours}:${minutes}:${seconds}`;
     }
+}
+
+function animateDino() {
+    if (isClicking) {
+        clickScale -= 0.005;
+        if (clickScale <= 1) {
+            clickScale = 1;
+            isClicking = false;
+        }
+        drawDino();
+    }
+    requestAnimationFrame(animateDino);
 }
 
 window.addEventListener('resize', resizeCanvas);
