@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dinozen Clicker Game</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=K2D:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -16,7 +15,7 @@
             height: 100vh;
             background-color: #000;
             color: #ffffff;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Lilita One', cursive;
             overflow: hidden;
         }
         #backgroundGif {
@@ -38,26 +37,25 @@
         }
         #gameInfo {
             position: fixed;
-            top: 10px;
-            left: 10px;
-            font-size: 24px;
+            top: 5px;
+            left: 5px;
+            font-size: 14px;
             z-index: 10;
             color: white;
             background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.5);
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
         #gameInfo span {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
         .clickEffect {
             position: absolute;
             color: white;
-            font-size: 32px;
+            font-size: 20px;
             font-weight: bold;
-            font-family: 'K2D', sans-serif;
             animation: fadeOut 1s forwards;
             pointer-events: none;
             z-index: 1000;
@@ -74,16 +72,14 @@
         }
         #boostButton {
             position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 24px;
-            padding: 10px 20px;
+            bottom: 10px;
+            left: 10px;
+            font-size: 16px;
+            padding: 5px 10px;
             background-color: #61dafb;
             color: #000;
             border: none;
-            border-radius: 10px;
-            font-family: 'K2D', sans-serif;
+            border-radius: 5px;
             cursor: pointer;
             z-index: 10;
         }
@@ -93,16 +89,67 @@
         }
         #boostTimer {
             position: absolute;
-            bottom: 80px;
+            bottom: 50px;
+            left: 10px;
+            font-size: 14px;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        #menuButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 16px;
+            padding: 5px 10px;
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        #menuModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
+            text-align: center;
+        }
+        #wheelCanvas {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+        }
+        #spinButton, #referralButton, #closeMenuButton {
+            display: block;
+            margin: 10px auto;
+            font-size: 16px;
+            padding: 5px 10px;
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #dailyRewardDisplay {
+            position: absolute;
+            top: 10px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 24px;
+            font-size: 14px;
             z-index: 10;
-            font-family: 'K2D', sans-serif;
             background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.5);
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
     </style>
 </head>
@@ -112,11 +159,21 @@
     <div id="gameInfo">
         <span id="tokenDisplay">Tokens: 0</span>
         <span id="energyDisplay">Energy: 3/3</span>
-        <span id="clicksDisplay">Clicks: 2000</span>
+        <span id="clicksDisplay">Clicks: 300</span>
         <span id="levelDisplay">Level: 1</span>
     </div>
     <button id="boostButton">Boost</button>
     <div id="boostTimer"></div>
+    <button id="menuButton">Menu</button>
+    <div id="dailyRewardDisplay">Daily Streak: 0 days</div>
+    <div id="menuModal">
+        <h2>Menu</h2>
+        <canvas id="wheelCanvas" width="200" height="200"></canvas>
+        <button id="spinButton">Spin the Wheel</button>
+        <button id="referralButton">Invite Friends</button>
+        <p id="referralCount">Your Referrals: 0</p>
+        <button id="closeMenuButton">Close</button>
+    </div>
     <script src="game.js"></script>
 </body>
 </html>
