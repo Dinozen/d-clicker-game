@@ -10,6 +10,11 @@ let clicksRemaining = 300;
 let telegramId = 'default';
 let boostAvailable = true;
 const boostCooldown = 3 * 60 * 60 * 1000; // 3 saat
+let dailyStreak = 0;
+let lastLoginDate = null;
+let spinAvailable = true;
+let lastSpinTime = Date.now();
+let referralCount = 0;
 
 // Level gereksinimleri
 const levelRequirements = [0, 2000, 5000, 10000, 20000];
@@ -19,6 +24,9 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const boostButton = document.getElementById('boostButton');
 const boostTimer = document.getElementById('boostTimer');
+const menuButton = document.getElementById('menuButton');
+const menuModal = document.getElementById('menuModal');
+const dailyRewardDisplay = document.getElementById('dailyRewardDisplay');
 
 // Dinozor resimleri
 const dinoImages = [];
@@ -54,7 +62,9 @@ function startGame() {
     }
     setupGameUI();
     boostButton.addEventListener('click', handleBoost);
+    menuButton.addEventListener('click', toggleMenu);
     animateDino();
+    checkDailyLogin();
 }
 
 function loadUserData() {
@@ -68,6 +78,11 @@ function loadUserData() {
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime();
         clicksRemaining = data.clicksRemaining;
         boostAvailable = data.boostAvailable;
+        dailyStreak = data.dailyStreak || 0;
+        lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
+        spinAvailable = data.spinAvailable !== undefined ? data.spinAvailable : true;
+        lastSpinTime = data.lastSpinTime || Date.now();
+        referralCount = data.referralCount || 0;
         console.log("User data loaded:", data);
     } else {
         console.log("No saved data found for this user");
@@ -84,7 +99,12 @@ function saveUserData() {
         energy,
         lastEnergyRefillTime,
         clicksRemaining,
-        boostAvailable
+        boostAvailable,
+        dailyStreak,
+        lastLoginDate,
+        spinAvailable,
+        lastSpinTime,
+        referralCount
     };
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
@@ -103,7 +123,7 @@ function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     if (currentDinoImage.complete && currentDinoImage.naturalWidth > 0) {
-        const scale = Math.min(window.innerWidth / currentDinoImage.naturalWidth, window.innerHeight / currentDinoImage.naturalHeight) * 0.56;
+        const scale = Math.min(window.innerWidth / currentDinoImage.naturalWidth, window.innerHeight / currentDinoImage.naturalHeight) * 0.4;
         dinoWidth = Math.round(currentDinoImage.naturalWidth * scale * clickScale);
         dinoHeight = Math.round(currentDinoImage.naturalHeight * scale * clickScale);
         dinoX = Math.round((window.innerWidth - dinoWidth) / 2);
@@ -112,7 +132,7 @@ function drawDino() {
         // Arka plan dairesi çiz
         const centerX = dinoX + dinoWidth / 2;
         const centerY = dinoY + dinoHeight / 2;
-        const circleRadius = Math.max(dinoWidth, dinoHeight) / 2 + 10;
+        const circleRadius = Math.max(dinoWidth, dinoHeight) / 2 + 5;
         
         // Gradient oluştur
         const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, circleRadius);
@@ -140,17 +160,24 @@ function drawDino() {
 }
 
 function setupClickHandler() {
-    canvas.addEventListener('click', (event) => {
-        console.log("Canvas clicked");
-        handleClick(event);
-    });
+    canvas.addEventListener('touchstart', handleMultiTouch, { passive: false });
+    canvas.addEventListener('touchend', handleMultiTouch, { passive: false });
+    canvas.addEventListener('click', handleClick);
+}
+
+function handleMultiTouch(event) {
+    event.preventDefault();
+    for (let i = 0; i < event.touches.length; i++) {
+        const touch = event.touches[i];
+        handleClick(touch);
+    }
 }
 
 function handleClick(event) {
     const rect = canvas.getBoundingClientRect();
     const scale = window.devicePixelRatio;
-    const x = (event.clientX - rect.left) * scale;
-    const y = (event.clientY - rect.top) * scale;
+    const x = (event.clientX || event.touches[0].clientX - rect.left) * scale;
+    const y = (event.clientY || event.touches[0].clientY - rect.top) * scale;
 
     console.log(`Click at: (${x}, ${y})`);
     console.log(`Dino bounds: x=${dinoX * scale}, y=${dinoY * scale}, width=${dinoWidth * scale}, height=${dinoHeight * scale}`);
@@ -165,7 +192,7 @@ function handleClick(event) {
             }
             tokens++;
             clicksRemaining--;
-            createClickEffect(event.clientX, event.clientY);
+            createClickEffect(event.clientX || event.touches[0].clientX, event.clientY || event.touches[0].clientY);
             isClicking = true;
             clickScale = 1.1;
             updateUI();
@@ -197,6 +224,7 @@ function updateUI() {
     document.getElementById('energyDisplay').textContent = `Energy: ${energy}/${maxEnergy}`;
     document.getElementById('clicksDisplay').textContent = `Clicks: ${clicksRemaining}`;
     document.getElementById('levelDisplay').textContent = `Level: ${level}`;
+    updateDailyRewardDisplay();
 }
 
 function handleBoost() {
@@ -278,6 +306,164 @@ function createLevelUpEffect() {
     setTimeout(() => {
         levelUpEffect.remove();
     }, 2000);
+}
+
+function toggleMenu() {
+    if (menuModal.style.display === 'none' || menuModal.style.display === '') {
+        menuModal.style.display = 'block';
+        updateMenuContent();
+    } else {
+        menuModal.style.display = 'none';
+    }
+}
+
+function updateMenuContent() {
+    const menuContent = `
+        <h2>Menu</h2>
+        <canvas id="wheelCanvas" width="200" height="200"></canvas>
+        <button id="spinButton">Spin the Wheel</button>
+        <button id="referralButton">Invite Friends</button>
+        <p>Your Referrals: ${referralCount}</p>
+        <button id="closeMenuButton">Close</button>
+    `;
+    menuModal.innerHTML = menuContent;
+    
+    const spinButton = document.getElementById('spinButton');
+    spinButton.addEventListener('click', spinWheel);
+    document.getElementById('referralButton').addEventListener('click', showReferralLink);
+    document.getElementById('closeMenuButton').addEventListener('click', toggleMenu);
+    
+    drawWheel();
+}
+
+function showReferralLink() {
+    const referralLink = `https://t.me/YourBotName?start=${telegramId}`;
+    alert(`Share this link with your friends: ${referralLink}`);
+}
+
+function drawWheel() {
+    const wheelCanvas = document.getElementById('wheelCanvas');
+    const wheelCtx = wheelCanvas.getContext('2d');
+    const centerX = wheelCanvas.width / 2;
+    const centerY = wheelCanvas.height / 2;
+    const radius = Math.min(centerX, centerY) - 10;
+
+    wheelCtx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
+
+    const segments = ['Energy', 'Clicks', 'Tokens', 'Energy', 'Clicks', 'Tokens'];
+    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+
+    for (let i = 0; i < segments.length; i++) {
+        const angle = (i / segments.length) * 2 * Math.PI;
+        const nextAngle = ((i + 1) / segments.length) * 2 * Math.PI;
+
+        wheelCtx.beginPath();
+        wheelCtx.moveTo(centerX, centerY);
+        wheelCtx.arc(centerX, centerY, radius, angle, nextAngle);
+        wheelCtx.closePath();
+
+        wheelCtx.fillStyle = colors[i];
+        wheelCtx.fill();
+
+        wheelCtx.save();
+        wheelCtx.translate(centerX, centerY);
+        wheelCtx.rotate(angle + (nextAngle - angle) / 2);
+        wheelCtx.textAlign = 'right';
+        wheelCtx.fillStyle = '#fff';
+        wheelCtx.font = '12px Arial';
+        wheelCtx.fillText(segments[i], radius - 10, 0);
+        wheelCtx.restore();
+    }
+}
+
+function rotateWheel(wheelCanvas, callback) {
+    const wheelCtx = wheelCanvas.getContext('2d');
+    const spinDuration = 5000; // 5 seconds
+    const startAngle = Math.random() * 2 * Math.PI;
+    const totalRotation = 5 * 2 * Math.PI + startAngle; // 5 full rotations + random start
+    const startTime = Date.now();
+
+    function animate() {
+    const elapsedTime = Date.now() - startTime;
+    const progress = Math.min(elapsedTime / spinDuration, 1);
+    const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+    const currentRotation = startAngle + easedProgress * totalRotation;
+
+    wheelCtx.save();
+    wheelCtx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
+    wheelCtx.translate(wheelCanvas.width / 2, wheelCanvas.height / 2);
+    wheelCtx.rotate(currentRotation);
+    wheelCtx.translate(-wheelCanvas.width / 2, -wheelCanvas.height / 2);
+    drawWheel();
+    wheelCtx.restore();
+
+    if (progress < 1) {
+        requestAnimationFrame(animate);
+    } else {
+        const segmentAngle = (2 * Math.PI) / 6;
+        const finalAngle = currentRotation % (2 * Math.PI);
+        const winningSegment = Math.floor(finalAngle / segmentAngle);
+        callback(winningSegment);
+    }
+}
+
+animate();
+}
+
+function spinWheel() {
+    if (spinAvailable) {
+        const wheelCanvas = document.getElementById('wheelCanvas');
+        rotateWheel(wheelCanvas, (winningSegment) => {
+            const rewards = ['energy', 'clicks', 'tokens', 'energy', 'clicks', 'tokens'];
+            const reward = rewards[winningSegment];
+            const amount = Math.floor(Math.random() * 10) + 1; // 1-10 arası rastgele miktar
+
+            switch (reward) {
+                case 'energy':
+                    energy = Math.min(maxEnergy, energy + amount);
+                    break;
+                case 'clicks':
+                    clicksRemaining += amount * 10;
+                    break;
+                case 'tokens':
+                    tokens += amount;
+                    break;
+            }
+
+            spinAvailable = false;
+            lastSpinTime = Date.now();
+            updateUI();
+            saveUserData();
+            alert(`You won ${amount} ${reward}!`);
+        });
+    } else {
+        alert('You can spin the wheel once every 24 hours.');
+    }
+}
+
+function checkDailyLogin() {
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+
+    if (!lastLoginDate || lastLoginDate < currentDate) {
+        dailyStreak++;
+        lastLoginDate = currentDate;
+        const reward = dailyStreak * 10; // Her gün için 10 token ödül
+        tokens += reward;
+        alert(`Daily login reward: ${reward} tokens! Streak: ${dailyStreak} days`);
+        saveUserData();
+        updateUI();
+    }
+
+    // Spin hakkını kontrol et
+    const timeElapsed = Date.now() - lastSpinTime;
+    if (timeElapsed >= 24 * 60 * 60 * 1000) { // 24 saat geçmiş mi?
+        spinAvailable = true;
+    }
+}
+
+function updateDailyRewardDisplay() {
+    dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
 }
 
 window.addEventListener('resize', resizeCanvas);
