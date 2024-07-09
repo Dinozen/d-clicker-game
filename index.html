@@ -151,6 +151,90 @@
             border-radius: 5px;
             border: 1px solid rgba(255, 255, 255, 0.5);
         }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 400px;
+            text-align: center;
+            border-radius: 10px;
+        }
+        .referral-link-container {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        #referralLink {
+            width: 70%;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px 0 0 5px;
+        }
+        #copyButton {
+            padding: 5px 10px;
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+        }
+        #closeReferralModal {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #loginStreakModal .modal-content {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #closeLoginStreakModal {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #45a049;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #wheelResultModal .modal-content {
+            background-color: #333;
+            color: #fff;
+            border: 2px solid #61dafb;
+            box-shadow: 0 0 10px #61dafb;
+        }
+        #wheelResultMessage {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        #closeWheelResultModal {
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #closeWheelResultModal:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -173,6 +257,30 @@
         <button id="referralButton">Invite Friends</button>
         <p id="referralCount">Your Referrals: 0</p>
         <button id="closeMenuButton">Close</button>
+    </div>
+    <div id="referralModal" class="modal">
+        <div class="modal-content">
+            <h3>Your Referral Link</h3>
+            <div class="referral-link-container">
+                <input type="text" id="referralLink" readonly>
+                <button id="copyButton">Copy</button>
+            </div>
+            <button id="closeReferralModal">Close</button>
+        </div>
+    </div>
+    <div id="loginStreakModal" class="modal">
+        <div class="modal-content">
+            <h3>Daily Login Reward</h3>
+            <p id="loginStreakMessage"></p>
+            <button id="closeLoginStreakModal">Claim Reward</button>
+        </div>
+    </div>
+    <div id="wheelResultModal" class="modal">
+        <div class="modal-content">
+            <h3>Wheel Result</h3>
+            <p id="wheelResultMessage"></p>
+            <button id="closeWheelResultModal">Awesome!</button>
+        </div>
     </div>
     <script src="game.js"></script>
 </body>
