@@ -15,6 +15,7 @@ let lastLoginDate = null;
 let spinAvailable = true;
 let lastSpinTime = Date.now();
 let referralCount = 0;
+let isDoubleTokensActive = false;
 
 // Level gereksinimleri
 const levelRequirements = [0, 2000, 5000, 10000, 20000];
@@ -40,6 +41,14 @@ let currentDinoImage = dinoImages[0];
 let dinoX, dinoY, dinoWidth, dinoHeight;
 let isClicking = false;
 let clickScale = 1;
+
+const wheelSegments = [
+    { name: 'Energy', chance: 25, color: '#FF6384' },
+    { name: 'Clicks', chance: 25, color: '#36A2EB' },
+    { name: 'Tokens', chance: 29, color: '#FFCE56' },
+    { name: 'Double Tokens', chance: 20, color: '#4BC0C0' },
+    { name: 'Dino Level Up', chance: 1, color: '#9966FF' }
+];
 
 function startGame() {
     console.log("Starting game");
@@ -190,9 +199,13 @@ function handleClick(event) {
                 energy--;
                 clicksRemaining = 300;
             }
-            tokens++;
+            let tokenGain = 1 * getLevelMultiplier();
+            if (isDoubleTokensActive) {
+                tokenGain *= 2;
+            }
+            tokens += tokenGain;
             clicksRemaining--;
-            createClickEffect(event.clientX || event.touches[0].clientX, event.clientY || event.touches[0].clientY);
+            createClickEffect(event.clientX || event.touches[0].clientX, event.clientY || event.touches[0].clientY, tokenGain);
             isClicking = true;
             clickScale = 1.1;
             updateUI();
@@ -202,12 +215,12 @@ function handleClick(event) {
     }
 }
 
-function createClickEffect(x, y) {
+function createClickEffect(x, y, amount) {
     const clickEffect = document.createElement('div');
     clickEffect.className = 'clickEffect';
     clickEffect.style.left = `${x}px`;
     clickEffect.style.top = `${y}px`;
-    clickEffect.textContent = '+1';
+    clickEffect.textContent = `+${amount}`;
     document.body.appendChild(clickEffect);
 
     setTimeout(() => {
@@ -337,8 +350,26 @@ function updateMenuContent() {
 }
 
 function showReferralLink() {
-    const referralLink = `https://t.me/YourBotName?start=${telegramId}`;
-    alert(`Share this link with your friends: ${referralLink}`);
+    const referralModal = document.getElementById('referralModal');
+    const referralLink = document.getElementById('referralLink');
+    const copyButton = document.getElementById('copyButton');
+    const closeButton = document.getElementById('closeReferralModal');
+    
+    referralLink.value = `https://t.me/YourBotName?start=${telegramId}`;
+    referralModal.style.display = 'block';
+    
+    copyButton.onclick = function() {
+        referralLink.select();
+        document.execCommand('copy');
+        copyButton.textContent = 'Copied!';
+        setTimeout(() => {
+            copyButton.textContent = 'Copy';
+        }, 2000);
+    };
+    
+    closeButton.onclick = function() {
+        referralModal.style.display = 'none';
+    };
 }
 
 function drawWheel() {
@@ -350,30 +381,95 @@ function drawWheel() {
 
     wheelCtx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
 
-    const segments = ['Energy', 'Clicks', 'Tokens', 'Energy', 'Clicks', 'Tokens'];
-    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
-
-    for (let i = 0; i < segments.length; i++) {
-        const angle = (i / segments.length) * 2 * Math.PI;
-        const nextAngle = ((i + 1) / segments.length) * 2 * Math.PI;
-
+    let startAngle = 0;
+    for (let segment of wheelSegments) {
+        const angle = (segment.chance / 100) * 2 * Math.PI;
+        
         wheelCtx.beginPath();
         wheelCtx.moveTo(centerX, centerY);
-        wheelCtx.arc(centerX, centerY, radius, angle, nextAngle);
+        wheelCtx.arc(centerX, centerY, radius, startAngle, startAngle + angle);
         wheelCtx.closePath();
 
-        wheelCtx.fillStyle = colors[i];
+        wheelCtx.fillStyle = segment.color;
         wheelCtx.fill();
 
         wheelCtx.save();
         wheelCtx.translate(centerX, centerY);
-        wheelCtx.rotate(angle + (nextAngle - angle) / 2);
+        wheelCtx.rotate(startAngle + angle / 2);
         wheelCtx.textAlign = 'right';
         wheelCtx.fillStyle = '#fff';
         wheelCtx.font = '12px Arial';
-        wheelCtx.fillText(segments[i], radius - 10, 0);
+        wheelCtx.fillText(segment.name, radius - 10, 0);
         wheelCtx.restore();
+
+        startAngle += angle;
     }
+
+    // Pointer
+    wheelCtx.beginPath();
+    wheelCtx.moveTo(centerX, centerY - radius - 10);
+    wheelCtx.lineTo(centerX - 10, centerY - radius + 10);
+    wheelCtx.lineTo(centerX + 10, centerY - radius + 10);
+    wheelCtx.closePath();
+    wheelCtx.fillStyle = 'red';
+    wheelCtx.fill();
+}
+
+function spinWheel() {
+    if (spinAvailable) {
+        const wheelCanvas = document.getElementById('wheelCanvas');
+        rotateWheel(wheelCanvas, (winningSegment) => {
+            let reward = wheelSegments[winningSegment].name;
+            let amount;
+            
+            switch (reward) {
+                case 'Energy':
+                    amount = 300;
+                    energy = Math.min(maxEnergy, energy + amount);
+                    break;
+                case 'Clicks':
+                    amount = 300;
+                    clicksRemaining += amount;
+                    break;
+                case 'Tokens':
+                    amount = Math.floor(Math.random() * 101) + 200; // 200-300 arası
+                    tokens += amount * getLevelMultiplier();
+                    break;
+                case 'Double Tokens':
+                    activateDoubleTokens();
+                    break;
+                case 'Dino Level Up':
+                    levelUp();
+                    break;
+            }
+
+            spinAvailable = false;
+            lastSpinTime = Date.now();
+            updateUI();
+            saveUserData();
+            showWheelResult(reward, amount);
+        });
+    } else {
+        alert('You can spin the wheel once every 24 hours.');
+    }
+}
+
+function showWheelResult(reward, amount) {
+    const wheelResultModal = document.getElementById('wheelResultModal');
+    const wheelResultMessage = document.getElementById('wheelResultMessage');
+    const closeButton = document.getElementById('closeWheelResultModal');
+    
+    let message = `You won: ${reward}`;
+    if (amount) {
+        message += ` (${amount})`;
+    }
+    wheelResultMessage.textContent = message;
+    
+    wheelResultModal.style.display = 'block';
+    
+    closeButton.onclick = function() {
+        wheelResultModal.style.display = 'none';
+    };
 }
 
 function rotateWheel(wheelCanvas, callback) {
@@ -384,61 +480,49 @@ function rotateWheel(wheelCanvas, callback) {
     const startTime = Date.now();
 
     function animate() {
-    const elapsedTime = Date.now() - startTime;
-    const progress = Math.min(elapsedTime / spinDuration, 1);
-    const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
-    const currentRotation = startAngle + easedProgress * totalRotation;
+        const elapsedTime = Date.now() - startTime;
+        const progress = Math.min(elapsedTime / spinDuration, 1);
+        const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+        const currentRotation = startAngle + easedProgress * totalRotation;
 
-    wheelCtx.save();
-    wheelCtx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
-    wheelCtx.translate(wheelCanvas.width / 2, wheelCanvas.height / 2);
-    wheelCtx.rotate(currentRotation);
-    wheelCtx.translate(-wheelCanvas.width / 2, -wheelCanvas.height / 2);
-    drawWheel();
-    wheelCtx.restore();
+        wheelCtx.save();
+        wheelCtx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
+        wheelCtx.translate(wheelCanvas.width / 2, wheelCanvas.height / 2);
+        wheelCtx.rotate(currentRotation);
+        wheelCtx.translate(-wheelCanvas.width / 2, -wheelCanvas.height / 2);
+        drawWheel();
+        wheelCtx.restore();
 
-    if (progress < 1) {
-        requestAnimationFrame(animate);
-    } else {
-        const segmentAngle = (2 * Math.PI) / 6;
-        const finalAngle = currentRotation % (2 * Math.PI);
-        const winningSegment = Math.floor(finalAngle / segmentAngle);
-        callback(winningSegment);
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            const segmentAngle = (2 * Math.PI) / wheelSegments.length;
+            const finalAngle = currentRotation % (2 * Math.PI);
+            const winningSegment = Math.floor(finalAngle / segmentAngle);
+            callback(winningSegment);
+        }
     }
+
+    animate();
 }
 
-animate();
+function getLevelMultiplier() {
+    return 1 + (level - 1) * 0.25; // Her seviye için %25 artış
 }
 
-function spinWheel() {
-    if (spinAvailable) {
-        const wheelCanvas = document.getElementById('wheelCanvas');
-        rotateWheel(wheelCanvas, (winningSegment) => {
-            const rewards = ['energy', 'clicks', 'tokens', 'energy', 'clicks', 'tokens'];
-            const reward = rewards[winningSegment];
-            const amount = Math.floor(Math.random() * 10) + 1; // 1-10 arası rastgele miktar
+function activateDoubleTokens() {
+    const duration = 10000; // 10 saniye
+    isDoubleTokensActive = true;
+    setTimeout(() => {
+        isDoubleTokensActive = false;
+    }, duration);
+    alert('Double Tokens activated for 10 seconds!');
+}
 
-            switch (reward) {
-                case 'energy':
-                    energy = Math.min(maxEnergy, energy + amount);
-                    break;
-                case 'clicks':
-                    clicksRemaining += amount * 10;
-                    break;
-                case 'tokens':
-                    tokens += amount;
-                    break;
-            }
-
-            spinAvailable = false;
-            lastSpinTime = Date.now();
-            updateUI();
-            saveUserData();
-            alert(`You won ${amount} ${reward}!`);
-        });
-    } else {
-        alert('You can spin the wheel once every 24 hours.');
-    }
+function levelUp() {
+    level++;
+    updateDinoImage();
+    alert('Congratulations! Your Dino leveled up!');
 }
 
 function checkDailyLogin() {
@@ -450,9 +534,19 @@ function checkDailyLogin() {
         lastLoginDate = currentDate;
         const reward = dailyStreak * 10; // Her gün için 10 token ödül
         tokens += reward;
-        alert(`Daily login reward: ${reward} tokens! Streak: ${dailyStreak} days`);
-        saveUserData();
-        updateUI();
+        
+        const loginStreakModal = document.getElementById('loginStreakModal');
+        const loginStreakMessage = document.getElementById('loginStreakMessage');
+        const closeLoginStreakModal = document.getElementById('closeLoginStreakModal');
+        
+        loginStreakMessage.textContent = `Daily login reward: ${reward} tokens! Streak: ${dailyStreak} days`;
+        loginStreakModal.style.display = 'block';
+        
+        closeLoginStreakModal.onclick = function() {
+            loginStreakModal.style.display = 'none';
+            saveUserData();
+            updateUI();
+        };
     }
 
     // Spin hakkını kontrol et
