@@ -290,10 +290,10 @@ function animateDino() {
 
 function checkLevelUp() {
     const newLevel = levelRequirements.findIndex(req => tokens < req);
-    if (newLevel !== level) {
-        level = newLevel;
-        updateDinoImage();
-        createLevelUpEffect();
+    if (newLevel > level) {
+        while (level < newLevel) {
+            levelUp();
+        }
     }
 }
 
@@ -342,6 +342,18 @@ function updateMenuContent() {
     
     const wheelCanvas = document.getElementById('wheelCanvas');
     drawWheel(wheelCanvas);
+    
+    const spinButton = document.getElementById('spinButton');
+    if (!spinAvailable) {
+        const timeRemaining = 24 * 60 * 60 * 1000 - (Date.now() - lastSpinTime);
+        const hoursRemaining = Math.floor(timeRemaining / (60 * 60 * 1000));
+        const minutesRemaining = Math.floor((timeRemaining % (60 * 60 * 1000)) / (60 * 1000));
+        spinButton.textContent = `Spin in ${hoursRemaining}h ${minutesRemaining}m`;
+        spinButton.disabled = true;
+    } else {
+        spinButton.textContent = 'Spin the Wheel';
+        spinButton.disabled = false;
+    }
     
     document.getElementById('spinButton').addEventListener('click', spinWheel);
     document.getElementById('referralButton').addEventListener('click', showReferralLink);
@@ -409,10 +421,11 @@ function drawWheel(wheelCanvas) {
     // Statik işaretçi
     wheelCtx.save();
     wheelCtx.translate(centerX, centerY);
+    wheelCtx.rotate(-Math.PI / 2); // İşaretçiyi üste yerleştir
     wheelCtx.beginPath();
-    wheelCtx.moveTo(0, -radius - 10);
-    wheelCtx.lineTo(-10, -radius + 10);
-    wheelCtx.lineTo(10, -radius + 10);
+    wheelCtx.moveTo(radius, 0);
+    wheelCtx.lineTo(radius + 20, -10);
+    wheelCtx.lineTo(radius + 20, 10);
     wheelCtx.closePath();
     wheelCtx.fillStyle = 'red';
     wheelCtx.fill();
@@ -443,7 +456,9 @@ function spinWheel() {
                     activateDoubleTokens();
                     break;
                 case 'Dino Level Up':
-                    levelUp();
+                    amount = levelRequirements[level] - tokens; // Bir sonraki seviye için gereken token miktarı
+                    tokens += amount;
+                    checkLevelUp(); // Level kontrolü yap
                     break;
             }
 
@@ -519,16 +534,62 @@ function getLevelMultiplier() {
 function activateDoubleTokens() {
     const duration = 10000; // 10 saniye
     isDoubleTokensActive = true;
+    const originalClicksRemaining = clicksRemaining;
+    clicksRemaining = Infinity; // Sınırsız tıklama
     setTimeout(() => {
         isDoubleTokensActive = false;
+        clicksRemaining = originalClicksRemaining; // Orijinal tıklama sayısını geri yükle
+        updateUI();
     }, duration);
-    alert('Double Tokens activated for 10 seconds!');
+    alert('Double Tokens activated for 10 seconds! Click as fast as you can!');
 }
 
 function levelUp() {
     level++;
     updateDinoImage();
-    alert('Congratulations! Your Dino leveled up!');
+    checkLevelUp(); // Diğer özellikleri güncelle
+    saveUserData(); // Verileri kaydet
+    updateUI(); // Arayüzü güncelle
+    
+    // Level up efekti ve bildirimi
+    createLevelUpEffect();
+    
+    // Yeni seviye için gerekli token miktarını göster
+    const nextLevelRequirement = levelRequirements[level] || "Max Level";
+    alert(`Congratulations! Your Dino leveled up to Level ${level}!\nNext level at: ${nextLevelRequirement} tokens`);
+}
+
+function calculateDailyReward(streak) {
+    if (streak <= 10) {
+        return 50 * streak;
+    } else if (streak < 15) {
+        return 500 + (streak - 10) * 100;
+    } else if (streak === 15) {
+        return 1000;
+    } else {
+        return 1000 + (streak - 15) * 50; // 15. günden sonra her gün için 50 token
+    }
+}
+
+function showRewardTable() {
+    let tableContent = '<h3>Daily Streak Rewards</h3><table><tr><th>Day</th><th>Reward</th></tr>';
+    for (let i = 1; i <= 15; i++) {
+        tableContent += `<tr><td>${i}</td><td>${calculateDailyReward(i)} tokens</td></tr>`;
+    }
+    tableContent += '</table>';
+
+    const rewardTableModal = document.getElementById('rewardTableModal');
+    rewardTableModal.innerHTML = `
+        <div class="modal-content">
+            ${tableContent}
+            <button id="closeRewardTableButton">Close</button>
+        </div>
+    `;
+    rewardTableModal.style.display = 'block';
+
+    document.getElementById('closeRewardTableButton').onclick = function() {
+        rewardTableModal.style.display = 'none';
+    };
 }
 
 function checkDailyLogin() {
@@ -538,7 +599,7 @@ function checkDailyLogin() {
     if (!lastLoginDate || lastLoginDate < currentDate) {
         dailyStreak++;
         lastLoginDate = currentDate;
-        const reward = dailyStreak * 10; // Her gün için 10 token ödül
+        const reward = calculateDailyReward(dailyStreak);
         tokens += reward;
         
         const loginStreakModal = document.getElementById('loginStreakModal');
@@ -552,7 +613,10 @@ function checkDailyLogin() {
             loginStreakModal.style.display = 'none';
             saveUserData();
             updateUI();
+            showRewardTable(); // Ödül tablosunu göster
         };
+    } else {
+        showRewardTable(); // Her giriş yapıldığında ödül tablosunu göster
     }
 
     // Spin hakkını kontrol et
