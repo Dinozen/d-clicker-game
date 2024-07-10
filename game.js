@@ -418,18 +418,22 @@ function drawWheel(wheelCanvas) {
         startAngle += angle;
     }
 
-    // Statik işaretçi
-    wheelCtx.save();
-    wheelCtx.translate(centerX, centerY);
-    wheelCtx.rotate(-Math.PI / 2); // İşaretçiyi üste yerleştir
-    wheelCtx.beginPath();
-    wheelCtx.moveTo(radius, 0);
-    wheelCtx.lineTo(radius + 20, -10);
-    wheelCtx.lineTo(radius + 20, 10);
-    wheelCtx.closePath();
-    wheelCtx.fillStyle = 'red';
-    wheelCtx.fill();
-    wheelCtx.restore();
+    // Statik işaretçi - çarkın dışında çizilecek
+    drawPointer(wheelCtx, centerX, centerY, radius);
+}
+
+function drawPointer(ctx, centerX, centerY, radius) {
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(-Math.PI / 2); // İşaretçiyi üste yerleştir
+    ctx.beginPath();
+    ctx.moveTo(radius, 0);
+    ctx.lineTo(radius + 20, -10);
+    ctx.lineTo(radius + 20, 10);
+    ctx.closePath();
+    ctx.fillStyle = 'red';
+    ctx.fill();
+    ctx.restore();
 }
 
 function spinWheel() {
@@ -513,6 +517,10 @@ function rotateWheel(wheelCanvas, callback) {
         wheelCtx.translate(-centerX, -centerY);
         drawWheel(wheelCanvas);
         wheelCtx.restore();
+
+        // İşaretçiyi tekrar çiz (dönmeyecek)
+        const radius = Math.min(centerX, centerY) - 10;
+        drawPointer(wheelCtx, centerX, centerY, radius);
 
         if (progress < 1) {
             requestAnimationFrame(animate);
