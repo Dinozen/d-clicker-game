@@ -331,7 +331,7 @@ function toggleMenu() {
 }
 
 function updateMenuContent() {
-    const menuContent = `
+    menuModal.innerHTML = `
         <h2>Menu</h2>
         <canvas id="wheelCanvas" width="200" height="200"></canvas>
         <button id="spinButton">Spin the Wheel</button>
@@ -339,14 +339,13 @@ function updateMenuContent() {
         <p>Your Referrals: ${referralCount}</p>
         <button id="closeMenuButton">Close</button>
     `;
-    menuModal.innerHTML = menuContent;
     
-    const spinButton = document.getElementById('spinButton');
-    spinButton.addEventListener('click', spinWheel);
+    const wheelCanvas = document.getElementById('wheelCanvas');
+    drawWheel(wheelCanvas);
+    
+    document.getElementById('spinButton').addEventListener('click', spinWheel);
     document.getElementById('referralButton').addEventListener('click', showReferralLink);
     document.getElementById('closeMenuButton').addEventListener('click', toggleMenu);
-    
-    drawWheel();
 }
 
 function showReferralLink() {
@@ -372,8 +371,7 @@ function showReferralLink() {
     };
 }
 
-function drawWheel() {
-    const wheelCanvas = document.getElementById('wheelCanvas');
+function drawWheel(wheelCanvas) {
     const wheelCtx = wheelCanvas.getContext('2d');
     const centerX = wheelCanvas.width / 2;
     const centerY = wheelCanvas.height / 2;
@@ -421,6 +419,63 @@ function drawWheel() {
     wheelCtx.restore();
 }
 
+function spinWheel() {
+    if (spinAvailable) {
+        const wheelCanvas = document.getElementById('wheelCanvas');
+        rotateWheel(wheelCanvas, (winningSegment) => {
+            let reward = wheelSegments[winningSegment].name;
+            let amount;
+            
+            switch (reward) {
+                case 'Energy':
+                    amount = 300;
+                    energy = Math.min(maxEnergy, energy + amount);
+                    break;
+                case 'Clicks':
+                    amount = 300;
+                    clicksRemaining += amount;
+                    break;
+                case 'Tokens':
+                    amount = Math.floor(Math.random() * 101) + 200; // 200-300 arası
+                    tokens += amount * getLevelMultiplier();
+                    break;
+                case 'Double Tokens':
+                    activateDoubleTokens();
+                    break;
+                case 'Dino Level Up':
+                    levelUp();
+                    break;
+            }
+
+            spinAvailable = false;
+            lastSpinTime = Date.now();
+            updateUI();
+            saveUserData();
+            showWheelResult(reward, amount);
+        });
+    } else {
+        alert('You can spin the wheel once every 24 hours.');
+    }
+}
+
+function showWheelResult(reward, amount) {
+    const wheelResultModal = document.getElementById('wheelResultModal');
+    const wheelResultMessage = document.getElementById('wheelResultMessage');
+    const closeButton = document.getElementById('closeWheelResultModal');
+    
+    let message = `You won: ${reward}`;
+    if (amount) {
+        message += ` (${amount})`;
+    }
+    wheelResultMessage.textContent = message;
+    
+    wheelResultModal.style.display = 'block';
+    
+    closeButton.onclick = function() {
+        wheelResultModal.style.display = 'none';
+    };
+}
+
 function rotateWheel(wheelCanvas, callback) {
     const wheelCtx = wheelCanvas.getContext('2d');
     const centerX = wheelCanvas.width / 2;
@@ -441,7 +496,7 @@ function rotateWheel(wheelCanvas, callback) {
         wheelCtx.translate(centerX, centerY);
         wheelCtx.rotate(currentRotation);
         wheelCtx.translate(-centerX, -centerY);
-        drawWheel();
+        drawWheel(wheelCanvas);
         wheelCtx.restore();
 
         if (progress < 1) {
