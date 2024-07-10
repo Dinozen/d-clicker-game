@@ -398,85 +398,36 @@ function drawWheel() {
         wheelCtx.rotate(startAngle + angle / 2);
         wheelCtx.textAlign = 'right';
         wheelCtx.fillStyle = '#fff';
-        wheelCtx.font = '12px Arial';
-        wheelCtx.fillText(segment.name, radius - 10, 0);
+        wheelCtx.font = '10px Arial';
+        let displayName = segment.name;
+        if (segment.name === 'Double Tokens') displayName = '2x Tokens';
+        if (segment.name === 'Dino Level Up') displayName = 'Level Up';
+        wheelCtx.fillText(displayName, radius - 15, 0);
         wheelCtx.restore();
 
         startAngle += angle;
     }
 
-    // Pointer
+    // Statik işaretçi
+    wheelCtx.save();
+    wheelCtx.translate(centerX, centerY);
     wheelCtx.beginPath();
-    wheelCtx.moveTo(centerX, centerY - radius - 10);
-    wheelCtx.lineTo(centerX - 10, centerY - radius + 10);
-    wheelCtx.lineTo(centerX + 10, centerY - radius + 10);
+    wheelCtx.moveTo(0, -radius - 10);
+    wheelCtx.lineTo(-10, -radius + 10);
+    wheelCtx.lineTo(10, -radius + 10);
     wheelCtx.closePath();
     wheelCtx.fillStyle = 'red';
     wheelCtx.fill();
-}
-
-function spinWheel() {
-    if (spinAvailable) {
-        const wheelCanvas = document.getElementById('wheelCanvas');
-        rotateWheel(wheelCanvas, (winningSegment) => {
-            let reward = wheelSegments[winningSegment].name;
-            let amount;
-            
-            switch (reward) {
-                case 'Energy':
-                    amount = 300;
-                    energy = Math.min(maxEnergy, energy + amount);
-                    break;
-                case 'Clicks':
-                    amount = 300;
-                    clicksRemaining += amount;
-                    break;
-                case 'Tokens':
-                    amount = Math.floor(Math.random() * 101) + 200; // 200-300 arası
-                    tokens += amount * getLevelMultiplier();
-                    break;
-                case 'Double Tokens':
-                    activateDoubleTokens();
-                    break;
-                case 'Dino Level Up':
-                    levelUp();
-                    break;
-            }
-
-            spinAvailable = false;
-            lastSpinTime = Date.now();
-            updateUI();
-            saveUserData();
-            showWheelResult(reward, amount);
-        });
-    } else {
-        alert('You can spin the wheel once every 24 hours.');
-    }
-}
-
-function showWheelResult(reward, amount) {
-    const wheelResultModal = document.getElementById('wheelResultModal');
-    const wheelResultMessage = document.getElementById('wheelResultMessage');
-    const closeButton = document.getElementById('closeWheelResultModal');
-    
-    let message = `You won: ${reward}`;
-    if (amount) {
-        message += ` (${amount})`;
-    }
-    wheelResultMessage.textContent = message;
-    
-    wheelResultModal.style.display = 'block';
-    
-    closeButton.onclick = function() {
-        wheelResultModal.style.display = 'none';
-    };
+    wheelCtx.restore();
 }
 
 function rotateWheel(wheelCanvas, callback) {
     const wheelCtx = wheelCanvas.getContext('2d');
+    const centerX = wheelCanvas.width / 2;
+    const centerY = wheelCanvas.height / 2;
     const spinDuration = 5000; // 5 seconds
-    const startAngle = Math.random() * 2 * Math.PI;
-    const totalRotation = 5 * 2 * Math.PI + startAngle; // 5 full rotations + random start
+    const startAngle = 0;
+    const totalRotation = 5 * 2 * Math.PI + Math.random() * 2 * Math.PI; // 5 full rotations + random additional rotation
     const startTime = Date.now();
 
     function animate() {
@@ -487,9 +438,9 @@ function rotateWheel(wheelCanvas, callback) {
 
         wheelCtx.save();
         wheelCtx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
-        wheelCtx.translate(wheelCanvas.width / 2, wheelCanvas.height / 2);
+        wheelCtx.translate(centerX, centerY);
         wheelCtx.rotate(currentRotation);
-        wheelCtx.translate(-wheelCanvas.width / 2, -wheelCanvas.height / 2);
+        wheelCtx.translate(-centerX, -centerY);
         drawWheel();
         wheelCtx.restore();
 
