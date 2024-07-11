@@ -16,9 +16,12 @@ let spinAvailable = true;
 let lastSpinTime = Date.now();
 let referralCount = 0;
 let isDoubleTokensActive = false;
+let autoBotActive = false;
+let autoBotPurchased = false;
 
 // Level gereksinimleri
 const levelRequirements = [0, 2000, 5000, 10000, 20000];
+const clickLimits = [300, 500, 1000, 1500, 2000];
 
 // DOM elementleri
 const canvas = document.getElementById('gameCanvas');
@@ -28,6 +31,18 @@ const boostTimer = document.getElementById('boostTimer');
 const menuButton = document.getElementById('menuButton');
 const menuModal = document.getElementById('menuModal');
 const dailyRewardDisplay = document.getElementById('dailyRewardDisplay');
+const boostersButton = document.getElementById('boostersButton');
+const boostersModal = document.getElementById('boostersModal');
+const autoBotButton = document.getElementById('autoBotButton');
+const closeBoostersModal = document.getElementById('closeBoostersModal');
+const levelUpModal = document.createElement('div');
+const autoBotModal = document.createElement('div');
+
+// Modal stilleri
+levelUpModal.classList.add('modal');
+autoBotModal.classList.add('modal');
+document.body.appendChild(levelUpModal);
+document.body.appendChild(autoBotModal);
 
 // Dinozor resimleri
 const dinoImages = [];
@@ -72,8 +87,12 @@ function startGame() {
     setupGameUI();
     boostButton.addEventListener('click', handleBoost);
     menuButton.addEventListener('click', toggleMenu);
+    boostersButton.addEventListener('click', toggleBoosters);
+    autoBotButton.addEventListener('click', activateAutoBot);
+    closeBoostersModal.addEventListener('click', toggleBoosters);
     animateDino();
     checkDailyLogin();
+    setInterval(increaseClicks, 6000); // Her 6 saniyede bir click hakkı artır
 }
 
 function loadUserData() {
@@ -92,6 +111,8 @@ function loadUserData() {
         spinAvailable = data.spinAvailable !== undefined ? data.spinAvailable : true;
         lastSpinTime = data.lastSpinTime || Date.now();
         referralCount = data.referralCount || 0;
+        autoBotActive = data.autoBotActive || false;
+        autoBotPurchased = data.autoBotPurchased || false;
         console.log("User data loaded:", data);
     } else {
         console.log("No saved data found for this user");
@@ -113,7 +134,9 @@ function saveUserData() {
         lastLoginDate,
         spinAvailable,
         lastSpinTime,
-        referralCount
+        referralCount,
+        autoBotActive,
+        autoBotPurchased
     };
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
@@ -197,7 +220,7 @@ function handleClick(event) {
         if (energy > 0) {
             if (clicksRemaining <= 0) {
                 energy--;
-                clicksRemaining = 300;
+                clicksRemaining = getMaxClicksForLevel();
             }
             let tokenGain = 1 * getLevelMultiplier();
             if (isDoubleTokensActive) {
@@ -233,10 +256,10 @@ function setupGameUI() {
 }
 
 function updateUI() {
-    document.getElementById('tokenDisplay').textContent = `Tokens: ${tokens}`;
-    document.getElementById('energyDisplay').textContent = `Energy: ${energy}/${maxEnergy}`;
-    document.getElementById('clicksDisplay').textContent = `Clicks: ${clicksRemaining}`;
-    document.getElementById('levelDisplay').textContent = `Level: ${level}`;
+    document.getElementById('tokenDisplay').textContent = `${tokens}`;
+    document.getElementById('energyDisplay').textContent = `${energy}/${maxEnergy}`;
+    document.getElementById('clicksDisplay').textContent = `${clicksRemaining}`;
+    document.getElementById('levelDisplay').textContent = `${level}`;
     updateDailyRewardDisplay();
 }
 
@@ -330,14 +353,53 @@ function toggleMenu() {
     }
 }
 
+function toggleBoosters() {
+    if (boostersModal.style.display === 'none' || boostersModal.style.display === '') {
+        boostersModal.style.display = 'block';
+    } else {
+        boostersModal.style.display = 'none';
+    }
+}
+
+function activateAutoBot() {
+    if (tokens >= 10000 && !autoBotPurchased) {
+        tokens -= 10000;
+        autoBotActive = true;
+        autoBotPurchased = true;
+        saveUserData();
+        updateUI();
+        showAutoBotModal();
+    } else if (autoBotPurchased) {
+        alert('AutoBot is already purchased.');
+    } else {
+        alert('Not enough tokens to activate AutoBot.');
+    }
+}
+
+function showAutoBotModal() {
+    autoBotModal.innerHTML = `
+        <div class="modal-content">
+            <h3>AutoBot Activated!</h3>
+            <p>Congratulations! AutoBot is now active and will farm tokens while you are inactive.</p>
+            <p><b>How it works:</b> AutoBot will collect tokens automatically when you are not playing the game. The collected tokens will be added to your account the next time you log in.</p>
+            <button id="closeAutoBotModal">Close</button>
+        </div>
+    `;
+    autoBotModal.style.display = 'block';
+
+    document.getElementById('closeAutoBotModal').onclick = function() {
+        autoBotModal.style.display = 'none';
+    };
+}
+
 function updateMenuContent() {
     menuModal.innerHTML = `
         <h2>Menu</h2>
         <canvas id="wheelCanvas" width="300" height="300"></canvas>
-        <button id="spinButton">Spin the Wheel</button>
-        <button id="referralButton">Invite Friends</button>
+        <button id="spinButton" class="button">Spin the Wheel</button>
+        <button id="referralButton" class="button">Invite Friends</button>
         <p>Your Referrals: ${referralCount}</p>
-        <button id="closeMenuButton">Close</button>
+        <button id="closeMenuButton" class="button">Close</button>
     `;
     
     const wheelCanvas = document.getElementById('wheelCanvas');
@@ -589,7 +651,7 @@ function getLevelMultiplier() {
 }
 
 function activateDoubleTokens() {
-    const duration = 10000; // 10 saniye
+    const duration = 20000; // 20 saniye
     isDoubleTokensActive = true;
     const originalClicksRemaining = clicksRemaining;
     clicksRemaining = Infinity; // Sınırsız tıklama
@@ -598,10 +660,11 @@ function activateDoubleTokens() {
         clicksRemaining = originalClicksRemaining; // Orijinal tıklama sayısını geri yükle
         updateUI();
     }, duration);
-    alert('Double Tokens activated for 10 seconds! Click as fast as you can!');
+    alert('Double Tokens activated for 20 seconds! Click as fast as you can!');
 }
 
 function levelUp() {
+    const previousLevel = level;
     level++;
     updateDinoImage();
     checkLevelUp(); // Diğer özellikleri güncelle
@@ -614,6 +677,50 @@ function levelUp() {
     // Yeni seviye için gerekli token miktarını göster
     const nextLevelRequirement = levelRequirements[level] || "Max Level";
     alert(`Congratulations! Your Dino leveled up to Level ${level}!\nNext level at: ${nextLevelRequirement} tokens`);
+    
+    // Level up panelini göster
+    showLevelUpModal(previousLevel, level);
+}
+
+function showLevelUpModal(previousLevel, newLevel) {
+    const previousClicks = clickLimits[previousLevel - 1];
+    const newClicks = clickLimits[newLevel - 1];
+    const previousEnergy = 3 + (previousLevel - 1); // Örnek enerji hesaplama
+    const newEnergy = 3 + (newLevel - 1); // Örnek enerji hesaplama
+    
+    levelUpModal.innerHTML = `
+        <div class="modal-content">
+            <h3>Level Up!</h3>
+            <p>Congratulations! Your Dino reached Level ${newLevel}!</p>
+            <p>Here are your updated stats:</p>
+            <table>
+                <tr>
+                    <th>Stat</th>
+                    <th>Previous</th>
+                    <th></th>
+                    <th>New</th>
+                </tr>
+                <tr>
+                    <td>Clicks</td>
+                    <td>${previousClicks}</td>
+                    <td>→</td>
+                    <td>${newClicks}</td>
+                </tr>
+                <tr>
+                    <td>Energy</td>
+                    <td>${previousEnergy}</td>
+                    <td>→</td>
+                    <td>${newEnergy}</td>
+                </tr>
+            </table>
+            <button id="closeLevelUpModal">Close</button>
+        </div>
+    `;
+    levelUpModal.style.display = 'block';
+
+    document.getElementById('closeLevelUpModal').onclick = function() {
+        levelUpModal.style.display = 'none';
+    };
 }
 
 function calculateDailyReward(streak) {
@@ -651,7 +758,9 @@ function showRewardTable() {
 
 function checkDailyLogin() {
     const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
+    const offset = 3 * 60 * 60 * 1000; // UTC 03:00 offset
+    currentDate.setUTCHours(3, 0, 0, 0);
+    const currentTime = new Date(Date.now() + offset);
 
     if (!lastLoginDate || lastLoginDate < currentDate) {
         dailyStreak++;
@@ -672,7 +781,7 @@ function checkDailyLogin() {
             updateUI();
             showRewardTable(); // Ödül tablosunu göster
         };
-    } else {
+    } else if (lastLoginDate.toDateString() !== currentTime.toDateString()) {
         showRewardTable(); // Her giriş yapıldığında ödül tablosunu göster
     }
 
@@ -685,6 +794,18 @@ function checkDailyLogin() {
 
 function updateDailyRewardDisplay() {
     dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
+}
+
+function increaseClicks() {
+    const maxClicks = getMaxClicksForLevel();
+    if (clicksRemaining < maxClicks) {
+        clicksRemaining++;
+        updateUI();
+    }
+}
+
+function getMaxClicksForLevel() {
+    return clickLimits[level - 1] || clickLimits[clickLimits.length - 1];
 }
 
 window.addEventListener('resize', resizeCanvas);

@@ -47,9 +47,17 @@
             border-radius: 5px;
             border: 1px solid rgba(255, 255, 255, 0.5);
         }
-        #gameInfo span {
-            display: block;
+        #gameInfo .counter {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            border-radius: 5px;
+            background-color: rgba(0, 0, 0, 0.7);
             margin-bottom: 3px;
+        }
+        #gameInfo .counter span {
+            font-size: 14px;
         }
         .clickEffect {
             position: absolute;
@@ -70,20 +78,22 @@
                 transform: translateY(-20px);
             }
         }
-        #boostButton {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
+        .button {
             font-size: 16px;
-            padding: 5px 10px;
+            padding: 10px 20px;
             background-color: #61dafb;
             color: #000;
             border: none;
-            border-radius: 5px;
+            border-radius: 10px;
             cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin: 5px;
             z-index: 10;
         }
-        #boostButton.disabled {
+        .button:hover {
+            background-color: #21a1f1;
+        }
+        .button.disabled {
             background-color: #999;
             cursor: not-allowed;
         }
@@ -97,19 +107,6 @@
             padding: 5px;
             border-radius: 5px;
             border: 1px solid rgba(255, 255, 255, 0.5);
-        }
-        #menuButton {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 16px;
-            padding: 5px 10px;
-            background-color: #61dafb;
-            color: #000;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 10;
         }
         #menuModal {
             display: none;
@@ -127,17 +124,6 @@
             width: 300px;
             height: 300px;
             margin: 20px auto;
-        }
-        #spinButton, #referralButton, #closeMenuButton {
-            display: block;
-            margin: 10px auto;
-            font-size: 16px;
-            padding: 5px 10px;
-            background-color: #61dafb;
-            color: #000;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
         }
         #dailyRewardDisplay {
             position: absolute;
@@ -162,14 +148,16 @@
             background-color: rgba(0,0,0,0.4);
         }
         .modal-content {
-            background-color: #fefefe;
+            background-color: #333;
+            color: #fff;
+            border: 2px solid #61dafb;
+            box-shadow: 0 0 10px #61dafb;
             margin: 15% auto;
             padding: 20px;
-            border: 1px solid #888;
+            border-radius: 10px;
             width: 80%;
             max-width: 400px;
             text-align: center;
-            border-radius: 10px;
         }
         .referral-link-container {
             display: flex;
@@ -235,28 +223,52 @@
         #closeWheelResultModal:hover {
             background-color: #45a049;
         }
+        #boostersModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            right: 10%;
+            transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
+            text-align: center;
+            color: white;
+        }
+        #buttonsContainer {
+            position: fixed;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
     <img id="backgroundGif" src="background.gif" alt="background gif">
     <canvas id="gameCanvas"></canvas>
     <div id="gameInfo">
-        <span id="tokenDisplay">Tokens: 0</span>
-        <span id="energyDisplay">Energy: 3/3</span>
-        <span id="clicksDisplay">Clicks: 300</span>
-        <span id="levelDisplay">Level: 1</span>
+        <div class="counter"><span>Tokens:</span><span id="tokenDisplay">0</span></div>
+        <div class="counter"><span>Energy:</span><span id="energyDisplay">3/3</span></div>
+        <div class="counter"><span>Clicks:</span><span id="clicksDisplay">300</span></div>
+        <div class="counter"><span>Level:</span><span id="levelDisplay">1</span></div>
     </div>
-    <button id="boostButton">Boost</button>
+    <div id="buttonsContainer">
+        <button id="boostButton" class="button">Boost</button>
+        <button id="menuButton" class="button">Menu</button>
+        <button id="boostersButton" class="button">Boosters</button>
+    </div>
     <div id="boostTimer"></div>
-    <button id="menuButton">Menu</button>
     <div id="dailyRewardDisplay">Daily Streak: 0 days</div>
     <div id="menuModal">
         <h2>Menu</h2>
         <canvas id="wheelCanvas" width="300" height="300"></canvas>
-        <button id="spinButton">Spin the Wheel</button>
-        <button id="referralButton">Invite Friends</button>
+        <button id="spinButton" class="button">Spin the Wheel</button>
+        <button id="referralButton" class="button">Invite Friends</button>
         <p id="referralCount">Your Referrals: 0</p>
-        <button id="closeMenuButton">Close</button>
+        <button id="closeMenuButton" class="button">Close</button>
     </div>
     <div id="referralModal" class="modal">
         <div class="modal-content">
@@ -280,6 +292,16 @@
             <h3>Wheel Result</h3>
             <p id="wheelResultMessage"></p>
             <button id="closeWheelResultModal">Awesome!</button>
+        </div>
+    </div>
+    <div id="boostersModal">
+        <h3>Boosters</h3>
+        <button id="autoBotButton" class="button">AutoBot (10,000 tokens)</button>
+        <button id="closeBoostersModal" class="button">Close</button>
+    </div>
+    <div id="rewardTableModal" class="modal">
+        <div class="modal-content">
+            <!-- İçerik JavaScript ile eklenecek -->
         </div>
     </div>
     <script src="game.js"></script>
