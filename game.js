@@ -16,6 +16,9 @@ let spinAvailable = true;
 let lastSpinTime = Date.now();
 let referralCount = 0;
 let isDoubleTokensActive = false;
+let autoEnergyRefillSpeed = 1;
+let tokenMultiplier = 1;
+let autoBotActive = false;
 
 // Level gereksinimleri
 const levelRequirements = [0, 2000, 5000, 10000, 20000];
@@ -28,6 +31,8 @@ const boostTimer = document.getElementById('boostTimer');
 const menuButton = document.getElementById('menuButton');
 const menuModal = document.getElementById('menuModal');
 const dailyRewardDisplay = document.getElementById('dailyRewardDisplay');
+const boostersButton = document.getElementById('boostersButton');
+const boostersModal = document.getElementById('boostersModal');
 
 // Dinozor resimleri
 const dinoImages = [];
@@ -72,8 +77,11 @@ function startGame() {
     setupGameUI();
     boostButton.addEventListener('click', handleBoost);
     menuButton.addEventListener('click', toggleMenu);
+    boostersButton.addEventListener('click', toggleBoosters);
     animateDino();
     checkDailyLogin();
+    setupAutoBotButton();
+    startAutoBot();
 }
 
 function loadUserData() {
@@ -92,6 +100,7 @@ function loadUserData() {
         spinAvailable = data.spinAvailable !== undefined ? data.spinAvailable : true;
         lastSpinTime = data.lastSpinTime || Date.now();
         referralCount = data.referralCount || 0;
+        autoBotActive = data.autoBotActive || false;
         console.log("User data loaded:", data);
     } else {
         console.log("No saved data found for this user");
@@ -113,7 +122,8 @@ function saveUserData() {
         lastLoginDate,
         spinAvailable,
         lastSpinTime,
-        referralCount
+        referralCount,
+        autoBotActive
     };
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
@@ -204,7 +214,7 @@ function handleClick(event) {
                 tokenGain *= 2;
             }
             tokens += tokenGain;
-            clicksRemaining--;
+            clicksRemaining = Math.max(0, clicksRemaining - 1);
             createClickEffect(event.clientX || event.touches[0].clientX, event.clientY || event.touches[0].clientY, tokenGain);
             isClicking = true;
             clickScale = 1.1;
@@ -233,9 +243,19 @@ function setupGameUI() {
 }
 
 function updateUI() {
-    document.getElementById('tokenDisplay').textContent = `Tokens: ${tokens}`;
-    document.getElementById('energyDisplay').textContent = `Energy: ${energy}/${maxEnergy}`;
-    document.getElementById('clicksDisplay').textContent = `Clicks: ${clicksRemaining}`;
+    const tokenProgress = document.getElementById('tokenProgress');
+    const energyProgress = document.getElementById('energyProgress');
+    const clicksProgress = document.getElementById('clicksProgress');
+
+    tokenProgress.style.width = `${(tokens / levelRequirements[level]) * 100}%`;
+    tokenProgress.textContent = `Tokens: ${Math.floor(tokens)}`;
+
+    energyProgress.style.width = `${(energy / maxEnergy) * 100}%`;
+    energyProgress.textContent = `Energy: ${energy}/${maxEnergy}`;
+
+    clicksProgress.style.width = `${(clicksRemaining / 300) * 100}%`;
+    clicksProgress.textContent = `Clicks: ${clicksRemaining}`;
+
     document.getElementById('levelDisplay').textContent = `Level: ${level}`;
     updateDailyRewardDisplay();
 }
@@ -331,15 +351,6 @@ function toggleMenu() {
 }
 
 function updateMenuContent() {
-    menuModal.innerHTML = `
-        <h2>Menu</h2>
-        <canvas id="wheelCanvas" width="300" height="300"></canvas>
-        <button id="spinButton">Spin the Wheel</button>
-        <button id="referralButton">Invite Friends</button>
-        <p>Your Referrals: ${referralCount}</p>
-        <button id="closeMenuButton">Close</button>
-    `;
-    
     const wheelCanvas = document.getElementById('wheelCanvas');
     drawWheel(wheelCanvas);
     
@@ -355,9 +366,16 @@ function updateMenuContent() {
         spinButton.disabled = false;
     }
     
-    document.getElementById('spinButton').addEventListener('click', spinWheel);
-    document.getElementById('referralButton').addEventListener('click', showReferralLink);
-    document.getElementById('closeMenuButton').addEventListener('click', toggleMenu);
+    document.getElementById('referralCount').textContent = `Your Referrals: ${referralCount}`;
+    
+    const autoBotButton = document.getElementById('autoBotButton');
+    if (autoBotActive) {
+        autoBotButton.textContent = 'AutoBot Active';
+        autoBotButton.disabled = true;
+    } else {
+        autoBotButton.textContent = 'Buy AutoBot (10,000 tokens)';
+        autoBotButton.disabled = tokens < 10000;
+    }
 }
 
 function showReferralLink() {
@@ -447,33 +465,8 @@ function drawWheel(wheelCanvas) {
     wheelCtx.strokeStyle = '#333';
     wheelCtx.lineWidth = 2;
     wheelCtx.stroke();
-
-    drawPointer(wheelCtx, centerX, centerY, radius);
 }
 
-function drawPointer(ctx, centerX, centerY, radius) {
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(-Math.PI / 2);
-    
-    // Gölge
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    ctx.shadowBlur = 5;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
-
-    ctx.beginPath();
-    ctx.moveTo(radius + 15, -10);
-    ctx.lineTo(radius + 35, 0);
-    ctx.lineTo(radius + 15, 10);
-    ctx.closePath();
-    ctx.fillStyle = '#ff4d4d';
-    ctx.fill();
-
-    ctx.restore();
-}
-
-// Yardımcı fonksiyon: Rengi aydınlatma
 function lightenColor(color, percent) {
     const num = parseInt(color.replace('#', ''), 16),
           amt = Math.round(2.55 * percent),
@@ -494,7 +487,7 @@ function spinWheel() {
             
             switch (reward) {
                 case 'Energy':
-                    amount = 300;
+                    amount = 3;
                     energy = Math.min(maxEnergy, energy + amount);
                     break;
                 case 'Clicks':
@@ -543,7 +536,6 @@ function showWheelResult(reward, amount) {
         wheelResultModal.style.display = 'none';
     };
 }
-
 function rotateWheel(wheelCanvas, callback) {
     const wheelCtx = wheelCanvas.getContext('2d');
     const centerX = wheelCanvas.width / 2;
@@ -567,10 +559,6 @@ function rotateWheel(wheelCanvas, callback) {
         drawWheel(wheelCanvas);
         wheelCtx.restore();
 
-        // İşaretçiyi tekrar çiz (dönmeyecek)
-        const radius = Math.min(centerX, centerY) - 20;
-        drawPointer(wheelCtx, centerX, centerY, radius);
-
         if (progress < 1) {
             requestAnimationFrame(animate);
         } else {
@@ -589,16 +577,47 @@ function getLevelMultiplier() {
 }
 
 function activateDoubleTokens() {
-    const duration = 10000; // 10 saniye
+    const duration = 20000; // 20 saniye
     isDoubleTokensActive = true;
     const originalClicksRemaining = clicksRemaining;
     clicksRemaining = Infinity; // Sınırsız tıklama
+    createLightningEffect();
     setTimeout(() => {
         isDoubleTokensActive = false;
         clicksRemaining = originalClicksRemaining; // Orijinal tıklama sayısını geri yükle
+        removeLightningEffect();
         updateUI();
     }, duration);
-    alert('Double Tokens activated for 10 seconds! Click as fast as you can!');
+    alert('Double Tokens activated for 20 seconds! Click as fast as you can!');
+}
+
+function createLightningEffect() {
+    const lightning = document.createElement('div');
+    lightning.id = 'lightningEffect';
+    lightning.style.position = 'absolute';
+    lightning.style.width = `${dinoWidth + 40}px`;
+    lightning.style.height = `${dinoHeight + 40}px`;
+    lightning.style.borderRadius = '50%';
+    lightning.style.border = '5px solid yellow';
+    lightning.style.boxShadow = '0 0 10px yellow, 0 0 20px yellow, 0 0 30px yellow';
+    lightning.style.animation = 'lightning 0.5s infinite alternate';
+    lightning.style.left = `${dinoX - 20}px`;
+    lightning.style.top = `${dinoY - 20}px`;
+    document.body.appendChild(lightning);
+    
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes lightning {
+            from { opacity: 0.5; }
+            to { opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function removeLightningEffect() {
+    const lightning = document.getElementById('lightningEffect');
+    if (lightning) lightning.remove();
 }
 
 function levelUp() {
@@ -685,6 +704,43 @@ function checkDailyLogin() {
 
 function updateDailyRewardDisplay() {
     dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
+}
+
+function setupAutoBotButton() {
+    const autoBotButton = document.getElementById('autoBotButton');
+    autoBotButton.addEventListener('click', () => {
+        if (tokens >= 10000 && !autoBotActive) {
+            tokens -= 10000;
+            autoBotActive = true;
+            updateUI();
+            startAutoBot();
+            saveUserData();
+        }
+    });
+}
+
+function startAutoBot() {
+    setInterval(() => {
+        if (autoBotActive && energy > 0 && clicksRemaining > 0) {
+            tokens += getLevelMultiplier() * tokenMultiplier;
+            clicksRemaining--;
+            if (clicksRemaining === 0) {
+                energy--;
+                clicksRemaining = 300;
+            }
+            updateUI();
+            saveUserData();
+        }
+    }, 1000);
+}
+
+function toggleBoosters() {
+    const boostersModal = document.getElementById('boostersModal');
+    if (boostersModal.style.display === 'none' || boostersModal.style.display === '') {
+        boostersModal.style.display = 'block';
+    } else {
+        boostersModal.style.display = 'none';
+    }
 }
 
 window.addEventListener('resize', resizeCanvas);
