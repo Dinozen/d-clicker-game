@@ -46,7 +46,6 @@
             padding: 5px;
             border-radius: 5px;
             border: 1px solid rgba(255, 255, 255, 0.5);
-            width: 200px;
         }
         #gameInfo span {
             display: block;
@@ -71,53 +70,22 @@
                 transform: translateY(-20px);
             }
         }
-        .game-button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 12px;
-            transition: all 0.3s;
-        }
-        .game-button:hover {
-            background-color: #45a049;
-            transform: scale(1.05);
-        }
-        .game-button.disabled {
-            background-color: #999;
-            cursor: not-allowed;
-        }
-        .progress-bar {
-            width: 100%;
-            background-color: #ddd;
-            border-radius: 10px;
-            margin-bottom: 5px;
-        }
-        .progress {
-            width: 0%;
-            height: 20px;
-            background-color: #4CAF50;
-            border-radius: 10px;
-            text-align: left;
-            line-height: 20px;
-            color: white;
-            padding-left: 5px;
-            box-sizing: border-box;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-        }
         #boostButton {
             position: absolute;
             bottom: 10px;
             left: 10px;
+            font-size: 16px;
+            padding: 5px 10px;
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
             z-index: 10;
+        }
+        #boostButton.disabled {
+            background-color: #999;
+            cursor: not-allowed;
         }
         #boostTimer {
             position: absolute;
@@ -134,12 +102,13 @@
             position: absolute;
             top: 10px;
             right: 10px;
-            z-index: 10;
-        }
-        #boostersButton {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
+            font-size: 16px;
+            padding: 5px 10px;
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
             z-index: 10;
         }
         #menuModal {
@@ -158,6 +127,17 @@
             width: 300px;
             height: 300px;
             margin: 20px auto;
+        }
+        #spinButton, #referralButton, #closeMenuButton {
+            display: block;
+            margin: 10px auto;
+            font-size: 16px;
+            padding: 5px 10px;
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
         }
         #dailyRewardDisplay {
             position: absolute;
@@ -261,64 +241,45 @@
     <img id="backgroundGif" src="background.gif" alt="background gif">
     <canvas id="gameCanvas"></canvas>
     <div id="gameInfo">
-        <div class="progress-bar">
-            <div id="tokenProgress" class="progress"></div>
-        </div>
-        <div class="progress-bar">
-            <div id="energyProgress" class="progress"></div>
-        </div>
-        <div class="progress-bar">
-            <div id="clicksProgress" class="progress"></div>
-        </div>
+        <span id="tokenDisplay">Tokens: 0</span>
+        <span id="energyDisplay">Energy: 3/3</span>
+        <span id="clicksDisplay">Clicks: 300</span>
         <span id="levelDisplay">Level: 1</span>
     </div>
-    <button id="boostButton" class="game-button">Boost</button>
+    <button id="boostButton">Boost</button>
     <div id="boostTimer"></div>
-    <button id="menuButton" class="game-button">Menu</button>
-    <button id="boostersButton" class="game-button">Boosters</button>
+    <button id="menuButton">Menu</button>
     <div id="dailyRewardDisplay">Daily Streak: 0 days</div>
-    <div id="menuModal" class="modal">
-        <div class="modal-content">
-            <h2>Menu</h2>
-            <canvas id="wheelCanvas" width="300" height="300"></canvas>
-            <button id="spinButton" class="game-button">Spin the Wheel</button>
-            <button id="referralButton" class="game-button">Invite Friends</button>
-            <p id="referralCount">Your Referrals: 0</p>
-            <button id="autoBotButton" class="game-button">Buy AutoBot (10,000 tokens)</button>
-            <button id="closeMenuButton" class="game-button">Close</button>
-        </div>
+    <div id="menuModal">
+        <h2>Menu</h2>
+        <canvas id="wheelCanvas" width="300" height="300"></canvas>
+        <button id="spinButton">Spin the Wheel</button>
+        <button id="referralButton">Invite Friends</button>
+        <p id="referralCount">Your Referrals: 0</p>
+        <button id="closeMenuButton">Close</button>
     </div>
     <div id="referralModal" class="modal">
         <div class="modal-content">
             <h3>Your Referral Link</h3>
             <div class="referral-link-container">
                 <input type="text" id="referralLink" readonly>
-                <button id="copyButton" class="game-button">Copy</button>
+                <button id="copyButton">Copy</button>
             </div>
-            <button id="closeReferralModal" class="game-button">Close</button>
+            <button id="closeReferralModal">Close</button>
         </div>
     </div>
     <div id="loginStreakModal" class="modal">
         <div class="modal-content">
             <h3>Daily Login Reward</h3>
             <p id="loginStreakMessage"></p>
-            <button id="closeLoginStreakModal" class="game-button">Claim Reward</button>
+            <button id="closeLoginStreakModal">Claim Reward</button>
         </div>
     </div>
     <div id="wheelResultModal" class="modal">
         <div class="modal-content">
             <h3>Wheel Result</h3>
             <p id="wheelResultMessage"></p>
-            <button id="closeWheelResultModal" class="game-button">Awesome!</button>
-        </div>
-    </div>
-    <div id="boostersModal" class="modal">
-        <div class="modal-content">
-            <h3>Boosters</h3>
-            <button id="autoEnergyBooster" class="game-button">Auto Energy Refill</button>
-            <button id="fastEnergyBooster" class="game-button">Fast Energy Refill</button>
-            <button id="tokenBooster" class="game-button">More Tokens per Click</button>
-            <button id="closeBoostersModal" class="game-button">Close</button>
+            <button id="closeWheelResultModal">Awesome!</button>
         </div>
     </div>
     <script src="game.js"></script>
