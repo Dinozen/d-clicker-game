@@ -333,7 +333,7 @@ function toggleMenu() {
 function updateMenuContent() {
     menuModal.innerHTML = `
         <h2>Menu</h2>
-        <canvas id="wheelCanvas" width="200" height="200"></canvas>
+        <canvas id="wheelCanvas" width="300" height="300"></canvas>
         <button id="spinButton">Spin the Wheel</button>
         <button id="referralButton">Invite Friends</button>
         <p>Your Referrals: ${referralCount}</p>
@@ -387,12 +387,19 @@ function drawWheel(wheelCanvas) {
     const wheelCtx = wheelCanvas.getContext('2d');
     const centerX = wheelCanvas.width / 2;
     const centerY = wheelCanvas.height / 2;
-    const radius = Math.min(centerX, centerY) - 10;
+    const radius = Math.min(centerX, centerY) - 20;
 
     wheelCtx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
 
+    // Arka plan çemberi
+    wheelCtx.beginPath();
+    wheelCtx.arc(centerX, centerY, radius + 10, 0, 2 * Math.PI);
+    wheelCtx.fillStyle = '#333';
+    wheelCtx.fill();
+
     let startAngle = 0;
-    for (let segment of wheelSegments) {
+    for (let i = 0; i < wheelSegments.length; i++) {
+        const segment = wheelSegments[i];
         const angle = (segment.chance / 100) * 2 * Math.PI;
         
         wheelCtx.beginPath();
@@ -400,40 +407,82 @@ function drawWheel(wheelCanvas) {
         wheelCtx.arc(centerX, centerY, radius, startAngle, startAngle + angle);
         wheelCtx.closePath();
 
-        wheelCtx.fillStyle = segment.color;
+        // Gradient oluştur
+        const gradient = wheelCtx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, radius
+        );
+        gradient.addColorStop(0, lightenColor(segment.color, 30));
+        gradient.addColorStop(1, segment.color);
+
+        wheelCtx.fillStyle = gradient;
         wheelCtx.fill();
 
+        // Bölüm sınırları
+        wheelCtx.strokeStyle = '#fff';
+        wheelCtx.lineWidth = 2;
+        wheelCtx.stroke();
+
+        // Metin
         wheelCtx.save();
         wheelCtx.translate(centerX, centerY);
         wheelCtx.rotate(startAngle + angle / 2);
         wheelCtx.textAlign = 'right';
         wheelCtx.fillStyle = '#fff';
-        wheelCtx.font = '10px Arial';
+        wheelCtx.font = 'bold 14px Arial';
         let displayName = segment.name;
         if (segment.name === 'Double Tokens') displayName = '2x Tokens';
         if (segment.name === 'Dino Level Up') displayName = 'Level Up';
-        wheelCtx.fillText(displayName, radius - 15, 0);
+        wheelCtx.fillText(displayName, radius - 25, 5);
         wheelCtx.restore();
 
         startAngle += angle;
     }
 
-    // Statik işaretçi - çarkın dışında çizilecek
+    // Orta nokta
+    wheelCtx.beginPath();
+    wheelCtx.arc(centerX, centerY, 15, 0, 2 * Math.PI);
+    wheelCtx.fillStyle = '#fff';
+    wheelCtx.fill();
+    wheelCtx.strokeStyle = '#333';
+    wheelCtx.lineWidth = 2;
+    wheelCtx.stroke();
+
     drawPointer(wheelCtx, centerX, centerY, radius);
 }
 
 function drawPointer(ctx, centerX, centerY, radius) {
     ctx.save();
     ctx.translate(centerX, centerY);
-    ctx.rotate(-Math.PI / 2); // İşaretçiyi üste yerleştir
+    ctx.rotate(-Math.PI / 2);
+    
+    // Gölge
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+
     ctx.beginPath();
-    ctx.moveTo(radius, 0);
-    ctx.lineTo(radius + 20, -10);
-    ctx.lineTo(radius + 20, 10);
+    ctx.moveTo(radius + 15, -10);
+    ctx.lineTo(radius + 35, 0);
+    ctx.lineTo(radius + 15, 10);
     ctx.closePath();
-    ctx.fillStyle = 'red';
+    ctx.fillStyle = '#ff4d4d';
     ctx.fill();
+
     ctx.restore();
+}
+
+// Yardımcı fonksiyon: Rengi aydınlatma
+function lightenColor(color, percent) {
+    const num = parseInt(color.replace('#', ''), 16),
+          amt = Math.round(2.55 * percent),
+          R = (num >> 16) + amt,
+          G = (num >> 8 & 0x00FF) + amt,
+          B = (num & 0x0000FF) + amt;
+    return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + 
+                  (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + 
+                  (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
 }
 
 function spinWheel() {
@@ -519,7 +568,7 @@ function rotateWheel(wheelCanvas, callback) {
         wheelCtx.restore();
 
         // İşaretçiyi tekrar çiz (dönmeyecek)
-        const radius = Math.min(centerX, centerY) - 10;
+        const radius = Math.min(centerX, centerY) - 20;
         drawPointer(wheelCtx, centerX, centerY, radius);
 
         if (progress < 1) {
