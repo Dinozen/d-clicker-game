@@ -730,14 +730,14 @@ function showRewardTable() {
 
     const rewardTableModal = document.getElementById('rewardTableModal');
     rewardTableModal.innerHTML = `
-        <div class="modal-content">
+        <div class="modal-content daily-streak" id="dailyStreak">
+            <button class="close-btn" id="closeDailyStreak">&times;</button>
             ${tableContent}
-            <button id="closeRewardTableButton">Close</button>
         </div>
     `;
     rewardTableModal.style.display = 'block';
 
-    document.getElementById('closeRewardTableButton').onclick = function() {
+    document.getElementById('closeDailyStreak').onclick = function() {
         rewardTableModal.style.display = 'none';
     };
 }

@@ -136,6 +136,7 @@
             padding: 5px;
             border-radius: 5px;
             border: 1px solid rgba(255, 255, 255, 0.5);
+            text-align: center;
         }
         .modal {
             display: none;
@@ -282,6 +283,48 @@
         #referralRewards table td:last-child {
             text-align: right;
         }
+        .daily-streak {
+            width: 90%;
+            max-width: 600px;
+            background-color: #000; /* Arka plan siyah */
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+            position: relative;
+            color: #fff; /* Yazı rengi beyaz */
+            margin: 20px auto;
+        }
+        .daily-streak .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #ff5e57;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .daily-streak table {
+            border-collapse: collapse;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .daily-streak th, .daily-streak td {
+            border: 1px solid #fff; /* Beyaz sınırlar */
+            padding: 5px;
+            text-align: center;
+            color: #fff; /* Yazı rengi beyaz */
+        }
+        .daily-streak th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .daily-streak td {
+            background-color: #222;
+        }
     </style>
 </head>
 <body>
@@ -358,10 +401,63 @@
         <button id="closeBoostersModal" class="button">Close</button>
     </div>
     <div id="rewardTableModal" class="modal">
-        <div class="modal-content">
-            <!-- İçerik JavaScript ile eklenecek -->
+        <div class="modal-content daily-streak" id="dailyStreak">
+            <button class="close-btn" id="closeDailyStreak">&times;</button>
+            <table>
+                <tr>
+                    <th>Day</th>
+                    <th>Reward</th>
+                </tr>
+                <tr><td>1</td><td>1000 tokens</td></tr>
+                <tr><td>2</td><td>2000 tokens</td></tr>
+                <tr><td>3</td><td>3000 tokens</td></tr>
+                <tr><td>4</td><td>4000 tokens</td></tr>
+                <tr><td>5</td><td>5000 tokens</td></tr>
+                <tr><td>6</td><td>6000 tokens</td></tr>
+                <tr><td>7</td><td>7000 tokens</td></tr>
+                <tr><td>8</td><td>8000 tokens</td></tr>
+                <tr><td>9</td><td>9000 tokens</td></tr>
+                <tr><td>10</td><td>10000 tokens</td></tr>
+            </table>
+            <table>
+                <tr>
+                    <th>Day</th>
+                    <th>Reward</th>
+                </tr>
+                <tr><td>11</td><td>11000 tokens</td></tr>
+                <tr><td>12</td><td>12000 tokens</td></tr>
+                <tr><td>13</td><td>13000 tokens</td></tr>
+                <tr><td>14</td><td>14000 tokens</td></tr>
+                <tr><td>15</td><td>15000 tokens</td></tr>
+                <tr><td>16</td><td>16000 tokens</td></tr>
+                <tr><td>17</td><td>17000 tokens</td></tr>
+                <tr><td>18</td><td>18000 tokens</td></tr>
+                <tr><td>19</td><td>19000 tokens</td></tr>
+                <tr><td>20</td><td>20000 tokens</td></tr>
+            </table>
+            <table>
+                <tr>
+                    <th>Day</th>
+                    <th>Reward</th>
+                </tr>
+                <tr><td>21</td><td>21000 tokens</td></tr>
+                <tr><td>22</td><td>22000 tokens</td></tr>
+                <tr><td>23</td><td>23000 tokens</td></tr>
+                <tr><td>24</td><td>24000 tokens</td></tr>
+                <tr><td>25</td><td>25000 tokens</td></tr>
+                <tr><td>26</td><td>26000 tokens</td></tr>
+                <tr><td>27</td><td>27000 tokens</td></tr>
+                <tr><td>28</td><td>28000 tokens</td></tr>
+                <tr><td>29</td><td>29000 tokens</td></tr>
+                <tr><td>30</td><td>30000 tokens</td></tr>
+            </table>
         </div>
     </div>
     <script src="game.js"></script>
+    <script>
+        document.getElementById('closeDailyStreak').addEventListener('click', function() {
+            document.getElementById('rewardTableModal').style.display = 'none';
+        });
+    </script>
 </body>
 </html>
