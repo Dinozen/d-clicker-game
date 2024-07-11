@@ -227,8 +227,8 @@
             display: none;
             position: fixed;
             top: 50%;
-            right: 10%;
-            transform: translateY(-50%);
+            left: 50%;
+            transform: translate(-50%, -50%);
             background-color: rgba(0, 0, 0, 0.9);
             padding: 20px;
             border-radius: 10px;
@@ -243,6 +243,17 @@
             display: flex;
             justify-content: space-around;
             z-index: 10;
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+        #autoBotButton {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #autoBotButton img {
+            height: 20px;
+            margin-right: 10px;
         }
     </style>
 </head>
@@ -261,7 +272,7 @@
         <button id="boostersButton" class="button">Boosters</button>
     </div>
     <div id="boostTimer"></div>
-    <div id="dailyRewardDisplay">Daily Streak: 0 days</div>
+    <div id="dailyRewardDisplay">Daily Streaks: 0 days</div>
     <div id="menuModal">
         <h2>Menu</h2>
         <canvas id="wheelCanvas" width="300" height="300"></canvas>
@@ -296,7 +307,11 @@
     </div>
     <div id="boostersModal">
         <h3>Boosters</h3>
-        <button id="autoBotButton" class="button">AutoBot (10,000 tokens)</button>
+        <button id="autoBotButton" class="button">
+            <img src="autobot.png" alt="AutoBot">
+            <span>AutoBot</span>
+            <span>(10,000 tokens)</span>
+        </button>
         <button id="closeBoostersModal" class="button">Close</button>
     </div>
     <div id="rewardTableModal" class="modal">

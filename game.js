@@ -103,6 +103,7 @@ function loadUserData() {
         tokens = data.tokens;
         level = data.level;
         energy = data.energy;
+        maxEnergy = data.maxEnergy || level + 2;
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime();
         clicksRemaining = data.clicksRemaining;
         boostAvailable = data.boostAvailable;
@@ -127,6 +128,7 @@ function saveUserData() {
         tokens,
         level,
         energy,
+        maxEnergy,
         lastEnergyRefillTime,
         clicksRemaining,
         boostAvailable,
@@ -234,6 +236,9 @@ function handleClick(event) {
             updateUI();
             checkLevelUp();
             saveUserData();
+        } else {
+            clicksRemaining = 0;
+            updateUI();
         }
     }
 }
@@ -255,10 +260,17 @@ function setupGameUI() {
     updateUI();
 }
 
+function formatNumber(number) {
+    if (number >= 1000) {
+        return (number / 1000).toFixed(1) + 'K';
+    }
+    return number;
+}
+
 function updateUI() {
-    document.getElementById('tokenDisplay').textContent = `${tokens}`;
+    document.getElementById('tokenDisplay').textContent = formatNumber(tokens);
     document.getElementById('energyDisplay').textContent = `${energy}/${maxEnergy}`;
-    document.getElementById('clicksDisplay').textContent = `${clicksRemaining}`;
+    document.getElementById('clicksDisplay').textContent = formatNumber(clicksRemaining);
     document.getElementById('levelDisplay').textContent = `${level}`;
     updateDailyRewardDisplay();
 }
@@ -370,9 +382,9 @@ function activateAutoBot() {
         updateUI();
         showAutoBotModal();
     } else if (autoBotPurchased) {
-        alert('AutoBot is already purchased.');
+        showErrorMessage('AutoBot is already purchased.');
     } else {
-        alert('Not enough tokens to activate AutoBot.');
+        showErrorMessage('Not enough tokens to activate AutoBot.');
     }
 }
 
@@ -389,6 +401,23 @@ function showAutoBotModal() {
 
     document.getElementById('closeAutoBotModal').onclick = function() {
         autoBotModal.style.display = 'none';
+    };
+}
+
+function showErrorMessage(message) {
+    const errorModal = document.createElement('div');
+    errorModal.className = 'modal';
+    errorModal.innerHTML = `
+        <div class="modal-content">
+            <p>${message}</p>
+            <button id="closeErrorModal">Close</button>
+        </div>
+    `;
+    document.body.appendChild(errorModal);
+    errorModal.style.display = 'block';
+    document.getElementById('closeErrorModal').onclick = function() {
+        errorModal.style.display = 'none';
+        document.body.removeChild(errorModal);
     };
 }
 
@@ -491,7 +520,7 @@ function drawWheel(wheelCanvas) {
         wheelCtx.rotate(startAngle + angle / 2);
         wheelCtx.textAlign = 'right';
         wheelCtx.fillStyle = '#fff';
-        wheelCtx.font = 'bold 14px Arial';
+        wheelCtx.font = 'bold 12px Arial';
         let displayName = segment.name;
         if (segment.name === 'Double Tokens') displayName = '2x Tokens';
         if (segment.name === 'Dino Level Up') displayName = 'Level Up';
@@ -666,19 +695,13 @@ function activateDoubleTokens() {
 function levelUp() {
     const previousLevel = level;
     level++;
+    maxEnergy = level + 2; // Örnek enerji hesaplama
+    energy = maxEnergy; // Enerjiyi maksimum yap
     updateDinoImage();
-    checkLevelUp(); // Diğer özellikleri güncelle
-    saveUserData(); // Verileri kaydet
-    updateUI(); // Arayüzü güncelle
-    
-    // Level up efekti ve bildirimi
+    checkLevelUp();
+    saveUserData();
+    updateUI();
     createLevelUpEffect();
-    
-    // Yeni seviye için gerekli token miktarını göster
-    const nextLevelRequirement = levelRequirements[level] || "Max Level";
-    alert(`Congratulations! Your Dino leveled up to Level ${level}!\nNext level at: ${nextLevelRequirement} tokens`);
-    
-    // Level up panelini göster
     showLevelUpModal(previousLevel, level);
 }
 
@@ -793,7 +816,7 @@ function checkDailyLogin() {
 }
 
 function updateDailyRewardDisplay() {
-    dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
+    dailyRewardDisplay.textContent = `Daily Streaks: ${dailyStreak} days`;
 }
 
 function increaseClicks() {
