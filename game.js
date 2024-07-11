@@ -18,6 +18,7 @@ let referralCount = 0;
 let isDoubleTokensActive = false;
 let autoBotActive = false;
 let autoBotPurchased = false;
+let autoBotTokens = 0;
 
 // Level gereksinimleri
 const levelRequirements = [0, 2000, 5000, 10000, 20000];
@@ -33,8 +34,6 @@ const menuModal = document.getElementById('menuModal');
 const dailyRewardDisplay = document.getElementById('dailyRewardDisplay');
 const boostersButton = document.getElementById('boostersButton');
 const boostersModal = document.getElementById('boostersModal');
-const autoBotButton = document.getElementById('autoBotButton');
-const closeBoostersModal = document.getElementById('closeBoostersModal');
 const levelUpModal = document.createElement('div');
 const autoBotModal = document.createElement('div');
 
@@ -88,8 +87,6 @@ function startGame() {
     boostButton.addEventListener('click', handleBoost);
     menuButton.addEventListener('click', toggleMenu);
     boostersButton.addEventListener('click', toggleBoosters);
-    autoBotButton.addEventListener('click', activateAutoBot);
-    closeBoostersModal.addEventListener('click', toggleBoosters);
     animateDino();
     checkDailyLogin();
     setInterval(increaseClicks, 6000); // Her 6 saniyede bir click hakkı artır
@@ -261,7 +258,9 @@ function setupGameUI() {
 }
 
 function formatNumber(number) {
-    if (number >= 1000) {
+    if (number >= 1000000) {
+        return (number / 1000000).toFixed(1) + 'M';
+    } else if (number >= 1000) {
         return (number / 1000).toFixed(1) + 'K';
     }
     return number;
@@ -368,6 +367,8 @@ function toggleMenu() {
 function toggleBoosters() {
     if (boostersModal.style.display === 'none' || boostersModal.style.display === '') {
         boostersModal.style.display = 'block';
+        document.getElementById('autoBotButton').addEventListener('click', activateAutoBot);
+        document.getElementById('closeBoostersModal').addEventListener('click', toggleBoosters);
     } else {
         boostersModal.style.display = 'none';
     }
@@ -381,6 +382,7 @@ function activateAutoBot() {
         saveUserData();
         updateUI();
         showAutoBotModal();
+        boostersModal.style.display = 'none'; // Boosters modalını kapat
     } else if (autoBotPurchased) {
         showErrorMessage('AutoBot is already purchased.');
     } else {
@@ -453,23 +455,21 @@ function updateMenuContent() {
 
 function showReferralLink() {
     const referralModal = document.getElementById('referralModal');
-    const referralLink = document.getElementById('referralLink');
-    const copyButton = document.getElementById('copyButton');
-    const closeButton = document.getElementById('closeReferralModal');
-    
-    referralLink.value = `https://t.me/YourBotName?start=${telegramId}`;
     referralModal.style.display = 'block';
     
-    copyButton.onclick = function() {
+    const referralLink = document.getElementById('referralLink');
+    referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
+    
+    document.getElementById('copyButton').onclick = function() {
         referralLink.select();
         document.execCommand('copy');
-        copyButton.textContent = 'Copied!';
+        this.textContent = 'Copied!';
         setTimeout(() => {
-            copyButton.textContent = 'Copy';
+            this.textContent = 'Copy Link';
         }, 2000);
     };
     
-    closeButton.onclick = function() {
+    document.getElementById('closeReferralModal').onclick = function() {
         referralModal.style.display = 'none';
     };
 }
@@ -539,32 +539,17 @@ function drawWheel(wheelCanvas) {
     wheelCtx.lineWidth = 2;
     wheelCtx.stroke();
 
-    drawPointer(wheelCtx, centerX, centerY, radius);
+    // Pointer'ı çiz (aşağı doğru kırmızı üçgen)
+    const pointerSize = 20;
+    wheelCtx.beginPath();
+    wheelCtx.moveTo(centerX, centerY + radius);
+    wheelCtx.lineTo(centerX - pointerSize / 2, centerY + radius - pointerSize);
+    wheelCtx.lineTo(centerX + pointerSize / 2, centerY + radius - pointerSize);
+    wheelCtx.closePath();
+    wheelCtx.fillStyle = '#ff0000';
+    wheelCtx.fill();
 }
 
-function drawPointer(ctx, centerX, centerY, radius) {
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(-Math.PI / 2);
-    
-    // Gölge
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    ctx.shadowBlur = 5;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
-
-    ctx.beginPath();
-    ctx.moveTo(radius + 15, -10);
-    ctx.lineTo(radius + 35, 0);
-    ctx.lineTo(radius + 15, 10);
-    ctx.closePath();
-    ctx.fillStyle = '#ff4d4d';
-    ctx.fill();
-
-    ctx.restore();
-}
-
-// Yardımcı fonksiyon: Rengi aydınlatma
 function lightenColor(color, percent) {
     const num = parseInt(color.replace('#', ''), 16),
           amt = Math.round(2.55 * percent),
@@ -617,24 +602,6 @@ function spinWheel() {
     }
 }
 
-function showWheelResult(reward, amount) {
-    const wheelResultModal = document.getElementById('wheelResultModal');
-    const wheelResultMessage = document.getElementById('wheelResultMessage');
-    const closeButton = document.getElementById('closeWheelResultModal');
-    
-    let message = `You won: ${reward}`;
-    if (amount) {
-        message += ` (${amount})`;
-    }
-    wheelResultMessage.textContent = message;
-    
-    wheelResultModal.style.display = 'block';
-    
-    closeButton.onclick = function() {
-        wheelResultModal.style.display = 'none';
-    };
-}
-
 function rotateWheel(wheelCanvas, callback) {
     const wheelCtx = wheelCanvas.getContext('2d');
     const centerX = wheelCanvas.width / 2;
@@ -657,10 +624,6 @@ function rotateWheel(wheelCanvas, callback) {
         wheelCtx.translate(-centerX, -centerY);
         drawWheel(wheelCanvas);
         wheelCtx.restore();
-
-        // İşaretçiyi tekrar çiz (dönmeyecek)
-        const radius = Math.min(centerX, centerY) - 20;
-        drawPointer(wheelCtx, centerX, centerY, radius);
 
         if (progress < 1) {
             requestAnimationFrame(animate);
@@ -748,20 +711,20 @@ function showLevelUpModal(previousLevel, newLevel) {
 
 function calculateDailyReward(streak) {
     if (streak <= 10) {
-        return 50 * streak;
-    } else if (streak < 15) {
-        return 500 + (streak - 10) * 100;
-    } else if (streak === 15) {
-        return 1000;
+        return 1000 * streak;
+    } else if (streak <= 20) {
+        return 10000 + (streak - 10) * 1500;
+    } else if (streak <= 30) {
+        return 25000 + (streak - 20) * 2000;
     } else {
-        return 1000 + (streak - 15) * 50; // 15. günden sonra her gün için 50 token
+        return 45000 + (streak - 30) * 2500;
     }
 }
 
 function showRewardTable() {
     let tableContent = '<h3>Daily Streak Rewards</h3><table><tr><th>Day</th><th>Reward</th></tr>';
-    for (let i = 1; i <= 15; i++) {
-        tableContent += `<tr><td>${i}</td><td>${calculateDailyReward(i)} tokens</td></tr>`;
+    for (let i = 1; i <= 30; i++) {
+        tableContent += `<tr><td>${i}</td><td>${formatNumber(calculateDailyReward(i))} tokens</td></tr>`;
     }
     tableContent += '</table>';
 
@@ -793,12 +756,11 @@ function checkDailyLogin() {
         
         const loginStreakModal = document.getElementById('loginStreakModal');
         const loginStreakMessage = document.getElementById('loginStreakMessage');
-        const closeLoginStreakModal = document.getElementById('closeLoginStreakModal');
         
-        loginStreakMessage.textContent = `Daily login reward: ${reward} tokens! Streak: ${dailyStreak} days`;
+        loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Streak: ${dailyStreak} days`;
         loginStreakModal.style.display = 'block';
         
-        closeLoginStreakModal.onclick = function() {
+        document.getElementById('closeLoginStreakModal').onclick = function() {
             loginStreakModal.style.display = 'none';
             saveUserData();
             updateUI();
@@ -813,6 +775,8 @@ function checkDailyLogin() {
     if (timeElapsed >= 24 * 60 * 60 * 1000) { // 24 saat geçmiş mi?
         spinAvailable = true;
     }
+
+    checkAutoBot();
 }
 
 function updateDailyRewardDisplay() {
@@ -829,6 +793,63 @@ function increaseClicks() {
 
 function getMaxClicksForLevel() {
     return clickLimits[level - 1] || clickLimits[clickLimits.length - 1];
+}
+
+function checkAutoBot() {
+    if (autoBotActive) {
+        const currentTime = Date.now();
+        const elapsedTime = (currentTime - lastLoginDate) / 1000; // Saniye cinsinden geçen süre
+        autoBotTokens = Math.floor(elapsedTime * (level * 0.1)); // Her saniye için level * 0.1 token
+        
+        showAutoBotEarningsModal();
+    }
+}
+
+function showAutoBotEarningsModal() {
+    const autoBotEarningsModal = document.createElement('div');
+    autoBotEarningsModal.className = 'modal';
+    autoBotEarningsModal.innerHTML = `
+        <div class="modal-content">
+            <h3>AutoBot Earnings</h3>
+            <table>
+                <tr><td>Tokens Collected:</td><td>${formatNumber(autoBotTokens)}</td></tr>
+                <tr><td>Time Active:</td><td>${formatTime((Date.now() - lastLoginDate) / 1000)}</td></tr>
+            </table>
+            <button id="claimAutoBotTokens" class="button">Claim Tokens</button>
+        </div>
+    `;
+    document.body.appendChild(autoBotEarningsModal);
+
+    document.getElementById('claimAutoBotTokens').addEventListener('click', function() {
+        tokens += autoBotTokens;
+        autoBotTokens = 0;
+        updateUI();
+        saveUserData();
+        autoBotEarningsModal.style.display = 'none';
+    });
+}
+
+function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+}
+
+function showWheelResult(reward, amount) {
+    const wheelResultModal = document.getElementById('wheelResultModal');
+    const wheelResultMessage = document.getElementById('wheelResultMessage');
+    
+    let message = `You won: ${reward}`;
+    if (amount) {
+        message += ` (${formatNumber(amount)})`;
+    }
+    wheelResultMessage.textContent = message;
+    
+    wheelResultModal.style.display = 'block';
+    
+    document.getElementById('closeWheelResultModal').onclick = function() {
+        wheelResultModal.style.display = 'none';
+    };
 }
 
 window.addEventListener('resize', resizeCanvas);

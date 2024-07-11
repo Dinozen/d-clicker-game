@@ -235,6 +235,29 @@
             z-index: 100;
             text-align: center;
             color: white;
+            width: 90%;
+            max-width: 400px;
+        }
+        #autoBotContainer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        #autoBotImage {
+            width: 100px;
+            height: 100px;
+        }
+        #autoBotInfo {
+            text-align: left;
+            margin-left: 20px;
+        }
+        #autoBotInfo h3 {
+            margin: 0;
+        }
+        #autoBotInfo p {
+            margin: 5px 0;
+            color: #888;
         }
         #buttonsContainer {
             position: fixed;
@@ -243,17 +266,21 @@
             display: flex;
             justify-content: space-around;
             z-index: 10;
-            padding-left: 10px;
-            padding-right: 10px;
         }
-        #autoBotButton {
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        #referralRewards table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
         }
-        #autoBotButton img {
-            height: 20px;
-            margin-right: 10px;
+        #referralRewards table td {
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        #referralRewards table td:first-child {
+            text-align: left;
+        }
+        #referralRewards table td:last-child {
+            text-align: right;
         }
     </style>
 </head>
@@ -272,7 +299,7 @@
         <button id="boostersButton" class="button">Boosters</button>
     </div>
     <div id="boostTimer"></div>
-    <div id="dailyRewardDisplay">Daily Streaks: 0 days</div>
+    <div id="dailyRewardDisplay">Daily Streak: 0 days</div>
     <div id="menuModal">
         <h2>Menu</h2>
         <canvas id="wheelCanvas" width="300" height="300"></canvas>
@@ -287,6 +314,19 @@
             <div class="referral-link-container">
                 <input type="text" id="referralLink" readonly>
                 <button id="copyButton">Copy</button>
+            </div>
+            <div id="referralRewards">
+                <h4>Referral Rewards:</h4>
+                <table>
+                    <tr><td>1 Referral:</td><td>1,000 tokens</td></tr>
+                    <tr><td>5 Referrals:</td><td>5,000 tokens</td></tr>
+                    <tr><td>10 Referrals:</td><td>10,000 tokens</td></tr>
+                    <tr><td>20 Referrals:</td><td>25,000 tokens</td></tr>
+                    <tr><td>50 Referrals:</td><td>100,000 tokens</td></tr>
+                    <tr><td>100 Referrals:</td><td>200,000 tokens</td></tr>
+                    <tr><td>500 Referrals:</td><td>500,000 tokens</td></tr>
+                    <tr><td>1000 Referrals:</td><td>1M tokens</td></tr>
+                </table>
             </div>
             <button id="closeReferralModal">Close</button>
         </div>
@@ -307,11 +347,14 @@
     </div>
     <div id="boostersModal">
         <h3>Boosters</h3>
-        <button id="autoBotButton" class="button">
-            <img src="autobot.png" alt="AutoBot">
-            <span>AutoBot</span>
-            <span>(10,000 tokens)</span>
-        </button>
+        <div id="autoBotContainer">
+            <img src="autobot.png" alt="AutoBot" id="autoBotImage">
+            <div id="autoBotInfo">
+                <h3>AutoBot</h3>
+                <p>(10,000 tokens)</p>
+            </div>
+        </div>
+        <button id="autoBotButton" class="button">Activate AutoBot</button>
         <button id="closeBoostersModal" class="button">Close</button>
     </div>
     <div id="rewardTableModal" class="modal">
