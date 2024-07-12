@@ -33,6 +33,7 @@ const boostersButton = document.getElementById('boostersButton');
 const boostersModal = document.getElementById('boostersModal');
 const levelUpModal = document.createElement('div');
 const autoBotModal = document.createElement('div');
+const leaderboardButton = document.getElementById('leaderboardButton');
 
 // Modal stilleri
 levelUpModal.classList.add('modal');
@@ -75,6 +76,7 @@ function startGame() {
     setupGameUI();
     menuButton.addEventListener('click', toggleMenu);
     boostersButton.addEventListener('click', toggleBoosters);
+    leaderboardButton.addEventListener('click', showLeaderboard);
     animateDino();
     checkDailyLogin();
     setInterval(increaseClicks, 6000); // Her 6 saniyede bir click hakkı artır
@@ -257,6 +259,24 @@ function updateUI() {
     document.getElementById('clicksDisplay').textContent = formatNumber(clicksRemaining);
     document.getElementById('levelDisplay').textContent = `${level}`;
     updateDailyRewardDisplay();
+    updateGiftCooldownDisplay();
+}
+
+function updateGiftCooldownDisplay() {
+    const now = Date.now();
+    const timeRemaining = Math.max(0, lastGiftTime + boostCooldown - now);
+    const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+    
+    const cooldownDisplay = document.getElementById('giftCooldownDisplay');
+    if (timeRemaining > 0) {
+        cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
+        document.getElementById('randomGiftButton').disabled = true;
+    } else {
+        cooldownDisplay.textContent = 'Random Gift available!';
+        document.getElementById('randomGiftButton').disabled = false;
+    }
 }
 
 function animateDino() {
@@ -386,6 +406,7 @@ function updateMenuContent() {
                 <img src="gift-box.png" alt="Gift">
                 ${randomGiftButtonText}
             </button>
+            <div id="giftCooldownDisplay" style="margin-top: 10px;"></div>
             <button id="referralButton" class="button">Invite Friends</button>
             <p>Your Referrals: ${referralCount}</p>
             <button id="closeMenuButton" class="button close-btn">Close</button>
@@ -531,7 +552,7 @@ function calculateDailyReward(streak) {
 function showRewardTable() {
     let tableContent = '<h3>Daily Streak Rewards</h3><table><tr><th>Day</th><th>Reward</th></tr>';
     for (let i = 1; i <= 30; i++) {
-        tableContent += `<tr><td>${i}</td><td>${formatNumber(calculateDailyReward(i))} tokens</td></tr>`;
+        tableContent += `<tr><td>${i}</td><td><img src="token.png" alt="token" style="width: 16px;"> ${formatNumber(calculateDailyReward(i))} tokens</td></tr>`;
     }
     tableContent += '</table>';
 
@@ -655,6 +676,30 @@ function showRandomGiftResult(reward, amount) {
     };
 }
 
+function showLeaderboard() {
+    const leaderboardModal = document.createElement('div');
+    leaderboardModal.className = 'modal';
+    leaderboardModal.innerHTML = `
+        <div class="modal-content">
+            <h3>Leaderboard</h3>
+            <table>
+                <tr><th>Rank</th><th>Player</th><th>Tokens</th></tr>
+                <tr><td>1</td><td>Player1</td><td>100,000</td></tr>
+                <tr><td>2</td><td>Player2</td><td>90,000</td></tr>
+                <tr><td>3</td><td>Player3</td><td>80,000</td></tr>
+            </table>
+            <button id="closeLeaderboardModal" class="close-btn">Close</button>
+        </div>
+    `;
+    document.body.appendChild(leaderboardModal);
+    leaderboardModal.style.display = 'block';
+
+    document.getElementById('closeLeaderboardModal').onclick = function() {
+        leaderboardModal.style.display = 'none';
+        document.body.removeChild(leaderboardModal);
+    };
+}
+
 window.addEventListener('resize', resizeCanvas);
 
 setInterval(() => {
@@ -669,3 +714,4 @@ window.onload = function() {
     }
     startGame();
 };
+
