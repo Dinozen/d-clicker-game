@@ -1,9 +1,20 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const app = express();
+const cors = require('cors');
 
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log('MongoDB connected...'))
+.catch(err => console.log('MongoDB connection error:', err));
 
 const ScoreSchema = new mongoose.Schema({
   playerName: String,
@@ -13,7 +24,9 @@ const ScoreSchema = new mongoose.Schema({
 
 const Score = mongoose.model('Score', ScoreSchema);
 
-app.use(express.json());
+app.get('/', (req, res) => {
+  res.send('Dino Game Backend is running!');
+});
 
 app.post('/api/scores', async (req, res) => {
   try {
@@ -34,5 +47,4 @@ app.get('/api/scores', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
