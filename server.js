@@ -12,6 +12,8 @@ app.use(express.json());
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
 })
 .then(() => console.log('MongoDB connected...'))
 .catch(err => console.log('MongoDB connection error:', err));
@@ -34,7 +36,8 @@ app.post('/api/scores', async (req, res) => {
     await newScore.save();
     res.status(201).json(newScore);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error saving score:', error);
+    res.status(500).json({ error: 'An error occurred while saving the score.' });
   }
 });
 
@@ -43,7 +46,8 @@ app.get('/api/scores', async (req, res) => {
     const scores = await Score.find().sort({ score: -1 }).limit(10);
     res.json(scores);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching scores:', error);
+    res.status(500).json({ error: 'An error occurred while fetching scores.' });
   }
 });
 
