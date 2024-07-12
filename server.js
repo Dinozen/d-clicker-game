@@ -30,6 +30,16 @@ app.get('/', (req, res) => {
   res.send('Dino Game Backend is running!');
 });
 
+app.get('/api/scores', async (req, res) => {
+  try {
+    const scores = await Score.find().sort({ score: -1 }).limit(10);
+    res.json(scores);
+  } catch (error) {
+    console.error('Error fetching scores:', error);
+    res.status(500).json({ error: 'An error occurred while fetching scores.' });
+  }
+});
+
 app.post('/api/scores', async (req, res) => {
   try {
     const newScore = new Score(req.body);
@@ -38,16 +48,6 @@ app.post('/api/scores', async (req, res) => {
   } catch (error) {
     console.error('Error saving score:', error);
     res.status(500).json({ error: 'An error occurred while saving the score.' });
-  }
-});
-
-app.get('/api/scores', async (req, res) => {
-  try {
-    const scores = await Score.find().sort({ score: -1 }).limit(10);
-    res.json(scores);
-  } catch (error) {
-    console.error('Error fetching scores:', error);
-    res.status(500).json({ error: 'An error occurred while fetching scores.' });
   }
 });
 
