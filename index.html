@@ -97,47 +97,6 @@
             background-color: #999;
             cursor: not-allowed;
         }
-        #boostTimer {
-            position: absolute;
-            bottom: 50px;
-            left: 10px;
-            font-size: 14px;
-            z-index: 10;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 5px;
-            border-radius: 5px;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-        }
-        #menuModal {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-            z-index: 100;
-            text-align: center;
-        }
-        #wheelCanvas {
-            width: 300px;
-            height: 300px;
-            margin: 20px auto;
-        }
-        #dailyRewardDisplay {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 14px;
-            z-index: 10;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 5px;
-            border-radius: 5px;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            text-align: center;
-        }
         .modal {
             display: none;
             position: fixed;
@@ -157,8 +116,21 @@
             padding: 20px;
             border-radius: 10px;
             width: 80%;
-            max-width: 400px;
+            max-width: 300px;
             text-align: center;
+        }
+        .close-btn {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .close-btn:hover {
+            background-color: #d32f2f;
         }
         .referral-link-container {
             display: flex;
@@ -179,86 +151,23 @@
             border-radius: 0 5px 5px 0;
             cursor: pointer;
         }
-        #closeReferralModal {
-            margin-top: 10px;
-            padding: 5px 10px;
-            background-color: #f44336;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        #loginStreakModal .modal-content {
-            background-color: #4CAF50;
-            color: white;
-        }
-        #closeLoginStreakModal {
-            margin-top: 10px;
-            padding: 5px 10px;
-            background-color: #45a049;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        #wheelResultModal .modal-content {
-            background-color: #333;
-            color: #fff;
-            border: 2px solid #61dafb;
-            box-shadow: 0 0 10px #61dafb;
-        }
-        #wheelResultMessage {
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-        #closeWheelResultModal {
-            background-color: #61dafb;
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            font-size: 18px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        #closeWheelResultModal:hover {
-            background-color: #45a049;
-        }
-        #boostersModal {
-            display: none;
-            position: fixed;
-            top: 50%;
+        #dailyRewardDisplay {
+            position: absolute;
+            top: 10px;
             left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-            z-index: 100;
+            transform: translateX(-50%);
+            font-size: 14px;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
             text-align: center;
-            color: white;
-            width: 90%;
-            max-width: 400px;
         }
-        #autoBotContainer {
+        #randomGiftButton {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
-        #autoBotImage {
-            width: 100px;
-            height: 100px;
-        }
-        #autoBotInfo {
-            text-align: left;
-            margin-left: 20px;
-        }
-        #autoBotInfo h3 {
-            margin: 0;
-        }
-        #autoBotInfo p {
-            margin: 5px 0;
-            color: #888;
+            justify-content: center;
         }
         #buttonsContainer {
             position: fixed;
@@ -268,20 +177,9 @@
             justify-content: space-around;
             z-index: 10;
         }
-        #referralRewards table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        #referralRewards table td {
-            padding: 5px;
-            border-bottom: 1px solid #ddd;
-        }
-        #referralRewards table td:first-child {
-            text-align: left;
-        }
-        #referralRewards table td:last-child {
-            text-align: right;
+        #randomGiftButton img {
+            margin-right: 10px;
+            width: 20px;
         }
         .daily-streak {
             width: 90%;
@@ -325,31 +223,51 @@
         .daily-streak td {
             background-color: #222;
         }
+        #dinoTokenDisplay {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            font-size: 48px;
+            display: flex;
+            align-items: center;
+        }
+        #dinoTokenDisplay img {
+            width: 48px;
+            height: 48px;
+            margin-right: 10px;
+        }
     </style>
 </head>
 <body>
     <img id="backgroundGif" src="background.gif" alt="background gif">
     <canvas id="gameCanvas"></canvas>
     <div id="gameInfo">
-        <div class="counter"><span>Tokens:</span><span id="tokenDisplay">0</span></div>
         <div class="counter"><span>Energy:</span><span id="energyDisplay">3/3</span></div>
         <div class="counter"><span>Clicks:</span><span id="clicksDisplay">300</span></div>
         <div class="counter"><span>Level:</span><span id="levelDisplay">1</span></div>
     </div>
+    <div id="dinoTokenDisplay">
+        <img src="token.png" alt="token">
+        <span id="tokenDisplay">0</span>
+    </div>
     <div id="buttonsContainer">
-        <button id="boostButton" class="button">Boost</button>
         <button id="menuButton" class="button">Menu</button>
         <button id="boostersButton" class="button">Boosters</button>
     </div>
-    <div id="boostTimer"></div>
     <div id="dailyRewardDisplay">Daily Streak: 0 days</div>
-    <div id="menuModal">
-        <h2>Menu</h2>
-        <canvas id="wheelCanvas" width="300" height="300"></canvas>
-        <button id="spinButton" class="button">Spin the Wheel</button>
-        <button id="referralButton" class="button">Invite Friends</button>
-        <p id="referralCount">Your Referrals: 0</p>
-        <button id="closeMenuButton" class="button">Close</button>
+    <div id="menuModal" class="modal">
+        <div class="modal-content">
+            <h2>Menu</h2>
+            <button id="randomGiftButton" class="button">
+                <img src="gift-box.png" alt="Gift">
+                Random Gift
+            </button>
+            <button id="referralButton" class="button">Invite Friends</button>
+            <p id="referralCount">Your Referrals: 0</p>
+            <button id="closeMenuButton" class="button close-btn">Close</button>
+        </div>
     </div>
     <div id="referralModal" class="modal">
         <div class="modal-content">
@@ -371,34 +289,36 @@
                     <tr><td>1000 Referrals:</td><td>1M tokens</td></tr>
                 </table>
             </div>
-            <button id="closeReferralModal">Close</button>
+            <button id="closeReferralModal" class="close-btn">Close</button>
         </div>
     </div>
     <div id="loginStreakModal" class="modal">
         <div class="modal-content">
             <h3>Daily Login Reward</h3>
             <p id="loginStreakMessage"></p>
-            <button id="closeLoginStreakModal">Claim Reward</button>
+            <button id="closeLoginStreakModal" class="close-btn">Claim Reward</button>
         </div>
     </div>
     <div id="wheelResultModal" class="modal">
         <div class="modal-content">
             <h3>Wheel Result</h3>
             <p id="wheelResultMessage"></p>
-            <button id="closeWheelResultModal">Awesome!</button>
+            <button id="closeWheelResultModal" class="close-btn">Awesome!</button>
         </div>
     </div>
-    <div id="boostersModal">
-        <h3>Boosters</h3>
-        <div id="autoBotContainer">
-            <img src="autobot.png" alt="AutoBot" id="autoBotImage">
-            <div id="autoBotInfo">
-                <h3>AutoBot</h3>
-                <p>(10,000 tokens)</p>
+    <div id="boostersModal" class="modal">
+        <div class="modal-content">
+            <h3>Boosters</h3>
+            <div id="autoBotContainer" style="display: flex; flex-direction: column; align-items: center;">
+                <img src="autobot.png" alt="AutoBot" id="autoBotImage" style="width: 100px; height: 100px;">
+                <div id="autoBotInfo">
+                    <h3>AutoBot</h3>
+                    <p>(10,000 tokens)</p>
+                </div>
             </div>
+            <button id="autoBotButton" class="button">Activate AutoBot</button>
+            <button id="closeBoostersModal" class="close-btn">Close</button>
         </div>
-        <button id="autoBotButton" class="button">Activate AutoBot</button>
-        <button id="closeBoostersModal" class="button">Close</button>
     </div>
     <div id="rewardTableModal" class="modal">
         <div class="modal-content daily-streak" id="dailyStreak">
