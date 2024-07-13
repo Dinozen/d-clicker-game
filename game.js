@@ -9,10 +9,11 @@ let lastEnergyRefillTime = Date.now();
 let clicksRemaining = 300;
 let telegramId = 'default';
 let boostAvailable = true;
-const boostCooldown = 12 * 60 * 60 * 1000; // 12 saat
+const boostCooldown = 3 * 60 * 60 * 1000; // 3 saat
 let dailyStreak = 0;
 let lastLoginDate = null;
 let lastGiftTime = 0;
+let lastEnergyBoostTime = 0;
 let referralCount = 0;
 let isDoubleTokensActive = false;
 let autoBotActive = false;
@@ -80,6 +81,8 @@ function startGame() {
     animateDino();
     checkDailyLogin();
     setInterval(increaseClicks, 6000); // Her 6 saniyede bir click hakkı artır
+    setInterval(updateGiftCooldownDisplay, 1000); // Her saniye sayacı güncelle
+    setInterval(updateEnergyBoostCooldownDisplay, 1000); // Her saniye enerji boost sayacını güncelle
 }
 
 function loadUserData() {
@@ -97,6 +100,7 @@ function loadUserData() {
         dailyStreak = data.dailyStreak || 0;
         lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
         lastGiftTime = data.lastGiftTime || 0;
+        lastEnergyBoostTime = data.lastEnergyBoostTime || 0;
         referralCount = data.referralCount || 0;
         autoBotActive = data.autoBotActive || false;
         autoBotPurchased = data.autoBotPurchased || false;
@@ -120,6 +124,7 @@ function saveUserData() {
         dailyStreak,
         lastLoginDate,
         lastGiftTime,
+        lastEnergyBoostTime,
         referralCount,
         autoBotActive,
         autoBotPurchased
@@ -271,14 +276,16 @@ function updateGiftCooldownDisplay() {
     
     const cooldownDisplay = document.getElementById('giftCooldownDisplay');
     const randomGiftButton = document.getElementById('randomGiftButton');
-    if (timeRemaining > 0) {
-        cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
-        randomGiftButton.disabled = true;
-        randomGiftButton.classList.add('disabled');
-    } else {
-        cooldownDisplay.textContent = 'Random Gift available!';
-        randomGiftButton.disabled = false;
-        randomGiftButton.classList.remove('disabled');
+    if (cooldownDisplay && randomGiftButton) {
+        if (timeRemaining > 0) {
+            cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
+            randomGiftButton.disabled = true;
+            randomGiftButton.classList.add('disabled');
+        } else {
+            cooldownDisplay.textContent = 'Random Gift available!';
+            randomGiftButton.disabled = false;
+            randomGiftButton.classList.remove('disabled');
+        }
     }
 }
 
@@ -339,11 +346,51 @@ function toggleMenu() {
 function toggleBoosters() {
     if (boostersModal.style.display === 'none' || boostersModal.style.display === '') {
         boostersModal.style.display = 'block';
-        document.getElementById('autoBotButton').addEventListener('click', activateAutoBot);
+        updateBoostersModalContent();
         document.getElementById('closeBoostersModal').addEventListener('click', toggleBoosters);
     } else {
         boostersModal.style.display = 'none';
     }
+}
+
+function updateBoostersModalContent() {
+    boostersModal.innerHTML = `
+        <div class="modal-content">
+            <h3>Boosters</h3>
+            <div id="energyBoostContainer" style="display: flex; flex-direction: column; align-items: center;">
+                <h3>🚀 Energy Boost</h3>
+                <button id="energyBoostButton" class="button">Activate Energy Boost</button>
+                <div id="energyBoostCooldownDisplay"></div>
+            </div>
+            <div id="autoBotContainer" style="display: flex; flex-direction: column; align-items: center;">
+                <img src="autobot.png" alt="AutoBot" id="autoBotImage" style="width: 100px; height: 100px;">
+                <div id="autoBotInfo">
+                    <h3>AutoBot</h3>
+                    <p>(10,000 tokens)</p>
+                </div>
+                <button id="autoBotButton" class="button">Activate AutoBot</button>
+            </div>
+            <button id="closeBoostersModal" class="close-btn">Close</button>
+        </div>
+    `;
+    document.getElementById('energyBoostButton').addEventListener('click', activateEnergyBoost);
+    document.getElementById('autoBotButton').addEventListener('click', activateAutoBot);
+    document.getElementById('closeBoostersModal').addEventListener('click', toggleBoosters);
+}
+
+function activateEnergyBoost() {
+    const now = Date.now();
+    if (now - lastEnergyBoostTime >= boostCooldown) {
+        energy = maxEnergy;
+        lastEnergyBoostTime = now;
+        updateUI();
+        saveUserData();
+        showMessage('Energy fully restored!');
+        updateEnergyBoostCooldownDisplay(); // Sayacı hemen güncelle
+    } else {
+        showMessage('Energy Boost is not available yet.');
+    }
+    toggleBoosters(); // Boosters modalını kapat
 }
 
 function activateAutoBot() {
@@ -354,46 +401,65 @@ function activateAutoBot() {
         saveUserData();
         updateUI();
         showAutoBotModal();
-        boostersModal.style.display = 'none'; // Boosters modalını kapat
         document.getElementById('autoBotButton').textContent = 'AutoBot Activated';
         document.getElementById('autoBotButton').disabled = true;
     } else if (autoBotPurchased) {
-        showErrorMessage('AutoBot is already purchased.');
+        showMessage('AutoBot is already purchased.');
     } else {
-        showErrorMessage('Not enough tokens to activate AutoBot.');
+        showMessage('Not enough tokens to activate AutoBot.');
+    }
+    toggleBoosters(); // Boosters modalını kapat
+}
+
+function updateEnergyBoostCooldownDisplay() {
+    const now = Date.now();
+    const timeRemaining = Math.max(0, lastEnergyBoostTime + boostCooldown - now);
+    const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+    
+    const cooldownDisplay = document.getElementById('energyBoostCooldownDisplay');
+    const energyBoostButton = document.getElementById('energyBoostButton');
+    if (cooldownDisplay && energyBoostButton) {
+        if (timeRemaining > 0) {
+            cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
+            energyBoostButton.disabled = true;
+            energyBoostButton.classList.add('disabled');
+        } else {
+            cooldownDisplay.textContent = 'Energy Boost available!';
+            energyBoostButton.disabled = false;
+            energyBoostButton.classList.remove('disabled');
+        }
     }
 }
 
-function showAutoBotModal() {
-    autoBotModal.innerHTML = `
-        <div class="modal-content">
-            <h3>AutoBot Activated!</h3>
-            <p>Congratulations! AutoBot is now active and will farm tokens while you are inactive.</p>
-            <p><b>How it works:</b> AutoBot will collect tokens automatically when you are not playing the game. The collected tokens will be added to your account the next time you log in.</p>
-            <button id="closeAutoBotModal" class="close-btn">Close</button>
-        </div>
-    `;
-    autoBotModal.style.display = 'block';
-
-    document.getElementById('closeAutoBotModal').onclick = function() {
-        autoBotModal.style.display = 'none';
-    };
+function toggleBoosters() {
+    if (boostersModal.style.display === 'none' || boostersModal.style.display === '') {
+        boostersModal.style.display = 'block';
+        updateBoostersModalContent();
+        updateEnergyBoostCooldownDisplay(); // Boosters modalı açıldığında sayacı güncelle
+    } else {
+        boostersModal.style.display = 'none';
+    }
 }
 
-function showErrorMessage(message) {
-    const errorModal = document.createElement('div');
-    errorModal.className = 'modal';
-    errorModal.innerHTML = `
+// Sayacı her saniye güncelle
+setInterval(updateEnergyBoostCooldownDisplay, 1000);
+
+function showMessage(message) {
+    const messageModal = document.createElement('div');
+    messageModal.className = 'modal';
+    messageModal.innerHTML = `
         <div class="modal-content">
             <p>${message}</p>
-            <button id="closeErrorModal" class="close-btn">Close</button>
+            <button id="closeMessageModal" class="close-btn">Close</button>
         </div>
     `;
-    document.body.appendChild(errorModal);
-    errorModal.style.display = 'block';
-    document.getElementById('closeErrorModal').onclick = function() {
-        errorModal.style.display = 'none';
-        document.body.removeChild(errorModal);
+    document.body.appendChild(messageModal);
+    messageModal.style.display = 'block';
+    document.getElementById('closeMessageModal').onclick = function() {
+        messageModal.style.display = 'none';
+        document.body.removeChild(messageModal);
     };
 }
 
