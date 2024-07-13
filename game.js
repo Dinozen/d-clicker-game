@@ -270,12 +270,15 @@ function updateGiftCooldownDisplay() {
     const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
     
     const cooldownDisplay = document.getElementById('giftCooldownDisplay');
+    const randomGiftButton = document.getElementById('randomGiftButton');
     if (timeRemaining > 0) {
         cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
-        document.getElementById('randomGiftButton').disabled = true;
+        randomGiftButton.disabled = true;
+        randomGiftButton.classList.add('disabled');
     } else {
         cooldownDisplay.textContent = 'Random Gift available!';
-        document.getElementById('randomGiftButton').disabled = false;
+        randomGiftButton.disabled = false;
+        randomGiftButton.classList.remove('disabled');
     }
 }
 
@@ -397,16 +400,15 @@ function showErrorMessage(message) {
 function updateMenuContent() {
     const now = Date.now();
     const giftAvailable = now - lastGiftTime >= boostCooldown;
-    const randomGiftButtonText = giftAvailable ? 'Random Gift' : 'Random Gift (Available in 12h)';
 
     menuModal.innerHTML = `
         <div class="modal-content">
             <h2>Menu</h2>
             <button id="randomGiftButton" class="button" ${giftAvailable ? '' : 'disabled'}>
                 <img src="gift-box.png" alt="Gift">
-                ${randomGiftButtonText}
+                Random Gift
             </button>
-            <div id="giftCooldownDisplay" style="margin-top: 10px;"></div>
+            <div id="giftCooldownDisplay"></div>
             <button id="referralButton" class="button">Invite Friends</button>
             <p>Your Referrals: ${referralCount}</p>
             <button id="closeMenuButton" class="button close-btn">Close</button>
@@ -438,12 +440,13 @@ function updateMenuContent() {
             saveUserData();
             showRandomGiftResult(reward, amount);
             lastGiftTime = Date.now();
-            updateMenuContent();
+            updateGiftCooldownDisplay();
         }
     });
 
     document.getElementById('referralButton').addEventListener('click', showReferralLink);
     document.getElementById('closeMenuButton').addEventListener('click', toggleMenu);
+    updateGiftCooldownDisplay();
 }
 
 function showReferralLink() {
@@ -714,4 +717,3 @@ window.onload = function() {
     }
     startGame();
 };
-

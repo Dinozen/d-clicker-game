@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dinozen Clicker Game</title>
-    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Poppins&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -166,8 +166,11 @@
         }
         #randomGiftButton {
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            margin: 0 auto;
+            width: 100%;
         }
         #buttonsContainer {
             position: fixed;
@@ -178,19 +181,20 @@
             z-index: 10;
         }
         #randomGiftButton img {
-            margin-bottom: 5px;
             width: 40px;
+            margin-bottom: 5px;
         }
         .daily-streak {
             width: 90%;
-            max-width: 300px;
-            background-color: #000; /* Arka plan siyah */
+            max-width: 250px;
+            background-color: #000;
             padding: 10px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
             position: relative;
-            color: #fff; /* Yazı rengi beyaz */
+            color: #fff;
             margin: 20px auto;
+            font-family: 'Poppins', sans-serif;
         }
         .daily-streak .close-btn {
             position: absolute;
@@ -209,12 +213,13 @@
             border-collapse: collapse;
             margin: 0 auto;
             width: 100%;
+            font-size: 12px;
         }
         .daily-streak th, .daily-streak td {
-            border: 1px solid #fff; /* Beyaz sınırlar */
-            padding: 5px;
+            border: 1px solid #fff;
+            padding: 3px;
             text-align: center;
-            color: #fff; /* Yazı rengi beyaz */
+            color: #fff;
         }
         .daily-streak th {
             background-color: #4CAF50;
@@ -259,6 +264,10 @@
         #leaderboardButton:hover {
             background-color: #21a1f1;
         }
+        #giftCooldownDisplay {
+            text-align: center;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -286,7 +295,7 @@
                 <img src="gift-box.png" alt="Gift">
                 Random Gift
             </button>
-            <div id="giftCooldownDisplay" style="margin-top: 10px;"></div>
+            <div id="giftCooldownDisplay"></div>
             <button id="referralButton" class="button">Invite Friends</button>
             <p id="referralCount">Your Referrals: 0</p>
             <button id="closeMenuButton" class="button close-btn">Close</button>
@@ -368,6 +377,50 @@
     <script>
         document.getElementById('closeDailyStreak').addEventListener('click', function() {
             document.getElementById('rewardTableModal').style.display = 'none';
+        });
+
+        // Random Gift cooldown süresini 3 saate ayarla
+        const giftCooldown = 3 * 60 * 60 * 1000; // 3 saat
+        let lastGiftTime = 0;
+
+        // Random Gift sayacını güncelle
+        function updateGiftCooldown() {
+            const now = Date.now();
+            const timeRemaining = Math.max(0, lastGiftTime + giftCooldown - now);
+            const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+            const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+            
+            const giftCooldownDisplay = document.getElementById('giftCooldownDisplay');
+            const randomGiftButton = document.getElementById('randomGiftButton');
+            
+            if (timeRemaining > 0) {
+                giftCooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
+                randomGiftButton.disabled = true;
+                randomGiftButton.classList.add('disabled');
+            } else {
+                giftCooldownDisplay.textContent = 'Random Gift available!';
+                randomGiftButton.disabled = false;
+                randomGiftButton.classList.remove('disabled');
+            }
+        }
+
+        // Sayacı her saniye güncelle
+        setInterval(updateGiftCooldown, 1000);
+
+        // Sayfa yüklendiğinde sayacı başlat
+        document.addEventListener('DOMContentLoaded', function() {
+            updateGiftCooldown();
+        });
+
+        // Random Gift butonuna tıklandığında
+        document.getElementById('randomGiftButton').addEventListener('click', function() {
+            if (Date.now() >= lastGiftTime + giftCooldown) {
+                lastGiftTime = Date.now();
+                // Burada hediye verme işlemini gerçekleştirin
+                console.log('Random Gift claimed!');
+                updateGiftCooldown();
+            }
         });
     </script>
 </body>
