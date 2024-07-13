@@ -21,7 +21,6 @@ let autoBotPurchased = false;
 let autoBotTokens = 0;
 let energyRefillRate = 1/3; // Başlangıçta 3 saniyede 1
 
-
 // Level gereksinimleri
 const levelRequirements = [0, 2000, 5000, 10000, 20000];
 const clickLimits = [300, 500, 1000, 1500, 2000];
@@ -82,7 +81,7 @@ function startGame() {
     leaderboardButton.addEventListener('click', showLeaderboard);
     animateDino();
     checkDailyLogin();
-    setInterval(increaseClicks, 1000); // // Enerji dolum hızını güncellemek için interval'i değiştirin
+    setInterval(increaseClicks, 1000); // Her saniye kontrol et
     setInterval(updateGiftCooldownDisplay, 1000); // Her saniye sayacı güncelle
     setInterval(updateEnergyBoostCooldownDisplay, 1000); // Her saniye enerji boost sayacını güncelle
 }
@@ -215,8 +214,8 @@ function handleClick(event) {
             if (isDoubleTokensActive) {
                 tokenGain *= 2;
             }
-            tokens += tokenGain;
-            clicksRemaining--;
+            
+            // Her zaman efekti göster ve dino'yu hareket ettir
             createClickEffect(event.clientX || event.touches[0].clientX, event.clientY || event.touches[0].clientY, tokenGain);
             isClicking = true;
             clickScale = 1.1;
@@ -256,18 +255,22 @@ function setupGameUI() {
 }
 
 function formatNumber(number) {
-    if (number >= 1000000) {
-        return (number / 1000000).toFixed(1) + 'M';
+    if (number >= 10000) {
+        return (number / 1000).toFixed(1) + 'k';
     } else if (number >= 1000) {
-        return (number / 1000).toFixed(1) + 'K';
+        return number.toFixed(0);
     }
-    return number;
+    return number.toFixed(0);
+}
+
+function formatClicks(number) {
+    return number.toFixed(2).slice(0, 5);  // En fazla 5 karakter göster
 }
 
 function updateUI() {
     document.getElementById('tokenDisplay').textContent = formatNumber(tokens);
     document.getElementById('energyDisplay').textContent = `${energy}/${maxEnergy}`;
-    document.getElementById('clicksDisplay').textContent = formatNumber(clicksRemaining);
+    document.getElementById('clicksDisplay').textContent = formatClicks(clicksRemaining);
     document.getElementById('levelDisplay').textContent = `${level}`;
     updateDailyRewardDisplay();
     updateGiftCooldownDisplay();
@@ -439,19 +442,6 @@ function updateEnergyBoostCooldownDisplay() {
     }
 }
 
-function toggleBoosters() {
-    if (boostersModal.style.display === 'none' || boostersModal.style.display === '') {
-        boostersModal.style.display = 'block';
-        updateBoostersModalContent();
-        updateEnergyBoostCooldownDisplay(); // Boosters modalı açıldığında sayacı güncelle
-    } else {
-        boostersModal.style.display = 'none';
-    }
-}
-
-// Sayacı her saniye güncelle
-setInterval(updateEnergyBoostCooldownDisplay, 1000);
-
 function showMessage(message) {
     const messageModal = document.createElement('div');
     messageModal.className = 'modal';
@@ -561,10 +551,10 @@ function activateDoubleTokens() {
 
 function levelUp() {
     const previousLevel = level;
-    updateEnergyRefillRate();
     level++;
     maxEnergy = level + 2; // Örnek enerji hesaplama
     updateDinoImage();
+    updateEnergyRefillRate();
     checkLevelUp();
     saveUserData();
     updateUI();
@@ -581,7 +571,7 @@ function showLevelUpModal(previousLevel, newLevel) {
     const newRefillRate = newLevel === 1 ? 0.33 : newLevel === 2 ? 0.5 : newLevel === 3 ? 0.67 : newLevel === 4 ? 1 : 2;
 
     levelUpModal.innerHTML = `
-    <div class="modal-content">
+        <div class="modal-content">
             <h3>Level Up!</h3>
             <p>Congratulations! Your Dino reached Level ${newLevel}!</p>
             <p>Here are your updated stats:</p>
@@ -613,32 +603,6 @@ function showLevelUpModal(previousLevel, newLevel) {
             </table>
             <button id="closeLevelUpModal" class="close-btn">Close</button>
         </div>
-        <div class="modal-content">
-            <h3>Level Up!</h3>
-            <p>Congratulations! Your Dino reached Level ${newLevel}!</p>
-            <p>Here are your updated stats:</p>
-            <table>
-                <tr>
-                    <th>Stat</th>
-                    <th>Previous</th>
-                    <th></th>
-                    <th>New</th>
-                </tr>
-                <tr>
-                    <td>Clicks</td>
-                    <td>${previousClicks}</td>
-                    <td>→</td>
-                    <td>${newClicks}</td>
-                </tr>
-                <tr>
-                    <td>Energy</td>
-                    <td>${previousEnergy}</td>
-                    <td>→</td>
-                    <td>${newEnergy}</td>
-                </tr>
-            </table>
-            <button id="closeLevelUpModal" class="close-btn">Close</button>
-        </div>
     `;
     levelUpModal.style.display = 'block';
 
@@ -659,26 +623,84 @@ function calculateDailyReward(streak) {
     }
 }
 
-function showRewardTable() {
-    let tableContent = '<h3>Daily Streak Rewards</h3><table><tr><th>Day</th><th>Reward</th></tr>';
-    for (let i = 1; i <= 30; i++) {
-        tableContent += `<tr><td>${i}</td><td><img src="token.png" alt="token" style="width: 16px;"> ${formatNumber(calculateDailyReward(i))} tokens</td></tr>`;
-    }
-    tableContent += '</table>';
+const rewardData = [
+    { day: 1, tokens: 1000 }, { day: 2, tokens: 2000 }, { day: 3, tokens: 3000 },
+    { day: 4, tokens: 4000 }, { day: 5, tokens: 5000 }, { day: 6, tokens: 6000 },
+    { day: 7, tokens: 7000 }, { day: 8, tokens: 8000 }, { day: 9, tokens: 9000 },
+    { day: 10, tokens: 10000 }, { day: 11, tokens: 11000 }, { day: 12, tokens: 12000 },
+    { day: 13, tokens: 13000 }, { day: 14, tokens: 14000 }, { day: 15, tokens: 15000 },
+    { day: 16, tokens: 16000 }, { day: 17, tokens: 17000 }, { day: 18, tokens: 18000 },
+    { day: 19, tokens: 19000 }, { day: 20, tokens: 20000 }, { day: 21, tokens: 21000 },
+    { day: 22, tokens: 22000 }, { day: 23, tokens: 23000 }, { day: 24, tokens: 24000 },
+    { day: 25, tokens: 25000 }, { day: 26, tokens: 26000 }, { day: 27, tokens: 27000 },
+    { day: 28, tokens: 28000 }, { day: 29, tokens: 29000 }, { day: 30, tokens: 30000 }
+];
 
-    const rewardTableModal = document.getElementById('rewardTableModal');
-    rewardTableModal.innerHTML = `
-        <div class="modal-content daily-streak" id="dailyStreak">
-            <button class="close-btn" id="closeDailyStreak">&times;</button>
-            ${tableContent}
+function createRewardItem(day, tokens, isClaimable) {
+    return `
+        <div class="reward-item ${isClaimable ? 'claimable' : ''}" data-day="${day}">
+            <span>Day ${day}: <img src="token.png" alt="token" style="width: 16px; height: 16px;"> ${tokens} tokens</span>
+            ${isClaimable ? `<button class="claim-btn" onclick="claimReward(${day})">${day <= dailyStreak ? 'Claim' : 'Claimed'}</button>` : ''}
         </div>
     `;
-    rewardTableModal.style.display = 'block';
-
-    document.getElementById('closeRewardTableButton').onclick = function() {
-        rewardTableModal.style.display = 'none';
-    };
 }
+
+function populateRewardPages() {
+    const page1 = document.getElementById('rewardPage1');
+    const page2 = document.getElementById('rewardPage2');
+    
+    page1.innerHTML = rewardData.slice(0, 15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
+    page2.innerHTML = rewardData.slice(15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
+}
+
+let currentPage = 1;
+function toggleRewardPage() {
+    const page1 = document.getElementById('rewardPage1');
+    const page2 = document.getElementById('rewardPage2');
+    const prevBtn = document.getElementById('prevRewardPage');
+    const nextBtn = document.getElementById('nextRewardPage');
+
+    if (currentPage === 1) {
+        page1.style.display = 'none';
+        page2.style.display = 'block';
+        prevBtn.disabled = false;
+        nextBtn.disabled = true;
+        currentPage = 2;
+    } else {
+        page1.style.display = 'block';
+        page2.style.display = 'none';
+        prevBtn.disabled = true;
+        nextBtn.disabled = false;
+        currentPage = 1;
+    }
+}
+
+function claimReward(day) {
+    const rewardItem = document.querySelector(`.reward-item[data-day="${day}"]`);
+    if (day <= dailyStreak && !rewardItem.classList.contains('claimed')) {
+        const reward = rewardData.find(r => r.day === day);
+        tokens += reward.tokens;
+        updateUI();
+        showMessage(`Claimed ${reward.tokens} tokens for day ${day}!`);
+        rewardItem.classList.add('claimed');
+        const claimButton = rewardItem.querySelector('.claim-btn');
+        claimButton.textContent = 'Claimed';
+        claimButton.disabled = true;
+        saveUserData();
+    }
+}
+
+function showRewardTable() {
+    populateRewardPages();
+    document.getElementById('rewardTableModal').style.display = 'block';
+}
+
+document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
+document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
+
+document.getElementById('closeRewardTableButton').addEventListener('click', function() {
+    document.getElementById('rewardTableModal').style.display = 'none';
+});
 
 function checkDailyLogin() {
     const currentDate = new Date();
@@ -723,6 +745,9 @@ function increaseClicks() {
     }
 }
 
+function getMaxClicksForLevel() {
+    return clickLimits[level - 1] || clickLimits[clickLimits.length - 1];
+}
 
 function updateEnergyRefillRate() {
     switch(level) {
@@ -744,10 +769,6 @@ function updateEnergyRefillRate() {
         default:
             energyRefillRate = 2;
     }
-}
-
-function getMaxClicksForLevel() {
-    return clickLimits[level - 1] || clickLimits[clickLimits.length - 1];
 }
 
 function checkAutoBot() {
@@ -796,7 +817,7 @@ function showRandomGiftResult(reward, amount) {
     randomGiftModal.innerHTML = `
         <div class="modal-content">
             <h3>Random Gift</h3>
-            <p>You won: ${reward} (${formatNumber(amount)})</p>
+            <p>You won: ${reward} ${amount ? `(${formatNumber(amount)})` : ''}</p>
             <button id="closeRandomGiftModal" class="close-btn">Close</button>
         </div>
     `;
