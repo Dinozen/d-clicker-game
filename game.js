@@ -19,6 +19,8 @@ let isDoubleTokensActive = false;
 let autoBotActive = false;
 let autoBotPurchased = false;
 let autoBotTokens = 0;
+let energyRefillRate = 1/3; // Başlangıçta 3 saniyede 1
+
 
 // Level gereksinimleri
 const levelRequirements = [0, 2000, 5000, 10000, 20000];
@@ -80,7 +82,7 @@ function startGame() {
     leaderboardButton.addEventListener('click', showLeaderboard);
     animateDino();
     checkDailyLogin();
-    setInterval(increaseClicks, 6000); // Her 6 saniyede bir click hakkı artır
+    setInterval(increaseClicks, 1000); // // Enerji dolum hızını güncellemek için interval'i değiştirin
     setInterval(updateGiftCooldownDisplay, 1000); // Her saniye sayacı güncelle
     setInterval(updateEnergyBoostCooldownDisplay, 1000); // Her saniye enerji boost sayacını güncelle
 }
@@ -209,10 +211,6 @@ function handleClick(event) {
         y >= dinoY * scale && y <= (dinoY + dinoHeight) * scale) {
         console.log("Dino clicked!");
         if (energy > 0) {
-            if (clicksRemaining <= 0) {
-                energy--;
-                clicksRemaining = getMaxClicksForLevel();
-            }
             let tokenGain = 1 * getLevelMultiplier();
             if (isDoubleTokensActive) {
                 tokenGain *= 2;
@@ -222,9 +220,17 @@ function handleClick(event) {
             createClickEffect(event.clientX || event.touches[0].clientX, event.clientY || event.touches[0].clientY, tokenGain);
             isClicking = true;
             clickScale = 1.1;
-            updateUI();
-            checkLevelUp();
-            saveUserData();
+            
+            if (clicksRemaining > 0) {
+                tokens += tokenGain;
+                clicksRemaining--;
+                updateUI();
+                checkLevelUp();
+                saveUserData();
+            } else if (clicksRemaining <= 0) {
+                energy--;
+                clicksRemaining = getMaxClicksForLevel();
+            }
         } else {
             clicksRemaining = 0;
             updateUI();
@@ -555,6 +561,7 @@ function activateDoubleTokens() {
 
 function levelUp() {
     const previousLevel = level;
+    updateEnergyRefillRate();
     level++;
     maxEnergy = level + 2; // Örnek enerji hesaplama
     updateDinoImage();
@@ -570,8 +577,42 @@ function showLevelUpModal(previousLevel, newLevel) {
     const newClicks = clickLimits[newLevel - 1];
     const previousEnergy = 3 + (previousLevel - 1); // Örnek enerji hesaplama
     const newEnergy = 3 + (newLevel - 1); // Örnek enerji hesaplama
+    const previousRefillRate = previousLevel === 1 ? 0.33 : previousLevel === 2 ? 0.5 : previousLevel === 3 ? 0.67 : previousLevel === 4 ? 1 : 2;
+    const newRefillRate = newLevel === 1 ? 0.33 : newLevel === 2 ? 0.5 : newLevel === 3 ? 0.67 : newLevel === 4 ? 1 : 2;
 
     levelUpModal.innerHTML = `
+    <div class="modal-content">
+            <h3>Level Up!</h3>
+            <p>Congratulations! Your Dino reached Level ${newLevel}!</p>
+            <p>Here are your updated stats:</p>
+            <table>
+                <tr>
+                    <th>Stat</th>
+                    <th>Previous</th>
+                    <th></th>
+                    <th>New</th>
+                </tr>
+                <tr>
+                    <td>Clicks</td>
+                    <td>${previousClicks}</td>
+                    <td>→</td>
+                    <td>${newClicks}</td>
+                </tr>
+                <tr>
+                    <td>Energy</td>
+                    <td>${previousEnergy}</td>
+                    <td>→</td>
+                    <td>${newEnergy}</td>
+                </tr>
+                <tr>
+                    <td>Energy Refill Rate</td>
+                    <td>${previousRefillRate.toFixed(2)}/s</td>
+                    <td>→</td>
+                    <td>${newRefillRate.toFixed(2)}/s</td>
+                </tr>
+            </table>
+            <button id="closeLevelUpModal" class="close-btn">Close</button>
+        </div>
         <div class="modal-content">
             <h3>Level Up!</h3>
             <p>Congratulations! Your Dino reached Level ${newLevel}!</p>
@@ -634,7 +675,7 @@ function showRewardTable() {
     `;
     rewardTableModal.style.display = 'block';
 
-    document.getElementById('closeDailyStreak').onclick = function() {
+    document.getElementById('closeRewardTableButton').onclick = function() {
         rewardTableModal.style.display = 'none';
     };
 }
@@ -677,8 +718,31 @@ function updateDailyRewardDisplay() {
 function increaseClicks() {
     const maxClicks = getMaxClicksForLevel();
     if (clicksRemaining < maxClicks) {
-        clicksRemaining++;
+        clicksRemaining += energyRefillRate;
         updateUI();
+    }
+}
+
+
+function updateEnergyRefillRate() {
+    switch(level) {
+        case 1:
+            energyRefillRate = 1/3;
+            break;
+        case 2:
+            energyRefillRate = 1/2;
+            break;
+        case 3:
+            energyRefillRate = 2/3;
+            break;
+        case 4:
+            energyRefillRate = 1;
+            break;
+        case 5:
+            energyRefillRate = 2;
+            break;
+        default:
+            energyRefillRate = 2;
     }
 }
 
