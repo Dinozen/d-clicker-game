@@ -2,6 +2,7 @@ console.log("Game script loaded");
 
 // Oyun değişkenleri
 let tokens = 0;
+let completedTasks = [];
 let level = 1;
 let energy = 3;
 let maxEnergy = 3;
@@ -85,6 +86,7 @@ function loadUserData() {
         const data = JSON.parse(savedData);
         tokens = data.tokens;
         level = data.level;
+        completedTasks = data.completedTasks || [];
         energy = data.energy;
         maxEnergy = data.maxEnergy || level + 2;
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime();
@@ -326,7 +328,15 @@ function checkLevelUp() {
 function updateDinoImage() {
     const dinoIndex = Math.min(level - 1, 4); // Maksimum 5. seviye için
     currentDinoImage = dinoImages[dinoIndex];
-    drawDino();
+    console.log("Updating dino image:", currentDinoImage.src);
+    currentDinoImage.onload = () => {
+        console.log("Dino image loaded successfully");
+        drawDino();
+    };
+    currentDinoImage.onerror = (error) => {
+        console.error("Failed to load dino image:", error);
+    };
+    drawDino(); // Mevcut resmi hemen çiz, yeni resim yüklendiğinde tekrar çizilecek
 }
 
 function createLevelUpEffect() {
@@ -367,6 +377,10 @@ function toggleBoosters() {
 }
 
 function updateBoostersModalContent() {
+    if (!boostersModal) {
+        console.error('Boosters modal not found');
+        return;
+    }
     boostersModal.innerHTML = `
         <div class="modal-content">
             <h3>Boosters</h3>
@@ -386,9 +400,24 @@ function updateBoostersModalContent() {
             <button id="closeBoostersModal" class="close-btn">X</button>
         </div>
     `;
-    document.getElementById('energyBoostButton').addEventListener('click', activateEnergyBoost);
-    document.getElementById('autoBotButton').addEventListener('click', activateAutoBot);
-    document.getElementById('closeBoostersModal').addEventListener('click', toggleBoosters);
+
+    // Event listener'ları ekleyelim
+    const energyBoostButton = document.getElementById('energyBoostButton');
+    const autoBotButton = document.getElementById('autoBotButton');
+    const closeBoostersModalButton = document.getElementById('closeBoostersModal');
+
+    if (energyBoostButton) {
+        energyBoostButton.addEventListener('click', activateEnergyBoost);
+    }
+    if (autoBotButton) {
+        autoBotButton.addEventListener('click', activateAutoBot);
+    }
+    if (closeBoostersModalButton) {
+        closeBoostersModalButton.addEventListener('click', toggleBoosters);
+    }
+
+    // Enerji boost soğuma süresini güncelle
+    updateEnergyBoostCooldownDisplay();
 }
 
 function activateEnergyBoost() {
@@ -459,7 +488,7 @@ function showMessage(message) {
     messageModal.innerHTML = `
         <div class="modal-content">
             <p>${message}</p>
-            <button id="closeMessageModal" class="close-btn">X</button>
+            <button id="closeMessageModal" class="button">OK</button>
         </div>
     `;
     document.body.appendChild(messageModal);
@@ -820,6 +849,11 @@ function showTasks() {
 }
 
 function startTask(taskType) {
+    if (completedTasks.includes(taskType)) {
+        showMessage('You have already completed this task!');
+        return;
+    }
+
     let url, buttonId;
     
     if (taskType === 'followX') {
@@ -842,7 +876,7 @@ function startTask(taskType) {
         } else {
             button.textContent = 'START';
             button.disabled = false;
-            alert('Please keep the task window open for at least 5 seconds to complete the task.');
+            showMessage('Please keep the task window open for at least 5 seconds to complete the task.');
         }
     }, 5000);
 }
