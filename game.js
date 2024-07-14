@@ -19,11 +19,11 @@ let isDoubleTokensActive = false;
 let autoBotActive = false;
 let autoBotPurchased = false;
 let autoBotTokens = 0;
-let energyRefillRate = 1/3; // Başlangıçta 3 saniyede 1
+let energyRefillRate = 1 / 3; // Başlangıçta 3 saniyede 1
 let lastAutoBotClaimTime = 0;
 
 // Level gereksinimleri
-const levelRequirements = [0, 2000, 5000, 10000, 20000, 50000];
+const levelRequirements = [0, 3000, 8000, 20000, 40000];
 const clickLimits = [300, 500, 1000, 1500, 2000];
 
 // DOM elementleri
@@ -82,7 +82,7 @@ function startGame() {
     setupGameUI();
     menuButton.addEventListener('click', toggleMenu);
     boostersButton.addEventListener('click', toggleBoosters);
-    leaderboardButton.addEventListener('click', showLeaderboard);
+    leaderboardButton.addEventListener('click', showDailyStreaks);
     animateDino();
     checkDailyLogin();
     setInterval(increaseClicks, 1000); // Her saniye kontrol et
@@ -354,16 +354,6 @@ function toggleMenu() {
         updateMenuContent();
     } else {
         menuModal.style.display = 'none';
-    }
-}
-
-function toggleBoosters() {
-    if (boostersModal.style.display === 'none' || boostersModal.style.display === '') {
-        boostersModal.style.display = 'block';
-        updateBoostersModalContent();
-        document.getElementById('closeBoostersModal').addEventListener('click', toggleBoosters);
-    } else {
-        boostersModal.style.display = 'none';
     }
 }
 
@@ -662,10 +652,10 @@ function createRewardItem(day, tokens, isClaimable) {
     return `
         <div class="reward-item ${isClaimable ? 'claimable' : ''}" data-day="${day}">
             <span>Day ${day}: <img src="token.png" alt="token" style="width: 16px; height: 16px;"> ${tokens} tokens</span>
-            ${isClaimable ? `<button class="claim-btn" onclick="claimReward(${day})">${day <= dailyStreak ? 'Claim' : 'Claimed'}</button>` : ''}
         </div>
     `;
 }
+
 
 function populateRewardPages() {
     const page1 = document.getElementById('rewardPage1');
@@ -675,7 +665,9 @@ function populateRewardPages() {
     page2.innerHTML = rewardData.slice(15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
 }
 
+
 let currentPage = 1;
+
 function toggleRewardPage() {
     const page1 = document.getElementById('rewardPage1');
     const page2 = document.getElementById('rewardPage2');
@@ -697,25 +689,11 @@ function toggleRewardPage() {
     }
 }
 
-function claimReward(day) {
-    const rewardItem = document.querySelector(`.reward-item[data-day="${day}"]`);
-    if (day <= dailyStreak && !rewardItem.classList.contains('claimed')) {
-        const reward = rewardData.find(r => r.day === day);
-        tokens += reward.tokens;
-        updateUI();
-        showMessage(`Claimed ${reward.tokens} tokens for day ${day}!`);
-        rewardItem.classList.add('claimed');
-        const claimButton = rewardItem.querySelector('.claim-btn');
-        claimButton.textContent = 'Claimed';
-        claimButton.disabled = true;
-        saveUserData();
-    }
-}
-
-function showRewardTable() {
+function showDailyStreaks() {
     populateRewardPages();
     document.getElementById('rewardTableModal').style.display = 'block';
 }
+
 
 document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
 document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
@@ -747,7 +725,6 @@ function checkDailyLogin() {
                 loginStreakModal.style.display = 'none';
                 saveUserData();
                 updateUI();
-                showRewardTable(); // Ödül tablosunu göster
             };
         }
     }
@@ -880,4 +857,12 @@ window.onload = function() {
         telegramId = userTelegramId;
     }
     startGame();
+    
+    document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
+    document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
+
+    document.getElementById('closeRewardTableButton').addEventListener('click', function() {
+        document.getElementById('rewardTableModal').style.display = 'none';
+    });
 };
+
