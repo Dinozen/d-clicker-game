@@ -20,9 +20,10 @@ let autoBotActive = false;
 let autoBotPurchased = false;
 let autoBotTokens = 0;
 let energyRefillRate = 1/3; // Başlangıçta 3 saniyede 1
+let lastAutoBotClaimTime = 0;
 
 // Level gereksinimleri
-const levelRequirements = [0, 2000, 5000, 10000, 20000];
+const levelRequirements = [0, 2000, 5000, 10000, 20000, 50000];
 const clickLimits = [300, 500, 1000, 1500, 2000];
 
 // DOM elementleri
@@ -36,6 +37,9 @@ const boostersModal = document.getElementById('boostersModal');
 const levelUpModal = document.createElement('div');
 const autoBotModal = document.createElement('div');
 const leaderboardButton = document.getElementById('leaderboardButton');
+
+const autoBotSuccessModal = document.getElementById('autoBotSuccessModal');
+const autoBotEarningsModal = document.getElementById('autoBotEarningsModal');
 
 // Modal stilleri
 levelUpModal.classList.add('modal');
@@ -105,6 +109,8 @@ function loadUserData() {
         referralCount = data.referralCount || 0;
         autoBotActive = data.autoBotActive || false;
         autoBotPurchased = data.autoBotPurchased || false;
+        autoBotTokens = data.autoBotTokens || 0;
+        lastAutoBotClaimTime = data.lastAutoBotClaimTime || 0;
         console.log("User data loaded:", data);
     } else {
         console.log("No saved data found for this user");
@@ -128,7 +134,9 @@ function saveUserData() {
         lastEnergyBoostTime,
         referralCount,
         autoBotActive,
-        autoBotPurchased
+        autoBotPurchased,
+        autoBotTokens,
+        lastAutoBotClaimTime
     };
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
@@ -209,29 +217,25 @@ function handleClick(event) {
     if (x >= dinoX * scale && x <= (dinoX + dinoWidth) * scale && 
         y >= dinoY * scale && y <= (dinoY + dinoHeight) * scale) {
         console.log("Dino clicked!");
-        if (energy > 0) {
-            let tokenGain = 1 * getLevelMultiplier();
-            if (isDoubleTokensActive) {
-                tokenGain *= 2;
-            }
-            
-            // Her zaman efekti göster ve dino'yu hareket ettir
-            createClickEffect(event.clientX || event.touches[0].clientX, event.clientY || event.touches[0].clientY, tokenGain);
-            isClicking = true;
-            clickScale = 1.1;
-            
-            if (clicksRemaining > 0) {
-                tokens += tokenGain;
-                clicksRemaining--;
-                updateUI();
-                checkLevelUp();
-                saveUserData();
-            } else if (clicksRemaining <= 0) {
-                energy--;
-                clicksRemaining = getMaxClicksForLevel();
-            }
-        } else {
-            clicksRemaining = 0;
+        let tokenGain = 1 * getLevelMultiplier();
+        if (isDoubleTokensActive) {
+            tokenGain *= 2;
+        }
+        
+        // Her zaman efekti göster ve dino'yu hareket ettir
+        createClickEffect(event.clientX || event.touches[0].clientX, event.clientY || event.touches[0].clientY, tokenGain);
+        isClicking = true;
+        clickScale = 1.1;
+        
+        if (clicksRemaining > 0) {
+            tokens += tokenGain;
+            clicksRemaining--;
+            updateUI();
+            checkLevelUp();
+            saveUserData();
+        } else if (energy > 0) {
+            energy--;
+            clicksRemaining = getMaxClicksForLevel();
             updateUI();
         }
     }
@@ -312,7 +316,7 @@ function animateDino() {
 
 function checkLevelUp() {
     const newLevel = levelRequirements.findIndex(req => tokens < req);
-    if (newLevel > level) {
+    if (newLevel > level && newLevel <= 5) {
         while (level < newLevel) {
             levelUp();
         }
@@ -320,7 +324,8 @@ function checkLevelUp() {
 }
 
 function updateDinoImage() {
-    currentDinoImage = dinoImages[level - 1];
+    const dinoIndex = Math.min(level - 1, 4); // Maksimum 5. seviye için
+    currentDinoImage = dinoImages[dinoIndex];
     drawDino();
 }
 
@@ -362,6 +367,16 @@ function toggleBoosters() {
     }
 }
 
+function toggleBoosters() {
+    if (boostersModal.style.display === 'none' || boostersModal.style.display === '') {
+        boostersModal.style.display = 'block';
+        updateBoostersModalContent();
+        document.getElementById('closeBoostersModal').addEventListener('click', toggleBoosters);
+    } else {
+        boostersModal.style.display = 'none';
+    }
+}
+
 function updateBoostersModalContent() {
     boostersModal.innerHTML = `
         <div class="modal-content">
@@ -379,7 +394,7 @@ function updateBoostersModalContent() {
                 </div>
                 <button id="autoBotButton" class="button">Activate AutoBot</button>
             </div>
-            <button id="closeBoostersModal" class="close-btn">Close</button>
+            <button id="closeBoostersModal" class="close-btn">X</button>
         </div>
     `;
     document.getElementById('energyBoostButton').addEventListener('click', activateEnergyBoost);
@@ -409,7 +424,7 @@ function activateAutoBot() {
         autoBotPurchased = true;
         saveUserData();
         updateUI();
-        showAutoBotModal();
+        showAutoBotSuccessMessage();
         document.getElementById('autoBotButton').textContent = 'AutoBot Activated';
         document.getElementById('autoBotButton').disabled = true;
     } else if (autoBotPurchased) {
@@ -418,6 +433,13 @@ function activateAutoBot() {
         showMessage('Not enough tokens to activate AutoBot.');
     }
     toggleBoosters(); // Boosters modalını kapat
+}
+
+function showAutoBotSuccessMessage() {
+    autoBotSuccessModal.style.display = 'block';
+    document.getElementById('closeAutoBotSuccessModal').onclick = function() {
+        autoBotSuccessModal.style.display = 'none';
+    };
 }
 
 function updateEnergyBoostCooldownDisplay() {
@@ -448,7 +470,7 @@ function showMessage(message) {
     messageModal.innerHTML = `
         <div class="modal-content">
             <p>${message}</p>
-            <button id="closeMessageModal" class="close-btn">Close</button>
+            <button id="closeMessageModal" class="close-btn">X</button>
         </div>
     `;
     document.body.appendChild(messageModal);
@@ -473,7 +495,7 @@ function updateMenuContent() {
             <div id="giftCooldownDisplay"></div>
             <button id="referralButton" class="button">Invite Friends</button>
             <p>Your Referrals: ${referralCount}</p>
-            <button id="closeMenuButton" class="button close-btn">Close</button>
+            <button id="closeMenuButton" class="button close-btn">X</button>
         </div>
     `;
 
@@ -601,7 +623,7 @@ function showLevelUpModal(previousLevel, newLevel) {
                     <td>${newRefillRate.toFixed(2)}/s</td>
                 </tr>
             </table>
-            <button id="closeLevelUpModal" class="close-btn">Close</button>
+            <button id="closeLevelUpModal" class="close-btn">X</button>
         </div>
     `;
     levelUpModal.style.display = 'block';
@@ -740,7 +762,7 @@ function updateDailyRewardDisplay() {
 function increaseClicks() {
     const maxClicks = getMaxClicksForLevel();
     if (clicksRemaining < maxClicks) {
-        clicksRemaining += energyRefillRate;
+        clicksRemaining = Math.min(clicksRemaining + energyRefillRate, maxClicks);
         updateUI();
     }
 }
@@ -774,31 +796,22 @@ function updateEnergyRefillRate() {
 function checkAutoBot() {
     if (autoBotActive) {
         const currentTime = Date.now();
-        const elapsedTime = (currentTime - lastLoginDate) / 1000; // Saniye cinsinden geçen süre
+        const elapsedTime = (currentTime - Math.max(lastAutoBotClaimTime, lastLoginDate)) / 1000; // Saniye cinsinden geçen süre
         autoBotTokens = Math.floor(elapsedTime * (level * 0.1)); // Her saniye için level * 0.1 token
         
-        showAutoBotEarningsModal();
+        showAutoBotEarnings();
     }
 }
 
-function showAutoBotEarningsModal() {
-    const autoBotEarningsModal = document.createElement('div');
-    autoBotEarningsModal.className = 'modal';
-    autoBotEarningsModal.innerHTML = `
-        <div class="modal-content">
-            <h3>AutoBot Earnings</h3>
-            <table>
-                <tr><td>Tokens Collected:</td><td>${formatNumber(autoBotTokens)}</td></tr>
-                <tr><td>Time Active:</td><td>${formatTime((Date.now() - lastLoginDate) / 1000)}</td></tr>
-            </table>
-            <button id="claimAutoBotTokens" class="button">Claim Tokens</button>
-        </div>
-    `;
-    document.body.appendChild(autoBotEarningsModal);
+function showAutoBotEarnings() {
+    document.getElementById('autoBotTokensCollected').textContent = formatNumber(autoBotTokens);
+    document.getElementById('autoBotActiveTime').textContent = formatTime((Date.now() - Math.max(lastAutoBotClaimTime, lastLoginDate)) / 1000);
+    autoBotEarningsModal.style.display = 'block';
 
     document.getElementById('claimAutoBotTokens').addEventListener('click', function() {
         tokens += autoBotTokens;
         autoBotTokens = 0;
+        lastAutoBotClaimTime = Date.now();
         updateUI();
         saveUserData();
         autoBotEarningsModal.style.display = 'none';
@@ -818,7 +831,7 @@ function showRandomGiftResult(reward, amount) {
         <div class="modal-content">
             <h3>Random Gift</h3>
             <p>You won: ${reward} ${amount ? `(${formatNumber(amount)})` : ''}</p>
-            <button id="closeRandomGiftModal" class="close-btn">Close</button>
+            <button id="closeRandomGiftModal" class="close-btn">X</button>
         </div>
     `;
     document.body.appendChild(randomGiftModal);
@@ -842,7 +855,7 @@ function showLeaderboard() {
                 <tr><td>2</td><td>Player2</td><td>90,000</td></tr>
                 <tr><td>3</td><td>Player3</td><td>80,000</td></tr>
             </table>
-            <button id="closeLeaderboardModal" class="close-btn">Close</button>
+            <button id="closeLeaderboardModal" class="close-btn">X</button>
         </div>
     `;
     document.body.appendChild(leaderboardModal);
