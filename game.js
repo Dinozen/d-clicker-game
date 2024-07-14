@@ -27,25 +27,8 @@ const levelRequirements = [0, 3000, 8000, 20000, 40000];
 const clickLimits = [300, 500, 1000, 1500, 2000];
 
 // DOM elementleri
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const menuButton = document.getElementById('menuButton');
-const menuModal = document.getElementById('menuModal');
-const dailyRewardDisplay = document.getElementById('dailyRewardDisplay');
-const boostersButton = document.getElementById('boostersButton');
-const boostersModal = document.getElementById('boostersModal');
-const levelUpModal = document.createElement('div');
-const autoBotModal = document.createElement('div');
-const leaderboardButton = document.getElementById('leaderboardButton');
-
-const autoBotSuccessModal = document.getElementById('autoBotSuccessModal');
-const autoBotEarningsModal = document.getElementById('autoBotEarningsModal');
-
-// Modal stilleri
-levelUpModal.classList.add('modal');
-autoBotModal.classList.add('modal');
-document.body.appendChild(levelUpModal);
-document.body.appendChild(autoBotModal);
+let canvas, ctx, earnButton, tasksButton, boostButton, dailyRewardsButton, menuModal, dailyRewardDisplay, boostersModal, tasksModal, rewardTableModal;
+let autoBotSuccessModal, autoBotEarningsModal;
 
 // Dinozor resimleri
 const dinoImages = [];
@@ -62,32 +45,37 @@ let clickScale = 1;
 
 function startGame() {
     console.log("Starting game");
+    initializeDOM();
     loadUserData();
     resizeCanvas();
-    if (currentDinoImage.complete) {
-        console.log("Dino image already loaded");
-        drawDino();
-        setupClickHandler();
-    } else {
-        console.log("Waiting for dino image to load");
-        currentDinoImage.onload = () => {
-            console.log("Dino image loaded");
-            drawDino();
-            setupClickHandler();
-        };
-        currentDinoImage.onerror = () => {
-            console.error("Failed to load dino image");
-        };
-    }
-    setupGameUI();
-    menuButton.addEventListener('click', toggleMenu);
-    boostersButton.addEventListener('click', toggleBoosters);
-    leaderboardButton.addEventListener('click', showDailyStreaks);
+    setupClickHandler();
+    
+    window.requestAnimationFrame(() => {
+        setupGameUI();
+        updateUI();
+    });
+    
     animateDino();
     checkDailyLogin();
-    setInterval(increaseClicks, 1000); // Her saniye kontrol et
-    setInterval(updateGiftCooldownDisplay, 1000); // Her saniye sayacı güncelle
-    setInterval(updateEnergyBoostCooldownDisplay, 1000); // Her saniye enerji boost sayacını güncelle
+    setInterval(increaseClicks, 1000);
+    setInterval(updateGiftCooldownDisplay, 1000);
+    setInterval(updateEnergyBoostCooldownDisplay, 1000);
+}
+
+function initializeDOM() {
+    canvas = document.getElementById('gameCanvas');
+    ctx = canvas.getContext('2d');
+    earnButton = document.getElementById('earnButton');
+    tasksButton = document.getElementById('tasksButton');
+    boostButton = document.getElementById('boostButton');
+    dailyRewardsButton = document.getElementById('dailyRewardsButton');
+    menuModal = document.getElementById('menuModal');
+    dailyRewardDisplay = document.getElementById('dailyRewardDisplay');
+    boostersModal = document.getElementById('boostersModal');
+    tasksModal = document.getElementById('tasksModal');
+    rewardTableModal = document.getElementById('rewardTableModal');
+    autoBotSuccessModal = document.getElementById('autoBotSuccessModal');
+    autoBotEarningsModal = document.getElementById('autoBotEarningsModal');
 }
 
 function loadUserData() {
@@ -115,7 +103,6 @@ function loadUserData() {
     } else {
         console.log("No saved data found for this user");
     }
-    updateUI();
     updateDinoImage();
 }
 
@@ -154,12 +141,14 @@ function resizeCanvas() {
 function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    console.log("Drawing dino. Image status:", currentDinoImage.complete, "Natural size:", currentDinoImage.naturalWidth, currentDinoImage.naturalHeight);
+
     if (currentDinoImage.complete && currentDinoImage.naturalWidth > 0) {
-        const scale = Math.min(window.innerWidth / currentDinoImage.naturalWidth, window.innerHeight / currentDinoImage.naturalHeight) * 0.4;
+        const scale = Math.min(canvas.width / currentDinoImage.naturalWidth, canvas.height / currentDinoImage.naturalHeight) * 0.4;
         dinoWidth = Math.round(currentDinoImage.naturalWidth * scale * clickScale);
         dinoHeight = Math.round(currentDinoImage.naturalHeight * scale * clickScale);
-        dinoX = Math.round((window.innerWidth - dinoWidth) / 2);
-        dinoY = Math.round((window.innerHeight - dinoHeight) / 2);
+        dinoX = Math.round((canvas.width - dinoWidth) / 2);
+        dinoY = Math.round((canvas.height - dinoHeight) / 2);
         
         // Arka plan dairesi çiz
         const centerX = dinoX + dinoWidth / 2;
@@ -187,8 +176,12 @@ function drawDino() {
     } else {
         console.log("Dino image not ready, drawing placeholder");
         ctx.fillStyle = 'green';
-        ctx.fillRect(window.innerWidth / 2 - 50, window.innerHeight / 2 - 50, 100, 100);
+        ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
     }
+
+    // Canvas boyutlarını ve ölçeklendirmeyi kontrol et
+    console.log("Canvas size:", canvas.width, canvas.height);
+    console.log("Device pixel ratio:", window.devicePixelRatio);
 }
 
 function setupClickHandler() {
@@ -222,7 +215,6 @@ function handleClick(event) {
             tokenGain *= 2;
         }
         
-        // Her zaman efekti göster ve dino'yu hareket ettir
         createClickEffect(event.clientX || event.touches[0].clientX, event.clientY || event.touches[0].clientY, tokenGain);
         isClicking = true;
         clickScale = 1.1;
@@ -272,10 +264,18 @@ function formatClicks(number) {
 }
 
 function updateUI() {
-    document.getElementById('tokenDisplay').textContent = formatNumber(tokens);
-    document.getElementById('energyDisplay').textContent = `${energy}/${maxEnergy}`;
-    document.getElementById('clicksDisplay').textContent = formatClicks(clicksRemaining);
-    document.getElementById('levelDisplay').textContent = `${level}`;
+    const elements = {
+        tokenDisplay: document.getElementById('tokenDisplay'),
+        energyDisplay: document.getElementById('energyDisplay'),
+        clicksDisplay: document.getElementById('clicksDisplay'),
+        levelDisplay: document.getElementById('levelDisplay')
+    };
+
+    if (elements.tokenDisplay) elements.tokenDisplay.textContent = formatNumber(tokens);
+    if (elements.energyDisplay) elements.energyDisplay.textContent = `${energy}/${maxEnergy}`;
+    if (elements.clicksDisplay) elements.clicksDisplay.textContent = formatClicks(clicksRemaining);
+    if (elements.levelDisplay) elements.levelDisplay.textContent = `${level}`;
+
     updateDailyRewardDisplay();
     updateGiftCooldownDisplay();
 }
@@ -309,8 +309,8 @@ function animateDino() {
             clickScale = 1;
             isClicking = false;
         }
-        drawDino();
     }
+    drawDino();  // Her karede dino'yu çiz
     requestAnimationFrame(animateDino);
 }
 
@@ -361,7 +361,6 @@ function toggleBoosters() {
     if (boostersModal.style.display === 'none' || boostersModal.style.display === '') {
         boostersModal.style.display = 'block';
         updateBoostersModalContent();
-        document.getElementById('closeBoostersModal').addEventListener('click', toggleBoosters);
     } else {
         boostersModal.style.display = 'none';
     }
@@ -400,11 +399,11 @@ function activateEnergyBoost() {
         updateUI();
         saveUserData();
         showMessage('Energy fully restored!');
-        updateEnergyBoostCooldownDisplay(); // Sayacı hemen güncelle
+        updateEnergyBoostCooldownDisplay();
     } else {
         showMessage('Energy Boost is not available yet.');
     }
-    toggleBoosters(); // Boosters modalını kapat
+    toggleBoosters();
 }
 
 function activateAutoBot() {
@@ -422,7 +421,7 @@ function activateAutoBot() {
     } else {
         showMessage('Not enough tokens to activate AutoBot.');
     }
-    toggleBoosters(); // Boosters modalını kapat
+    toggleBoosters();
 }
 
 function showAutoBotSuccessMessage() {
@@ -545,17 +544,17 @@ function showReferralLink() {
 }
 
 function getLevelMultiplier() {
-    return 1 + (level - 1) * 0.25; // Her seviye için %25 artış
+    return 1 + (level - 1) * 0.25;
 }
 
 function activateDoubleTokens() {
-    const duration = 20000; // 20 saniye
+    const duration = 20000;
     isDoubleTokensActive = true;
     const originalClicksRemaining = clicksRemaining;
-    clicksRemaining = Infinity; // Sınırsız tıklama
+    clicksRemaining = Infinity;
     setTimeout(() => {
         isDoubleTokensActive = false;
-        clicksRemaining = originalClicksRemaining; // Orijinal tıklama sayısını geri yükle
+        clicksRemaining = originalClicksRemaining;
         updateUI();
     }, duration);
     alert('Double Tokens activated for 20 seconds! Click as fast as you can!');
@@ -564,7 +563,7 @@ function activateDoubleTokens() {
 function levelUp() {
     const previousLevel = level;
     level++;
-    maxEnergy = level + 2; // Örnek enerji hesaplama
+    maxEnergy = level + 2;
     updateDinoImage();
     updateEnergyRefillRate();
     checkLevelUp();
@@ -577,11 +576,13 @@ function levelUp() {
 function showLevelUpModal(previousLevel, newLevel) {
     const previousClicks = clickLimits[previousLevel - 1];
     const newClicks = clickLimits[newLevel - 1];
-    const previousEnergy = 3 + (previousLevel - 1); // Örnek enerji hesaplama
-    const newEnergy = 3 + (newLevel - 1); // Örnek enerji hesaplama
+    const previousEnergy = 3 + (previousLevel - 1);
+    const newEnergy = 3 + (newLevel - 1);
     const previousRefillRate = previousLevel === 1 ? 0.33 : previousLevel === 2 ? 0.5 : previousLevel === 3 ? 0.67 : previousLevel === 4 ? 1 : 2;
     const newRefillRate = newLevel === 1 ? 0.33 : newLevel === 2 ? 0.5 : newLevel === 3 ? 0.67 : newLevel === 4 ? 1 : 2;
 
+    const levelUpModal = document.createElement('div');
+    levelUpModal.className = 'modal';
     levelUpModal.innerHTML = `
         <div class="modal-content">
             <h3>Level Up!</h3>
@@ -616,10 +617,12 @@ function showLevelUpModal(previousLevel, newLevel) {
             <button id="closeLevelUpModal" class="close-btn">X</button>
         </div>
     `;
+    document.body.appendChild(levelUpModal);
     levelUpModal.style.display = 'block';
 
     document.getElementById('closeLevelUpModal').onclick = function() {
         levelUpModal.style.display = 'none';
+        document.body.removeChild(levelUpModal);
     };
 }
 
@@ -656,7 +659,6 @@ function createRewardItem(day, tokens, isClaimable) {
     `;
 }
 
-
 function populateRewardPages() {
     const page1 = document.getElementById('rewardPage1');
     const page2 = document.getElementById('rewardPage2');
@@ -664,7 +666,6 @@ function populateRewardPages() {
     page1.innerHTML = rewardData.slice(0, 15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
     page2.innerHTML = rewardData.slice(15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
 }
-
 
 let currentPage = 1;
 
@@ -694,17 +695,9 @@ function showDailyStreaks() {
     document.getElementById('rewardTableModal').style.display = 'block';
 }
 
-
-document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
-document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
-
-document.getElementById('closeRewardTableButton').addEventListener('click', function() {
-    document.getElementById('rewardTableModal').style.display = 'none';
-});
-
 function checkDailyLogin() {
     const currentDate = new Date();
-    const offset = 3 * 60 * 60 * 1000; // UTC 03:00 offset
+    const offset = 3 * 60 * 60 * 1000;
     currentDate.setUTCHours(3, 0, 0, 0);
     const currentTime = new Date(Date.now() + offset);
 
@@ -722,18 +715,20 @@ function checkDailyLogin() {
             loginStreakModal.style.display = 'block';
 
             document.getElementById('closeLoginStreakModal').onclick = function() {
-                loginStreakModal.style.display = 'none';
-                saveUserData();
-                updateUI();
-            };
-        }
+    loginStreakModal.style.display = 'none';
+    saveUserData();
+    updateUI();
+};
     }
+}
 
-    checkAutoBot();
+checkAutoBot();
 }
 
 function updateDailyRewardDisplay() {
-    dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
+    if (dailyRewardDisplay) {
+        dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
+    }
 }
 
 function increaseClicks() {
@@ -820,28 +815,48 @@ function showRandomGiftResult(reward, amount) {
     };
 }
 
-function showLeaderboard() {
-    const leaderboardModal = document.createElement('div');
-    leaderboardModal.className = 'modal';
-    leaderboardModal.innerHTML = `
-        <div class="modal-content">
-            <h3>Leaderboard</h3>
-            <table>
-                <tr><th>Rank</th><th>Player</th><th>Tokens</th></tr>
-                <tr><td>1</td><td>Player1</td><td>100,000</td></tr>
-                <tr><td>2</td><td>Player2</td><td>90,000</td></tr>
-                <tr><td>3</td><td>Player3</td><td>80,000</td></tr>
-            </table>
-            <button id="closeLeaderboardModal" class="close-btn">X</button>
-        </div>
-    `;
-    document.body.appendChild(leaderboardModal);
-    leaderboardModal.style.display = 'block';
+function showTasks() {
+    tasksModal.style.display = 'block';
+}
 
-    document.getElementById('closeLeaderboardModal').onclick = function() {
-        leaderboardModal.style.display = 'none';
-        document.body.removeChild(leaderboardModal);
-    };
+function startTask(taskType) {
+    let url, buttonId;
+    
+    if (taskType === 'followX') {
+        url = 'https://x.com/dinozenofficial';
+        buttonId = 'followUsButton';
+    } else if (taskType === 'visitWebsite') {
+        url = 'https://www.dinozen.online/';
+        buttonId = 'visitWebsiteButton';
+    }
+    
+    const taskWindow = window.open(url, '_blank');
+    const button = document.getElementById(buttonId);
+    button.textContent = 'CHECKING...';
+    button.disabled = true;
+    
+    setTimeout(() => {
+        if (taskWindow && !taskWindow.closed) {
+            completeTask(taskType);
+            taskWindow.close();
+        } else {
+            button.textContent = 'START';
+            button.disabled = false;
+            alert('Please keep the task window open for at least 5 seconds to complete the task.');
+        }
+    }, 5000);
+}
+
+function completeTask(taskType) {
+    tokens += 1000;
+    updateUI();
+    saveUserData();
+    alert('Task completed! You earned 1000 tokens.');
+    
+    const buttonId = taskType === 'followX' ? 'followUsButton' : 'visitWebsiteButton';
+    const button = document.getElementById(buttonId);
+    button.textContent = 'CLAIMED';
+    button.disabled = true;
 }
 
 window.addEventListener('resize', resizeCanvas);
@@ -850,7 +865,7 @@ setInterval(() => {
     saveUserData();
 }, 1000);
 
-window.onload = function() {
+window.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const userTelegramId = urlParams.get('id');
     if (userTelegramId) {
@@ -858,11 +873,19 @@ window.onload = function() {
     }
     startGame();
     
+    document.getElementById('earnButton').addEventListener('click', toggleMenu);
+    document.getElementById('tasksButton').addEventListener('click', showTasks);
+    document.getElementById('boostButton').addEventListener('click', toggleBoosters);
+    document.getElementById('dailyRewardsButton').addEventListener('click', showDailyStreaks);
+    
     document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
     document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
-
     document.getElementById('closeRewardTableButton').addEventListener('click', function() {
         document.getElementById('rewardTableModal').style.display = 'none';
     });
-};
-
+    document.getElementById('followUsButton').addEventListener('click', () => startTask('followX'));
+    document.getElementById('visitWebsiteButton').addEventListener('click', () => startTask('visitWebsite'));
+    document.getElementById('closeTasksModal').addEventListener('click', () => {
+        tasksModal.style.display = 'none';
+    });
+});
