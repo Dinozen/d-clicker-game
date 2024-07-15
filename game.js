@@ -407,7 +407,7 @@ function updateBoostersModalContent() {
         <div class="modal-content">
             <h3>Boosters</h3>
             <div id="energyBoostContainer" style="display: flex; flex-direction: column; align-items: center;">
-                <h3>🚀 Energy Boost</h3>
+                <h3>🚀 Full Energy Refill</h3>
                 <button id="energyBoostButton" class="button">Activate Energy Boost</button>
                 <div id="energyBoostCooldownDisplay"></div>
             </div>
@@ -949,3 +949,76 @@ const rewardData = [
     { day: 25, tokens: 35000 }, { day: 26, tokens: 37000 }, { day: 27, tokens: 39000 },
     { day: 28, tokens: 41000 }, { day: 29, tokens: 43000 }, { day: 30, tokens: 45000 }
 ];
+function updateReferralRewards() {
+    const referralRewardsContainer = document.getElementById('referralRewards');
+    referralRewardsContainer.innerHTML = `
+        <h4>Referral Rewards:</h4>
+        <p>1 Referral: 3,000 tokens</p>
+        <p>5 Referrals: 15,000 tokens</p>
+        <p>10 Referrals: 30,000 tokens</p>
+        <p>20 Referrals: 75,000 tokens</p>
+        <p>50 Referrals: 300,000 tokens</p>
+        <p>100 Referrals: 600,000 tokens</p>
+        <p>500 Referrals: 3M tokens</p>
+        <p>1000 Referrals: 10M tokens</p>
+        <p>Current Referrals: ${referralCount}</p>
+        <p>Reward: ${getReferralReward(referralCount)} tokens</p>
+    `;
+}
+
+function getReferralReward(referralCount) {
+    let totalReward = 0;
+    for (let i = 0; i < referralRewards.length; i++) {
+        if (referralCount >= referralRewards[i].count) {
+            totalReward = referralRewards[i].reward;
+        } else {
+            break;
+        }
+    }
+    return totalReward;
+}
+
+function saveUserData() {
+    localStorage.setItem('tokens', tokens);
+    localStorage.setItem('completedTasks', JSON.stringify(completedTasks));
+    localStorage.setItem('level', level);
+    localStorage.setItem('energy', energy);
+    localStorage.setItem('clicksRemaining', clicksRemaining);
+    localStorage.setItem('dailyStreak', dailyStreak);
+    localStorage.setItem('lastLoginDate', lastLoginDate);
+    localStorage.setItem('lastGiftTime', lastGiftTime);
+    localStorage.setItem('autoBotActive', autoBotActive);
+    localStorage.setItem('autoBotPurchased', autoBotPurchased);
+    localStorage.setItem('autoBotPurchaseTime', autoBotPurchaseTime);
+    localStorage.setItem('lastAutoBotCheckTime', lastAutoBotCheckTime);
+    localStorage.setItem('autoBotTokens', autoBotTokens);
+    localStorage.setItem('lastEnergyBoostTime', lastEnergyBoostTime);
+    localStorage.setItem('referralCount', referralCount);
+}
+
+function loadUserData() {
+    tokens = parseInt(localStorage.getItem('tokens')) || 0;
+    completedTasks = JSON.parse(localStorage.getItem('completedTasks')) || [];
+    level = parseInt(localStorage.getItem('level')) || 1;
+    energy = parseInt(localStorage.getItem('energy')) || maxEnergy;
+    clicksRemaining = parseFloat(localStorage.getItem('clicksRemaining')) || getMaxClicksForLevel();
+    dailyStreak = parseInt(localStorage.getItem('dailyStreak')) || 0;
+    lastLoginDate = localStorage.getItem('lastLoginDate');
+    lastGiftTime = parseInt(localStorage.getItem('lastGiftTime')) || 0;
+    autoBotActive = JSON.parse(localStorage.getItem('autoBotActive')) || false;
+    autoBotPurchased = JSON.parse(localStorage.getItem('autoBotPurchased')) || false;
+    autoBotPurchaseTime = parseInt(localStorage.getItem('autoBotPurchaseTime')) || 0;
+    lastAutoBotCheckTime = parseInt(localStorage.getItem('lastAutoBotCheckTime')) || 0;
+    autoBotTokens = parseInt(localStorage.getItem('autoBotTokens')) || 0;
+    lastEnergyBoostTime = parseInt(localStorage.getItem('lastEnergyBoostTime')) || 0;
+    referralCount = parseInt(localStorage.getItem('referralCount')) || 0;
+
+    updateUI();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    loadDinoImages();
+    loadUserData();
+    updateDinoImage();
+    startGame();
+});
