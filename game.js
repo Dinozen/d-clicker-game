@@ -34,13 +34,8 @@ let autoBotSuccessModal, autoBotEarningsModal;
 
 // Dinozor resimleri
 const dinoImages = [];
-for (let i = 1; i <= 5; i++) {
-    const img = new Image();
-    img.src = `dino${i}.png`;
-    dinoImages.push(img);
-}
 
-let currentDinoImage = dinoImages[0];
+let currentDinoImage;
 let dinoX, dinoY, dinoWidth, dinoHeight;
 let isClicking = false;
 let clickScale = 1;
@@ -49,6 +44,7 @@ function startGame() {
     console.log("Starting game");
     initializeDOM();
     loadUserData();
+    initializeDOM();
     resizeCanvas();
     setupClickHandler();
 
@@ -63,6 +59,7 @@ function startGame() {
     setInterval(updateGiftCooldownDisplay, 1000);
     setInterval(updateEnergyBoostCooldownDisplay, 1000);
     checkAutoBot();
+    setInterval(checkAutoBot, 60000);// AutoBot kontrolü her dakika
     updateTaskButtons();
 }
 
@@ -166,14 +163,26 @@ function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (currentDinoImage && currentDinoImage.complete && currentDinoImage.naturalWidth > 0) {
-        const scale = Math.min(canvas.width / currentDinoImage.naturalWidth, canvas.height / currentDinoImage.naturalHeight) * 0.4;
-        dinoWidth = Math.round(currentDinoImage.naturalWidth * scale * clickScale);
-        dinoHeight = Math.round(currentDinoImage.naturalHeight * scale * clickScale);
+        const canvasAspectRatio = canvas.width / canvas.height;
+        const imageAspectRatio = currentDinoImage.naturalWidth / currentDinoImage.naturalHeight;
+        let drawWidth, drawHeight;
+
+        if (canvasAspectRatio > imageAspectRatio) {
+            drawHeight = canvas.height * 0.4; // 0.8'den 0.4'e düşürdük
+            drawWidth = drawHeight * imageAspectRatio;
+        } else {
+            drawWidth = canvas.width * 0.4; // 0.8'den 0.4'e düşürdük
+            drawHeight = drawWidth / imageAspectRatio;
+        }
+
+        dinoWidth = Math.round(drawWidth * clickScale);
+        dinoHeight = Math.round(drawHeight * clickScale);
         dinoX = Math.round((canvas.width - dinoWidth) / 2);
         dinoY = Math.round((canvas.height - dinoHeight) / 2);
 
-        const centerX = dinoX + dinoWidth / 2;
-        const centerY = dinoY + dinoHeight / 2;
+        // Daire çizimi
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
         const circleRadius = Math.max(dinoWidth, dinoHeight) / 2 + 5;
 
         const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, circleRadius);
@@ -193,16 +202,7 @@ function drawDino() {
 
         console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
     } else {
-        console.log("Dino image not ready, trying to load", currentDinoImage.src);
-        currentDinoImage = new Image();
-        currentDinoImage.src = `dino${level}.png`;
-        currentDinoImage.onload = function () {
-            console.log("Dino image loaded, redrawing");
-            drawDino();
-        };
-        currentDinoImage.onerror = function () {
-            console.error("Failed to load dino image");
-        };
+        // Yükleme göstergesi
         ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
         ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
         ctx.fillStyle = 'black';
@@ -347,6 +347,23 @@ function checkLevelUp() {
     }
 }
 
+function loadDinoImages() {
+    function loadSingleImage(index) {
+        const img = new Image();
+        img.src = `dino${index}.png`;
+        img.onload = function() {
+            console.log(`Dino image ${index} loaded successfully`);
+        };
+        img.onerror = function() {
+            console.error(`Failed to load dino image ${index}`);
+        };
+        dinoImages.push(img);
+    }
+
+    for (let i = 1; i <= 5; i++) {
+        loadSingleImage(i);
+    }
+}
 function updateDinoImage() {
     const dinoIndex = Math.min(level - 1, 4); // Maksimum 5. seviye için
     currentDinoImage = dinoImages[dinoIndex];
@@ -756,31 +773,56 @@ function updateEnergyRefillRate() {
 }
 
 function checkAutoBot() {
+    console.log("Checking AutoBot...");
     if (autoBotActive) {
         const currentTime = Date.now();
         const elapsedTime = Math.min((currentTime - lastAutoBotCheckTime) / 1000, 4 * 60 * 60); // Maximum 4 hours
         const tokensPerSecond = level * 0.1;
-        autoBotTokens += Math.floor(elapsedTime * tokensPerSecond);
+        const newTokens = Math.floor(elapsedTime * tokensPerSecond);
+        autoBotTokens += newTokens;
         lastAutoBotCheckTime = currentTime;
         saveUserData();
 
-        showAutoBotEarnings();
+        console.log("AutoBot earned tokens:", newTokens);
+        console.log("Total AutoBot tokens:", autoBotTokens);
+
+        if (autoBotTokens > 0) {
+            showAutoBotEarnings();
+        }
+    } else {
+        console.log("AutoBot is not active");
     }
 }
 
 function showAutoBotEarnings() {
-    const elapsedSeconds = Math.floor((Date.now() - autoBotPurchaseTime) / 1000);
     document.getElementById('autoBotTokensCollected').textContent = formatNumber(autoBotTokens);
-    document.getElementById('autoBotActiveTime').textContent = formatTime(elapsedSeconds);
     autoBotEarningsModal.style.display = 'block';
 
-    document.getElementById('claimAutoBotTokens').addEventListener('click', function () {
+    document.getElementById('claimAutoBotTokens').onclick = function () {
         tokens += autoBotTokens;
         autoBotTokens = 0;
         updateUI();
         saveUserData();
         autoBotEarningsModal.style.display = 'none';
-    });
+    };
+
+    document.getElementById('closeAutoBotEarningsModal').onclick = function () {
+        autoBotEarningsModal.style.display = 'none';
+    };
+
+    const claimAutoBotTokens = document.getElementById('claimAutoBotTokens');
+    if (claimAutoBotTokens) {
+        claimAutoBotTokens.onclick = function () {
+            tokens += autoBotTokens;
+            autoBotTokens = 0;
+            updateUI();
+            saveUserData();
+            autoBotEarningsModal.style.display = 'none';
+            console.log("AutoBot tokens claimed");
+        };
+    } else {
+        console.error("Claim AutoBot tokens button not found");
+    }
 }
 
 function formatTime(seconds) {
@@ -934,6 +976,7 @@ window.addEventListener('DOMContentLoaded', function () {
     if (userTelegramId) {
         telegramId = userTelegramId;
     }
+    loadDinoImages();
     startGame();
 });
 
@@ -949,76 +992,3 @@ const rewardData = [
     { day: 25, tokens: 35000 }, { day: 26, tokens: 37000 }, { day: 27, tokens: 39000 },
     { day: 28, tokens: 41000 }, { day: 29, tokens: 43000 }, { day: 30, tokens: 45000 }
 ];
-function updateReferralRewards() {
-    const referralRewardsContainer = document.getElementById('referralRewards');
-    referralRewardsContainer.innerHTML = `
-        <h4>Referral Rewards:</h4>
-        <p>1 Referral: 3,000 tokens</p>
-        <p>5 Referrals: 15,000 tokens</p>
-        <p>10 Referrals: 30,000 tokens</p>
-        <p>20 Referrals: 75,000 tokens</p>
-        <p>50 Referrals: 300,000 tokens</p>
-        <p>100 Referrals: 600,000 tokens</p>
-        <p>500 Referrals: 3M tokens</p>
-        <p>1000 Referrals: 10M tokens</p>
-        <p>Current Referrals: ${referralCount}</p>
-        <p>Reward: ${getReferralReward(referralCount)} tokens</p>
-    `;
-}
-
-function getReferralReward(referralCount) {
-    let totalReward = 0;
-    for (let i = 0; i < referralRewards.length; i++) {
-        if (referralCount >= referralRewards[i].count) {
-            totalReward = referralRewards[i].reward;
-        } else {
-            break;
-        }
-    }
-    return totalReward;
-}
-
-function saveUserData() {
-    localStorage.setItem('tokens', tokens);
-    localStorage.setItem('completedTasks', JSON.stringify(completedTasks));
-    localStorage.setItem('level', level);
-    localStorage.setItem('energy', energy);
-    localStorage.setItem('clicksRemaining', clicksRemaining);
-    localStorage.setItem('dailyStreak', dailyStreak);
-    localStorage.setItem('lastLoginDate', lastLoginDate);
-    localStorage.setItem('lastGiftTime', lastGiftTime);
-    localStorage.setItem('autoBotActive', autoBotActive);
-    localStorage.setItem('autoBotPurchased', autoBotPurchased);
-    localStorage.setItem('autoBotPurchaseTime', autoBotPurchaseTime);
-    localStorage.setItem('lastAutoBotCheckTime', lastAutoBotCheckTime);
-    localStorage.setItem('autoBotTokens', autoBotTokens);
-    localStorage.setItem('lastEnergyBoostTime', lastEnergyBoostTime);
-    localStorage.setItem('referralCount', referralCount);
-}
-
-function loadUserData() {
-    tokens = parseInt(localStorage.getItem('tokens')) || 0;
-    completedTasks = JSON.parse(localStorage.getItem('completedTasks')) || [];
-    level = parseInt(localStorage.getItem('level')) || 1;
-    energy = parseInt(localStorage.getItem('energy')) || maxEnergy;
-    clicksRemaining = parseFloat(localStorage.getItem('clicksRemaining')) || getMaxClicksForLevel();
-    dailyStreak = parseInt(localStorage.getItem('dailyStreak')) || 0;
-    lastLoginDate = localStorage.getItem('lastLoginDate');
-    lastGiftTime = parseInt(localStorage.getItem('lastGiftTime')) || 0;
-    autoBotActive = JSON.parse(localStorage.getItem('autoBotActive')) || false;
-    autoBotPurchased = JSON.parse(localStorage.getItem('autoBotPurchased')) || false;
-    autoBotPurchaseTime = parseInt(localStorage.getItem('autoBotPurchaseTime')) || 0;
-    lastAutoBotCheckTime = parseInt(localStorage.getItem('lastAutoBotCheckTime')) || 0;
-    autoBotTokens = parseInt(localStorage.getItem('autoBotTokens')) || 0;
-    lastEnergyBoostTime = parseInt(localStorage.getItem('lastEnergyBoostTime')) || 0;
-    referralCount = parseInt(localStorage.getItem('referralCount')) || 0;
-
-    updateUI();
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-    loadDinoImages();
-    loadUserData();
-    updateDinoImage();
-    startGame();
-});
