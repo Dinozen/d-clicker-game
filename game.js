@@ -172,12 +172,10 @@ function drawDino() {
         dinoX = Math.round((canvas.width - dinoWidth) / 2);
         dinoY = Math.round((canvas.height - dinoHeight) / 2);
 
-        // Arka plan dairesi çiz
         const centerX = dinoX + dinoWidth / 2;
         const centerY = dinoY + dinoHeight / 2;
         const circleRadius = Math.max(dinoWidth, dinoHeight) / 2 + 5;
 
-        // Gradient oluştur
         const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, circleRadius);
         gradient.addColorStop(0, 'rgba(137, 207, 240, 0.8)');
         gradient.addColorStop(1, 'rgba(100, 149, 237, 0.6)');
@@ -187,7 +185,6 @@ function drawDino() {
         ctx.fillStyle = gradient;
         ctx.fill();
 
-        // Daha kontrastlı kenarlık
         ctx.strokeStyle = 'rgba(25, 25, 112, 0.8)';
         ctx.lineWidth = 3;
         ctx.stroke();
@@ -196,7 +193,7 @@ function drawDino() {
 
         console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
     } else {
-        console.log("Dino image not ready, trying to load");
+        console.log("Dino image not ready, trying to load", currentDinoImage.src);
         currentDinoImage = new Image();
         currentDinoImage.src = `dino${level}.png`;
         currentDinoImage.onload = function () {
@@ -206,7 +203,6 @@ function drawDino() {
         currentDinoImage.onerror = function () {
             console.error("Failed to load dino image");
         };
-        // Yükleme beklenirken placeholder göster
         ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
         ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
         ctx.fillStyle = 'black';
@@ -773,8 +769,9 @@ function checkAutoBot() {
 }
 
 function showAutoBotEarnings() {
+    const elapsedSeconds = Math.floor((Date.now() - autoBotPurchaseTime) / 1000);
     document.getElementById('autoBotTokensCollected').textContent = formatNumber(autoBotTokens);
-    document.getElementById('autoBotActiveTime').textContent = formatTime((Date.now() - autoBotPurchaseTime) / 1000);
+    document.getElementById('autoBotActiveTime').textContent = formatTime(elapsedSeconds);
     autoBotEarningsModal.style.display = 'block';
 
     document.getElementById('claimAutoBotTokens').addEventListener('click', function () {
