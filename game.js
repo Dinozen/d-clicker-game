@@ -905,20 +905,63 @@ function startTask(taskType) {
         } else {
             button.textContent = 'START';
             button.disabled = false;
-            showMessage('Failed to verify task completion. Please try again.');
+            showMessage('Please keep the task window open for at least 5 seconds to complete the task.');
         }
     }, 5000);
 }
 
 function completeTask(taskType) {
-    completedTasks.push(taskType);
-    if (taskType === 'followX' || taskType === 'visitWebsite') {
-        const rewardAmount = taskType === 'followX' ? 500 : 300;
-        tokens += rewardAmount;
+    if (!completedTasks.includes(taskType)) {
+        completedTasks.push(taskType);
+        tokens += 1000;
         updateUI();
         saveUserData();
-        showMessage(`Task completed! You received ${rewardAmount} tokens.`);
+        showMessage('Task completed! You earned 1000 tokens.');
         updateTaskButtons();
+    }
+}
+
+function showDailyStreaks() {
+    populateRewardPages();
+    document.getElementById('rewardTableModal').style.display = 'block';
+}
+
+function populateRewardPages() {
+    const page1 = document.getElementById('rewardPage1');
+    const page2 = document.getElementById('rewardPage2');
+
+    page1.innerHTML = rewardData.slice(0, 15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
+    page2.innerHTML = rewardData.slice(15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
+}
+
+function createRewardItem(day, tokens, isClaimable) {
+    return `
+        <div class="reward-item ${isClaimable ? 'claimable' : ''}" data-day="${day}">
+            <span>Day ${day}: <img src="token.png" alt="token" style="width: 16px; height: 16px;"> ${tokens} tokens</span>
+        </div>
+    `;
+}
+
+let currentPage = 1;
+
+function toggleRewardPage() {
+    const page1 = document.getElementById('rewardPage1');
+    const page2 = document.getElementById('rewardPage2');
+    const prevBtn = document.getElementById('prevRewardPage');
+    const nextBtn = document.getElementById('nextRewardPage');
+
+    if (currentPage === 1) {
+        page1.style.display = 'none';
+        page2.style.display = 'block';
+        prevBtn.disabled = false;
+        nextBtn.disabled = true;
+        currentPage = 2;
+    } else {
+        page1.style.display = 'block';
+        page2.style.display = 'none';
+        prevBtn.disabled = true;
+        nextBtn.disabled = false;
+        currentPage = 1;
     }
 }
 
@@ -938,3 +981,15 @@ window.addEventListener('DOMContentLoaded', function () {
     startGame();
 });
 
+const rewardData = [
+    { day: 1, tokens: 1000 }, { day: 2, tokens: 2000 }, { day: 3, tokens: 3000 },
+    { day: 4, tokens: 4000 }, { day: 5, tokens: 5000 }, { day: 6, tokens: 6000 },
+    { day: 7, tokens: 7000 }, { day: 8, tokens: 8000 }, { day: 9, tokens: 9000 },
+    { day: 10, tokens: 10000 }, { day: 11, tokens: 11500 }, { day: 12, tokens: 13000 },
+    { day: 13, tokens: 14500 }, { day: 14, tokens: 16000 }, { day: 15, tokens: 17500 },
+    { day: 16, tokens: 19000 }, { day: 17, tokens: 20500 }, { day: 18, tokens: 22000 },
+    { day: 19, tokens: 23500 }, { day: 20, tokens: 25000 }, { day: 21, tokens: 27000 },
+    { day: 22, tokens: 29000 }, { day: 23, tokens: 31000 }, { day: 24, tokens: 33000 },
+    { day: 25, tokens: 35000 }, { day: 26, tokens: 37000 }, { day: 27, tokens: 39000 },
+    { day: 28, tokens: 41000 }, { day: 29, tokens: 43000 }, { day: 30, tokens: 45000 }
+];
