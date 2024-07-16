@@ -93,6 +93,12 @@ function initializeDOM() {
     document.getElementById('closeTasksModal').addEventListener('click', () => {
         tasksModal.style.display = 'none';
     });
+
+    canvas.addEventListener('touchstart', handleMultiTouch, { passive: false });
+    canvas.addEventListener('touchend', handleMultiTouch, { passive: false });
+    canvas.addEventListener('click', handleClick);
+
+    resizeCanvas(); // İlk başlatma sırasında canvas'ı yeniden boyutlandırın
 }
 
 function loadUserData() {
@@ -150,7 +156,7 @@ function saveUserData() {
 }
 
 function resizeCanvas() {
-    const scale = window.devicePixelRatio;
+    const scale = window.devicePixelRatio || 1;
     canvas.width = window.innerWidth * scale;
     canvas.height = window.innerHeight * scale;
     canvas.style.width = `${window.innerWidth}px`;
@@ -202,19 +208,8 @@ function drawDino() {
 
         console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
     } else {
-        // Yükleme göstergesi
-        ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
-        ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
-        ctx.fillStyle = 'black';
-        ctx.font = '20px Arial';
-        ctx.fillText('Loading...', canvas.width / 2 - 40, canvas.height / 2 + 5);
-
-        // Resim yüklendiğinde tekrar çizim yap
-        if (currentDinoImage) {
-            currentDinoImage.onload = () => {
-                drawDino();
-            };
-        }
+        // Yükleme göstergesi kaldırıldı
+        console.log('Dino image not loaded yet');
     }
 }
 
@@ -371,7 +366,6 @@ function loadDinoImages() {
         loadSingleImage(i);
     }
 }
-
 function updateDinoImage() {
     const dinoIndex = Math.min(level - 1, 4); // Maksimum 5. seviye için
     currentDinoImage = dinoImages[dinoIndex];
@@ -529,7 +523,7 @@ function updateEnergyBoostCooldownDisplay() {
     }
 }
 
-function showMessage(message, autoClose = true) {
+function showMessage(message) {
     const messageModal = document.createElement('div');
     messageModal.className = 'modal';
     messageModal.innerHTML = `
@@ -540,17 +534,10 @@ function showMessage(message, autoClose = true) {
     `;
     document.body.appendChild(messageModal);
     messageModal.style.display = 'block';
-
-    const closeModal = () => {
+    document.getElementById('closeMessageModal').onclick = function () {
         messageModal.style.display = 'none';
         document.body.removeChild(messageModal);
     };
-
-    document.getElementById('closeMessageModal').onclick = closeModal;
-
-    if (autoClose) {
-        setTimeout(closeModal, 5000); // 5 saniye sonra otomatik kapanır
-    }
 }
 
 function updateMenuContent() {
@@ -640,22 +627,7 @@ function activateDoubleTokens() {
         clicksRemaining = originalClicksRemaining;
         updateUI();
     }, duration);
-    
-    const message = 'Double Tokens activated for 20 seconds! Click as fast as you can!';
-    const messageModal = document.createElement('div');
-    messageModal.className = 'modal';
-    messageModal.innerHTML = `
-        <div class="modal-content">
-            <p>${message}</p>
-        </div>
-    `;
-    document.body.appendChild(messageModal);
-    messageModal.style.display = 'block';
-    
-    setTimeout(() => {
-        messageModal.style.display = 'none';
-        document.body.removeChild(messageModal);
-    }, 2000);
+    alert('Double Tokens activated for 20 seconds! Click as fast as you can!');
 }
 
 function levelUp() {
@@ -934,7 +906,7 @@ function startTask(taskType) {
         } else {
             button.textContent = 'START';
             button.disabled = false;
-            showMessage('Please keep the task window open for at least 5 seconds to complete the task.', false);
+            showMessage('Please keep the task window open for at least 5 seconds to complete the task.');
         }
     }, 5000);
 }
