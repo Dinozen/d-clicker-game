@@ -161,9 +161,10 @@ function resizeCanvas() {
     canvas.height = window.innerHeight * scale;
     canvas.style.width = `${window.innerWidth}px`;
     canvas.style.height = `${window.innerHeight}px`;
-    ctx.scale(scale, scale);
+    ctx.setTransform(scale, 0, 0, scale, 0, 0); // Ölçeklendirme için setTransform kullan
     drawDino();
 }
+
 
 function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -211,6 +212,7 @@ function drawDino() {
         console.log('Dino image not loaded yet');
     }
 }
+
 
 function setupClickHandler() {
     canvas.addEventListener('touchstart', handleMultiTouch, { passive: false });
@@ -981,6 +983,7 @@ window.addEventListener('DOMContentLoaded', function () {
     startGame();
 });
 
+window.addEventListener('resize', resizeCanvas);
 const rewardData = [
     { day: 1, tokens: 1000 }, { day: 2, tokens: 2000 }, { day: 3, tokens: 3000 },
     { day: 4, tokens: 4000 }, { day: 5, tokens: 5000 }, { day: 6, tokens: 6000 },
