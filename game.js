@@ -44,9 +44,11 @@ function startGame() {
     console.log("Starting game");
     initializeDOM();
     loadUserData();
-    initializeDOM();
+    loadDinoImages();
     resizeCanvas();
     setupClickHandler();
+
+    window.addEventListener('resize', resizeCanvas);
 
     window.requestAnimationFrame(() => {
         setupGameUI();
@@ -59,7 +61,7 @@ function startGame() {
     setInterval(updateGiftCooldownDisplay, 1000);
     setInterval(updateEnergyBoostCooldownDisplay, 1000);
     checkAutoBot();
-    setInterval(checkAutoBot, 60000);// AutoBot kontrolü her dakika
+    setInterval(checkAutoBot, 60000);
     updateTaskButtons();
 }
 
@@ -98,23 +100,21 @@ function initializeDOM() {
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
-
-    resizeCanvas(); // İlk başlatma sırasında canvas'ı yeniden boyutlandırın
 }
 
 function loadUserData() {
-    console.log("Loading user data for telegramId:", telegramId);
+    logToOverlay("Loading user data for telegramId: " + telegramId);
     const savedData = localStorage.getItem(telegramId);
     if (savedData) {
         const data = JSON.parse(savedData);
-        tokens = data.tokens;
-        level = data.level;
+        tokens = data.tokens || 0;
+        level = data.level || 1;
         completedTasks = data.completedTasks || [];
-        energy = data.energy;
+        energy = data.energy || 3;
         maxEnergy = data.maxEnergy || level + 2;
-        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime();
-        clicksRemaining = data.clicksRemaining;
-        boostAvailable = data.boostAvailable;
+        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime() || Date.now();
+        clicksRemaining = data.clicksRemaining || 300;
+        boostAvailable = data.boostAvailable !== undefined ? data.boostAvailable : true;
         dailyStreak = data.dailyStreak || 0;
         lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
         lastGiftTime = data.lastGiftTime || 0;
@@ -125,11 +125,12 @@ function loadUserData() {
         autoBotTokens = data.autoBotTokens || 0;
         autoBotPurchaseTime = data.autoBotPurchaseTime || 0;
         lastAutoBotCheckTime = data.lastAutoBotCheckTime || 0;
-        console.log("User data loaded:", data);
+        logToOverlay("User data loaded: " + JSON.stringify(data));
     } else {
-        console.log("No saved data found for this user");
+        logToOverlay("No saved data found for this user");
     }
     updateDinoImage();
+    updateUI();
 }
 
 function saveUserData() {
@@ -162,14 +163,18 @@ function resizeCanvas() {
     canvas.height = window.innerHeight * scale;
     canvas.style.width = `${window.innerWidth}px`;
     canvas.style.height = `${window.innerHeight}px`;
-    ctx.setTransform(scale, 0, 0, scale, 0, 0); // Ölçeklendirme için setTransform kullan
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
     drawDino();
 }
 
 function drawDino() {
+    logToOverlay("Drawing dino...");
+    logToOverlay(`Canvas dimensions: ${canvas.width} x ${canvas.height}`);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (currentDinoImage && currentDinoImage.complete && currentDinoImage.naturalWidth > 0) {
+        logToOverlay(`Current dino image: ${currentDinoImage.src}`);
+
         const canvasAspectRatio = canvas.width / canvas.height;
         const imageAspectRatio = currentDinoImage.naturalWidth / currentDinoImage.naturalHeight;
         let drawWidth, drawHeight;
@@ -190,7 +195,7 @@ function drawDino() {
         // Daire çizimi
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
-        const circleRadius = Math.max(dinoWidth, dinoHeight) / 2 + 5;
+        const circleRadius = Math.max(dinoWidth, dinoHeight) / 2 + 10;
 
         const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, circleRadius);
         gradient.addColorStop(0, 'rgba(137, 207, 240, 0.8)');
@@ -207,9 +212,10 @@ function drawDino() {
 
         ctx.drawImage(currentDinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
 
-        console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
+        logToOverlay(`Dino drawn at: ${dinoX}, ${dinoY}, ${dinoWidth}, ${dinoHeight}`);
     } else {
-        console.log('Dino image not loaded yet');
+        logToOverlay('Dino image not loaded yet or invalid');
+        logToOverlay(`Current dino image: ${currentDinoImage}`);
     }
 }
 
@@ -221,34 +227,36 @@ function setupClickHandler() {
 }
 
 function handleTouchStart(event) {
+    event.preventDefault();
     const touch = event.touches[0];
     handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleTouchEnd(event) {
+    event.preventDefault();
     isClicking = false;
 }
 
 function handleTouchMove(event) {
+    event.preventDefault();
     const touch = event.touches[0];
     handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleClick(event) {
     const rect = canvas.getBoundingClientRect();
-    const scale = window.devicePixelRatio;
-    const x = (event.clientX || event.touches[0].clientX - rect.left) * scale;
-    const y = (event.clientY || event.touches[0].clientY - rect.top) * scale;
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
 
-    if (x >= dinoX * scale && x <= (dinoX + dinoWidth) * scale &&
-        y >= dinoY * scale && y <= (dinoY + dinoHeight) * scale) {
-        console.log("Dino clicked!");
+    if (x >= dinoX && x <= dinoX + dinoWidth &&
+        y >= dinoY && y <= dinoY + dinoHeight) {
+        logToOverlay("Dino clicked!");
         let tokenGain = 1 * getLevelMultiplier();
         if (isDoubleTokensActive) {
             tokenGain *= 2;
         }
 
-        createClickEffect(event.clientX || event.touches[0].clientX, event.clientY || event.touches[0].clientY, tokenGain);
+        createClickEffect(event.clientX, event.clientY, tokenGain);
         isClicking = true;
         clickScale = 1.1;
 
@@ -297,6 +305,10 @@ function formatClicks(number) {
 }
 
 function updateUI() {
+    logToOverlay("Updating UI...");
+    logToOverlay("Tokens: " + tokens);
+    logToOverlay("Level: " + level);
+
     const elements = {
         tokenDisplay: document.getElementById('tokenDisplay'),
         energyDisplay: document.getElementById('energyDisplay'),
@@ -304,10 +316,33 @@ function updateUI() {
         levelDisplay: document.getElementById('levelDisplay')
     };
 
-    if (elements.tokenDisplay) elements.tokenDisplay.textContent = formatNumber(tokens);
-    if (elements.energyDisplay) elements.energyDisplay.textContent = `${energy}/${maxEnergy}`;
-    if (elements.clicksDisplay) elements.clicksDisplay.textContent = formatClicks(clicksRemaining);
-    if (elements.levelDisplay) elements.levelDisplay.textContent = `${level}`;
+    if (elements.tokenDisplay) {
+        elements.tokenDisplay.textContent = formatNumber(tokens);
+        logToOverlay("Token display updated: " + elements.tokenDisplay.textContent);
+    } else {
+        logToOverlay("Token display element not found");
+    }
+
+    if (elements.energyDisplay) {
+        elements.energyDisplay.textContent = `${energy}/${maxEnergy}`;
+        logToOverlay("Energy display updated: " + elements.energyDisplay.textContent);
+    } else {
+        logToOverlay("Energy display element not found");
+    }
+
+    if (elements.clicksDisplay) {
+        elements.clicksDisplay.textContent = formatClicks(clicksRemaining);
+        logToOverlay("Clicks display updated: " + elements.clicksDisplay.textContent);
+    } else {
+        logToOverlay("Clicks display element not found");
+    }
+
+    if (elements.levelDisplay) {
+        elements.levelDisplay.textContent = `${level}`;
+        logToOverlay("Level display updated: " + elements.levelDisplay.textContent);
+    } else {
+        logToOverlay("Level display element not found");
+    }
 
     updateDailyRewardDisplay();
     updateGiftCooldownDisplay();
@@ -343,7 +378,7 @@ function animateDino() {
             isClicking = false;
         }
     }
-    drawDino();  // Her karede dino'yu çiz
+    drawDino();
     requestAnimationFrame(animateDino);
 }
 
@@ -358,40 +393,57 @@ function checkLevelUp() {
 
 function loadDinoImages() {
     function loadSingleImage(index) {
-        const img = new Image();
-        img.src = `dino${index}.png`;
-        img.onload = function() {
-            console.log(`Dino image ${index} loaded successfully`);
-        };
-        img.onerror = function() {
-            console.error(`Failed to load dino image ${index}`);
-        };
-        dinoImages.push(img);
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = `dino${index}.png`;
+            img.onload = () => {
+                logToOverlay(`Dino image ${index} loaded successfully`);
+                resolve(img);
+            };
+            img.onerror = (error) => {
+                logToOverlay(`Failed to load dino image ${index}: ${error}`);
+                reject(error);
+            };
+        });
     }
 
+    const promises = [];
     for (let i = 1; i <= 5; i++) {
-        loadSingleImage(i);
+        promises.push(loadSingleImage(i));
     }
+
+    Promise.all(promises)
+        .then((loadedImages) => {
+            dinoImages.push(...loadedImages);
+            updateDinoImage();
+        })
+        .catch((error) => {
+            logToOverlay(`Error loading dino images: ${error}`);
+        });
 }
 
 function updateDinoImage() {
-    const dinoIndex = Math.min(level - 1, 4); // Maksimum 5. seviye için
+    const dinoIndex = Math.min(level - 1, 4);
     currentDinoImage = dinoImages[dinoIndex];
+    logToOverlay(`Updating dino image for level: ${level}`);
+    logToOverlay(`Dino index: ${dinoIndex}`);
     if (currentDinoImage) {
-        console.log("Updating dino image:", currentDinoImage.src);
+        logToOverlay(`Current dino image src: ${currentDinoImage.src}`);
         if (currentDinoImage.complete) {
+            logToOverlay("Dino image is already loaded");
             drawDino();
         } else {
+            logToOverlay("Dino image is not loaded yet, setting onload");
             currentDinoImage.onload = () => {
-                console.log("Dino image loaded successfully");
+                logToOverlay("Dino image loaded successfully");
                 drawDino();
             };
             currentDinoImage.onerror = (error) => {
-                console.error("Failed to load dino image:", error);
+                logToOverlay(`Failed to load dino image: ${error}`);
             };
         }
     } else {
-        console.error("Dino image not found for index:", dinoIndex);
+        logToOverlay(`Dino image not found for index: ${dinoIndex}`);
     }
 }
 
@@ -434,7 +486,7 @@ function toggleBoosters() {
 
 function updateBoostersModalContent() {
     if (!boostersModal) {
-        console.error('Boosters modal not found');
+        logToOverlay('Boosters modal not found');
         return;
     }
     boostersModal.innerHTML = `
@@ -549,10 +601,16 @@ function showMessage(message) {
     `;
     document.body.appendChild(messageModal);
     messageModal.style.display = 'block';
-    document.getElementById('closeMessageModal').onclick = function () {
+    
+    const closeModal = () => {
         messageModal.style.display = 'none';
         document.body.removeChild(messageModal);
     };
+
+    document.getElementById('closeMessageModal').onclick = closeModal;
+
+    // 10 saniye sonra otomatik olarak kapat
+    setTimeout(closeModal, 10000);
 }
 
 function updateMenuContent() {
@@ -642,7 +700,7 @@ function activateDoubleTokens() {
         clicksRemaining = originalClicksRemaining;
         updateUI();
     }, duration);
-    alert('Double Tokens activated for 20 seconds! Click as fast as you can!');
+    showMessage('Double Tokens activated for 20 seconds! Click as fast as you can!');
 }
 
 function levelUp() {
@@ -790,7 +848,7 @@ function updateEnergyRefillRate() {
 }
 
 function checkAutoBot() {
-    console.log("Checking AutoBot...");
+    logToOverlay("Checking AutoBot...");
     if (autoBotActive) {
         const currentTime = Date.now();
         const elapsedTime = Math.min((currentTime - lastAutoBotCheckTime) / 1000, 4 * 60 * 60); // Maximum 4 hours
@@ -800,14 +858,14 @@ function checkAutoBot() {
         lastAutoBotCheckTime = currentTime;
         saveUserData();
 
-        console.log("AutoBot earned tokens:", newTokens);
-        console.log("Total AutoBot tokens:", autoBotTokens);
+        logToOverlay("AutoBot earned tokens: " + newTokens);
+        logToOverlay("Total AutoBot tokens: " + autoBotTokens);
 
         if (autoBotTokens > 0) {
             showAutoBotEarnings();
         }
     } else {
-        console.log("AutoBot is not active");
+        logToOverlay("AutoBot is not active");
     }
 }
 
@@ -826,20 +884,6 @@ function showAutoBotEarnings() {
     document.getElementById('closeAutoBotEarningsModal').onclick = function () {
         autoBotEarningsModal.style.display = 'none';
     };
-
-    const claimAutoBotTokens = document.getElementById('claimAutoBotTokens');
-    if (claimAutoBotTokens) {
-        claimAutoBotTokens.onclick = function () {
-            tokens += autoBotTokens;
-            autoBotTokens = 0;
-            updateUI();
-            saveUserData();
-            autoBotEarningsModal.style.display = 'none';
-            console.log("AutoBot tokens claimed");
-        };
-    } else {
-        console.error("Claim AutoBot tokens button not found");
-    }
 }
 
 function formatTime(seconds) {
@@ -1014,3 +1058,11 @@ document.getElementById('closeWheelResultModal').onclick = function () {
     document.getElementById('wheelResultModal').style.display = 'none';
 };
 
+function logToOverlay(message) {
+    const debugOverlay = document.getElementById('debugOverlay');
+    if (debugOverlay) {
+        debugOverlay.innerHTML += message + '<br>';
+        debugOverlay.scrollTop = debugOverlay.scrollHeight;
+    }
+    console.log(message);
+}

@@ -336,6 +336,18 @@
         .nav-btn:hover {
             background-color: #21a1f1;
         }
+        #debugOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            max-height: 50%;
+            overflow-y: auto;
+            z-index: 9999;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -468,6 +480,35 @@
             <button id="closeAutoBotEarningsModal" class="close-btn">X</button>
         </div>
     </div>
+    <div id="levelUpModal" class="modal">
+        <div class="modal-content">
+            <h3>Level Up!</h3>
+            <p id="levelUpMessage"></p>
+            <table id="levelUpStats">
+                <tr>
+                    <th>Stat</th>
+                    <th>Previous</th>
+                    <th>New</th>
+                </tr>
+                <!-- Level up stats will be dynamically inserted here -->
+            </table>
+            <button id="closeLevelUpModal" class="close-btn">X</button>
+        </div>
+    </div>
+    <div id="randomGiftResultModal" class="modal">
+        <div class="modal-content">
+            <h3>Random Gift</h3>
+            <p id="randomGiftResult"></p>
+            <button id="closeRandomGiftResultModal" class="close-btn">X</button>
+        </div>
+    </div>
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <p id="messageText"></p>
+            <button id="closeMessageModal" class="button">OK</button>
+        </div>
+    </div>
+    <div id="debugOverlay"></div>
     <script src="game.js"></script>
 </body>
 </html>
