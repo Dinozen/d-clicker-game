@@ -40,29 +40,51 @@ let dinoX, dinoY, dinoWidth, dinoHeight;
 let isClicking = false;
 let clickScale = 1;
 
+let lastTime = 0;
+let resizeTimeout;
+let lastClickIncreaseTime = 0;
+let lastCooldownUpdateTime = 0;
+let cachedTokens = 0;
+
+function gameLoop(currentTime) {
+    if (currentTime - lastTime > 16) {  // ~60 FPS
+        animateDino();
+        updateUI();
+        checkLevelUp();
+        
+        if (currentTime - lastClickIncreaseTime > 1000) {
+            increaseClicks();
+            lastClickIncreaseTime = currentTime;
+        }
+        
+        if (currentTime - lastCooldownUpdateTime > 1000) {
+            updateGiftCooldownDisplay();
+            updateEnergyBoostCooldownDisplay();
+            lastCooldownUpdateTime = currentTime;
+        }
+        
+        checkAutoBot();
+        
+        lastTime = currentTime;
+    }
+    requestAnimationFrame(gameLoop);
+}
+
 function startGame() {
     console.log("Starting game");
+    logToOverlay("Game started");
     initializeDOM();
     loadUserData();
     loadDinoImages();
     resizeCanvas();
     setupClickHandler();
+    setupResizeHandler();
+    preloadImages();
 
-    window.addEventListener('resize', resizeCanvas);
-
-    window.requestAnimationFrame(() => {
-        setupGameUI();
-        updateUI();
-    });
-
-    animateDino();
     checkDailyLogin();
-    setInterval(increaseClicks, 1000);
-    setInterval(updateGiftCooldownDisplay, 1000);
-    setInterval(updateEnergyBoostCooldownDisplay, 1000);
-    checkAutoBot();
-    setInterval(checkAutoBot, 60000);
     updateTaskButtons();
+    
+    requestAnimationFrame(gameLoop);
 }
 
 function initializeDOM() {
@@ -130,7 +152,6 @@ function loadUserData() {
         logToOverlay("No saved data found for this user");
     }
     updateDinoImage();
-    updateUI();
 }
 
 function saveUserData() {
@@ -155,6 +176,16 @@ function saveUserData() {
         completedTasks
     };
     localStorage.setItem(telegramId, JSON.stringify(data));
+}
+
+function setupResizeHandler() {
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            resizeCanvas();
+            drawDino();
+        }, 250);
+    });
 }
 
 function resizeCanvas() {
@@ -287,10 +318,6 @@ function createClickEffect(x, y, amount) {
     }, 1000);
 }
 
-function setupGameUI() {
-    updateUI();
-}
-
 function formatNumber(number) {
     if (number >= 10000) {
         return (number / 1000).toFixed(1) + 'k';
@@ -305,44 +332,14 @@ function formatClicks(number) {
 }
 
 function updateUI() {
-    logToOverlay("Updating UI...");
-    logToOverlay("Tokens: " + tokens);
-    logToOverlay("Level: " + level);
-
-    const elements = {
-        tokenDisplay: document.getElementById('tokenDisplay'),
-        energyDisplay: document.getElementById('energyDisplay'),
-        clicksDisplay: document.getElementById('clicksDisplay'),
-        levelDisplay: document.getElementById('levelDisplay')
-    };
-
-    if (elements.tokenDisplay) {
-        elements.tokenDisplay.textContent = formatNumber(tokens);
-        logToOverlay("Token display updated: " + elements.tokenDisplay.textContent);
-    } else {
-        logToOverlay("Token display element not found");
+    if (tokens !== cachedTokens) {
+        document.getElementById('tokenDisplay').textContent = formatNumber(tokens);
+        cachedTokens = tokens;
     }
 
-    if (elements.energyDisplay) {
-        elements.energyDisplay.textContent = `${energy}/${maxEnergy}`;
-        logToOverlay("Energy display updated: " + elements.energyDisplay.textContent);
-    } else {
-        logToOverlay("Energy display element not found");
-    }
-
-    if (elements.clicksDisplay) {
-        elements.clicksDisplay.textContent = formatClicks(clicksRemaining);
-        logToOverlay("Clicks display updated: " + elements.clicksDisplay.textContent);
-    } else {
-        logToOverlay("Clicks display element not found");
-    }
-
-    if (elements.levelDisplay) {
-        elements.levelDisplay.textContent = `${level}`;
-        logToOverlay("Level display updated: " + elements.levelDisplay.textContent);
-    } else {
-        logToOverlay("Level display element not found");
-    }
+    document.getElementById('energyDisplay').textContent = `${energy}/${maxEnergy}`;
+    document.getElementById('clicksDisplay').textContent = formatClicks(clicksRemaining);
+    document.getElementById('levelDisplay').textContent = `${level}`;
 
     updateDailyRewardDisplay();
     updateGiftCooldownDisplay();
@@ -379,7 +376,6 @@ function animateDino() {
         }
     }
     drawDino();
-    requestAnimationFrame(animateDino);
 }
 
 function checkLevelUp() {
@@ -1066,3 +1062,14 @@ function logToOverlay(message) {
     }
     console.log(message);
 }
+
+function preloadImages() {
+    const images = ['dino1.png', 'dino2.png', 'dino3.png', 'dino4.png', 'dino5.png', 'token.png', 'gift-box.png', 'autobot.png'];
+    images.forEach(src => {
+        const img = new Image();
+        img.src = src;
+    });
+}
+
+// Debug overlay'i görünür yap
+document.getElementById('debugOverlay').style.display = 'block';
