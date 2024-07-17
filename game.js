@@ -203,7 +203,7 @@ function drawDino() {
     logToOverlay(`Canvas dimensions: ${canvas.width} x ${canvas.height}`);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (currentDinoImage && currentDinoImage.complete && currentDinoImage.naturalWidth > 0) {
+    if (currentDinoImage && currentDinoImage.complete) {
         logToOverlay(`Current dino image: ${currentDinoImage.src}`);
 
         const canvasAspectRatio = canvas.width / canvas.height;
@@ -411,6 +411,7 @@ function loadDinoImages() {
     Promise.all(promises)
         .then((loadedImages) => {
             dinoImages.push(...loadedImages);
+            logToOverlay(`All dino images loaded. Total: ${dinoImages.length}`);
             updateDinoImage();
         })
         .catch((error) => {
@@ -425,19 +426,7 @@ function updateDinoImage() {
     logToOverlay(`Dino index: ${dinoIndex}`);
     if (currentDinoImage) {
         logToOverlay(`Current dino image src: ${currentDinoImage.src}`);
-        if (currentDinoImage.complete) {
-            logToOverlay("Dino image is already loaded");
-            drawDino();
-        } else {
-            logToOverlay("Dino image is not loaded yet, setting onload");
-            currentDinoImage.onload = () => {
-                logToOverlay("Dino image loaded successfully");
-                drawDino();
-            };
-            currentDinoImage.onerror = (error) => {
-                logToOverlay(`Failed to load dino image: ${error}`);
-            };
-        }
+        drawDino();
     } else {
         logToOverlay(`Dino image not found for index: ${dinoIndex}`);
     }
