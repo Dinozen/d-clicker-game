@@ -166,7 +166,6 @@ function resizeCanvas() {
     drawDino();
 }
 
-
 function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -374,6 +373,7 @@ function loadDinoImages() {
         loadSingleImage(i);
     }
 }
+
 function updateDinoImage() {
     const dinoIndex = Math.min(level - 1, 4); // Maksimum 5. seviye için
     currentDinoImage = dinoImages[dinoIndex];
@@ -997,7 +997,6 @@ window.addEventListener('DOMContentLoaded', function () {
     startGame();
 });
 
-window.addEventListener('resize', resizeCanvas);
 const rewardData = [
     { day: 1, tokens: 1000 }, { day: 2, tokens: 2000 }, { day: 3, tokens: 3000 },
     { day: 4, tokens: 4000 }, { day: 5, tokens: 5000 }, { day: 6, tokens: 6000 },
@@ -1010,3 +1009,8 @@ const rewardData = [
     { day: 25, tokens: 35000 }, { day: 26, tokens: 37000 }, { day: 27, tokens: 39000 },
     { day: 28, tokens: 41000 }, { day: 29, tokens: 43000 }, { day: 30, tokens: 45000 }
 ];
+
+document.getElementById('closeWheelResultModal').onclick = function () {
+    document.getElementById('wheelResultModal').style.display = 'none';
+};
+
