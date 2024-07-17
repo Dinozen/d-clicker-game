@@ -94,8 +94,9 @@ function initializeDOM() {
         tasksModal.style.display = 'none';
     });
 
-    canvas.addEventListener('touchstart', handleMultiTouch, { passive: false });
-    canvas.addEventListener('touchend', handleMultiTouch, { passive: false });
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 
     resizeCanvas(); // İlk başlatma sırasında canvas'ı yeniden boyutlandırın
@@ -213,19 +214,25 @@ function drawDino() {
     }
 }
 
-
 function setupClickHandler() {
-    canvas.addEventListener('touchstart', handleMultiTouch, { passive: false });
-    canvas.addEventListener('touchend', handleMultiTouch, { passive: false });
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 }
 
-function handleMultiTouch(event) {
-    event.preventDefault();
-    for (let i = 0; i < event.touches.length; i++) {
-        const touch = event.touches[i];
-        handleClick(touch);
-    }
+function handleTouchStart(event) {
+    const touch = event.touches[0];
+    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+}
+
+function handleTouchEnd(event) {
+    isClicking = false;
+}
+
+function handleTouchMove(event) {
+    const touch = event.touches[0];
+    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleClick(event) {
@@ -370,15 +377,22 @@ function loadDinoImages() {
 function updateDinoImage() {
     const dinoIndex = Math.min(level - 1, 4); // Maksimum 5. seviye için
     currentDinoImage = dinoImages[dinoIndex];
-    console.log("Updating dino image:", currentDinoImage.src);
-    currentDinoImage.onload = () => {
-        console.log("Dino image loaded successfully");
-        drawDino();
-    };
-    currentDinoImage.onerror = (error) => {
-        console.error("Failed to load dino image:", error);
-    };
-    drawDino(); // Mevcut resmi hemen çiz, yeni resim yüklendiğinde tekrar çizilecek
+    if (currentDinoImage) {
+        console.log("Updating dino image:", currentDinoImage.src);
+        if (currentDinoImage.complete) {
+            drawDino();
+        } else {
+            currentDinoImage.onload = () => {
+                console.log("Dino image loaded successfully");
+                drawDino();
+            };
+            currentDinoImage.onerror = (error) => {
+                console.error("Failed to load dino image:", error);
+            };
+        }
+    } else {
+        console.error("Dino image not found for index:", dinoIndex);
+    }
 }
 
 function createLevelUpEffect() {
