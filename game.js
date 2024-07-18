@@ -46,12 +46,14 @@ let lastClickIncreaseTime = 0;
 let lastCooldownUpdateTime = 0;
 let cachedTokens = 0;
 
+let lastDrawTime = 0;
+const FRAME_RATE = 30; // Saniyede 30 kare
+
 function gameLoop(currentTime) {
-    if (currentTime - lastTime > 16) {  // ~60 FPS
-        animateDino();
-        updateUI();
-        checkLevelUp();
-        
+    requestAnimationFrame(gameLoop);
+
+    if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
+        // Oyun mantığı
         if (currentTime - lastClickIncreaseTime > 1000) {
             increaseClicks();
             lastClickIncreaseTime = currentTime;
@@ -64,10 +66,15 @@ function gameLoop(currentTime) {
         }
         
         checkAutoBot();
-        
-        lastTime = currentTime;
+        animateDino();
+        updateUI();
+        checkLevelUp();
+
+        // Çizim işlemleri
+        drawDino();
+
+        lastDrawTime = currentTime;
     }
-    requestAnimationFrame(gameLoop);
 }
 
 function startGame() {
@@ -375,7 +382,6 @@ function animateDino() {
             isClicking = false;
         }
     }
-    drawDino();
 }
 
 function checkLevelUp() {
