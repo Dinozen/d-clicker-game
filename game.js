@@ -30,7 +30,7 @@ const clickLimits = [300, 500, 1000, 1500, 2000];
 
 // DOM elementleri
 let canvas, ctx, earnButton, tasksButton, boostButton, dailyRewardsButton, menuModal, dailyRewardDisplay, boostersModal, tasksModal, rewardTableModal;
-let autoBotSuccessModal, autoBotEarningsModal;
+let autoBotSuccessModal, autoBotEarningsModal; 
 
 // Dinozor resimleri
 const dinoImages = [];
@@ -1031,10 +1031,6 @@ function toggleRewardPage() {
 }
 
 window.addEventListener('resize', resizeCanvas);
-
-setInterval(() => {
-    saveUserData();
-}, 1000);
 
 window.addEventListener('DOMContentLoaded', function () {
     const urlParams = new URLSearchParams(window.location.search);
