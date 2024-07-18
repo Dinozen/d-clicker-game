@@ -151,7 +151,7 @@ function loadUserData() {
         energy = parseInt(data.energy) || 3;
         maxEnergy = parseInt(data.maxEnergy) || level + 2;
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime() || Date.now();
-        clicksRemaining = parseFloat(data.clicksRemaining) || 300;
+        clicksRemaining = parseFloat(data.clicksRemaining) || getMaxClicksForLevel();
         boostAvailable = data.boostAvailable !== undefined ? data.boostAvailable : true;
         dailyStreak = parseInt(data.dailyStreak) || 0;
         lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
@@ -367,7 +367,7 @@ function updateGiftCooldownDisplay() {
 
 function animateDino() {
     if (isClicking) {
-        clickScale -= 0.01;
+        clickScale -= 0.005;
         if (clickScale <= 1) {
             clickScale = 1;
             isClicking = false;
@@ -593,7 +593,7 @@ function showMessage(message) {
         document.body.removeChild(messageModal);
     };
 
-    document.getElementById('closeMessageModal').onclick = closeModal;
+    document.getElementById('closeMessageModal').addEventListener('click', closeModal);
 
     // 10 saniye sonra otomatik olarak kapat
     setTimeout(closeModal, 10000);
@@ -749,10 +749,10 @@ function showLevelUpModal(previousLevel, newLevel) {
     document.body.appendChild(levelUpModal);
     levelUpModal.style.display = 'block';
 
-    document.getElementById('closeLevelUpModal').onclick = function () {
+    document.getElementById('closeLevelUpModal').addEventListener('click', function () {
         levelUpModal.style.display = 'none';
         document.body.removeChild(levelUpModal);
-    };
+    });
 }
 
 function checkDailyLogin() {
