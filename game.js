@@ -227,30 +227,13 @@ function drawDino() {
         const x = Math.round((canvas.width - width) / 2);
         const y = Math.round((canvas.height - height) / 2);
 
-        // Daire çizimi
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const circleRadius = Math.max(width, height) / 2 + 10;
-
-        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, circleRadius);
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0.6)');
-
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
-        ctx.fill();
-
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
         ctx.drawImage(currentDinoImage, x, y, width, height);
     } else {
-        ctx.fillStyle = 'white'; // Tıklama efekti için beyaz renk
+        ctx.fillStyle = 'green';
         ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
     }
 }
+
 
 
 function setupClickHandler() {
