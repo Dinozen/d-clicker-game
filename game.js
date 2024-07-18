@@ -218,18 +218,55 @@ function resizeCanvas() {
 }
 
 function drawDino() {
+    console.log("Drawing dino...");
+    console.log("Canvas dimensions:", canvas.width, canvas.height);
+    console.log("Current dino image:", currentDinoImage);
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (currentDinoImage && currentDinoImage.complete) {
-        const scale = Math.min(canvas.width / currentDinoImage.width, canvas.height / currentDinoImage.height) * 0.8;
-        const width = Math.round(currentDinoImage.width * scale);
-        const height = Math.round(currentDinoImage.height * scale);
-        const x = Math.round((canvas.width - width) / 2);
-        const y = Math.round((canvas.height - height) / 2);
+        console.log("Drawing dino image");
+        
+        let drawWidth, drawHeight;
+        const canvasAspectRatio = canvas.width / canvas.height;
+        const imageAspectRatio = currentDinoImage.naturalWidth / currentDinoImage.naturalHeight;
 
-        ctx.drawImage(currentDinoImage, x, y, width, height);
+        if (canvasAspectRatio > imageAspectRatio) {
+            drawHeight = canvas.height * 0.4;
+            drawWidth = drawHeight * imageAspectRatio;
+        } else {
+            drawWidth = canvas.width * 0.4;
+            drawHeight = drawWidth / imageAspectRatio;
+        }
+
+        dinoWidth = Math.round(drawWidth * clickScale);
+        dinoHeight = Math.round(drawHeight * clickScale);
+        dinoX = Math.round((canvas.width - dinoWidth) / 2);
+        dinoY = Math.round((canvas.height - dinoHeight) / 2);
+
+        // Daire çizimi
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const circleRadius = Math.max(dinoWidth, dinoHeight) / 2 + 10;
+
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, circleRadius);
+        gradient.addColorStop(0, 'rgba(137, 207, 240, 0.8)');
+        gradient.addColorStop(1, 'rgba(100, 149, 237, 0.6)');
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(25, 25, 112, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.drawImage(currentDinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
+        console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
     } else {
-        ctx.fillStyle = 'green';
+        console.log("Dino image not loaded or invalid");
+        ctx.fillStyle = 'green'; // Geçici olarak yeşil kare çizimi
         ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
     }
 }
