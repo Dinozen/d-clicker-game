@@ -30,7 +30,7 @@ const clickLimits = [300, 500, 1000, 1500, 2000];
 
 // DOM elementleri
 let canvas, ctx, earnButton, tasksButton, boostButton, dailyRewardsButton, menuModal, dailyRewardDisplay, boostersModal, tasksModal, rewardTableModal;
-let autoBotSuccessModal, autoBotEarningsModal; 
+let autoBotSuccessModal, autoBotEarningsModal;
 
 // Dinozor resimleri
 const dinoImages = [];
@@ -226,7 +226,7 @@ function drawDino() {
 
     if (currentDinoImage && currentDinoImage.complete) {
         console.log("Drawing dino image");
-        
+
         let drawWidth, drawHeight;
         const canvasAspectRatio = canvas.width / canvas.height;
         const imageAspectRatio = currentDinoImage.naturalWidth / currentDinoImage.naturalHeight;
@@ -271,7 +271,6 @@ function drawDino() {
     }
 }
 
-
 function setupClickHandler() {
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -293,7 +292,7 @@ function handleTouchEnd(event) {
 function handleTouchMove(event) {
     event.preventDefault();
     const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+    handleClick({ clientX: touch.clientX, client.clientY });
 }
 
 function handleClick(event) {
