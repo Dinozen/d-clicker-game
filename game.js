@@ -52,6 +52,9 @@ const FRAME_RATE = 30; // Saniyede 30 kare
 let lastAutoCheckTime = 0;
 const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+console.log("Is mobile device:", isMobile);
+
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
@@ -99,6 +102,7 @@ function startGame() {
     updateTaskButtons();
     
     requestAnimationFrame(gameLoop);
+    console.log("Game loop started");
 }
 
 function initializeDOM() {
@@ -209,16 +213,23 @@ function resizeCanvas() {
     canvas.style.width = `${window.innerWidth}px`;
     canvas.style.height = `${window.innerHeight}px`;
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    console.log("Canvas resized:", canvas.width, canvas.height);
     drawDino();
 }
 
 function drawDino() {
+    console.log("Drawing dino...");
+    console.log("Canvas dimensions:", canvas.width, canvas.height);
+    console.log("Current dino image:", currentDinoImage);
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (currentDinoImage && currentDinoImage.complete) {
+        console.log("Drawing dino image");
+        
+        let drawWidth, drawHeight;
         const canvasAspectRatio = canvas.width / canvas.height;
         const imageAspectRatio = currentDinoImage.naturalWidth / currentDinoImage.naturalHeight;
-        let drawWidth, drawHeight;
 
         if (canvasAspectRatio > imageAspectRatio) {
             drawHeight = canvas.height * 0.4;
@@ -252,6 +263,9 @@ function drawDino() {
         ctx.stroke();
 
         ctx.drawImage(currentDinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
+        console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
+    } else {
+        console.log("Dino image not loaded or invalid");
     }
 }
 
@@ -392,35 +406,39 @@ function checkLevelUp() {
 }
 
 function loadDinoImages() {
+    console.log("Loading dino images...");
+    const loadPromises = [];
+
     function loadSingleImage(index) {
         return new Promise((resolve, reject) => {
             const img = new Image();
             img.src = `dino${index}.png`;
+            console.log(`Loading image: ${img.src}`);
             img.onload = () => {
-                logToOverlay(`Dino image ${index} loaded successfully`);
+                console.log(`Dino image ${index} loaded successfully`);
                 resolve(img);
             };
             img.onerror = (error) => {
-                logToOverlay(`Failed to load dino image ${index}: ${error}`);
+                console.error(`Failed to load dino image ${index}:`, error);
                 reject(error);
             };
         });
     }
 
-    const promises = [];
     for (let i = 1; i <= 5; i++) {
-        promises.push(loadSingleImage(i));
+        loadPromises.push(loadSingleImage(i));
     }
 
-    Promise.all(promises)
-        .then((loadedImages) => {
+    Promise.all(loadPromises)
+        .then(loadedImages => {
+            dinoImages.length = 0; // Clear existing images
             dinoImages.push(...loadedImages);
-            logToOverlay(`All dino images loaded. Total: ${dinoImages.length}`);
+            console.log(`All dino images loaded. Total: ${dinoImages.length}`);
             updateDinoImage();
-            drawDino(); // Resimleri yükledikten hemen sonra çiz
+            drawDino();
         })
-        .catch((error) => {
-            logToOverlay(`Error loading dino images: ${error}`);
+        .catch(error => {
+            console.error(`Error loading dino images:`, error);
         });
 }
 
@@ -1042,17 +1060,12 @@ document.getElementById('closeWheelResultModal').onclick = function () {
     document.getElementById('wheelResultModal').style.display = 'none';
 };
 
-const MAX_LOG_LINES = 50;
-
 function logToOverlay(message) {
     const debugOverlay = document.getElementById('debugOverlay');
     if (debugOverlay) {
-        const lines = debugOverlay.innerHTML.split('<br>');
-        if (lines.length > MAX_LOG_LINES) {
-            lines.splice(0, lines.length - MAX_LOG_LINES);
-        }
-        lines.push(message);
-        debugOverlay.innerHTML = lines.join('<br>');
+        const newLine = document.createElement('div');
+        newLine.textContent = message;
+        debugOverlay.appendChild(newLine);
         debugOverlay.scrollTop = debugOverlay.scrollHeight;
     }
     console.log(message);
