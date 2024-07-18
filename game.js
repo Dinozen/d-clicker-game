@@ -226,7 +226,7 @@ function drawDino() {
 
     if (currentDinoImage && currentDinoImage.complete) {
         console.log("Drawing dino image");
-
+        
         let drawWidth, drawHeight;
         const canvasAspectRatio = canvas.width / canvas.height;
         const imageAspectRatio = currentDinoImage.naturalWidth / currentDinoImage.naturalHeight;
@@ -245,8 +245,8 @@ function drawDino() {
         dinoY = Math.round((canvas.height - dinoHeight) / 2);
 
         // Daire çizimi
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        const centerX = dinoX + dinoWidth / 2;
+        const centerY = dinoY + dinoHeight / 2;
         const circleRadius = Math.max(dinoWidth, dinoHeight) / 2 + 10;
 
         const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, circleRadius);
