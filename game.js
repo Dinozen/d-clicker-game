@@ -271,6 +271,7 @@ function drawDino() {
     }
 }
 
+
 function setupClickHandler() {
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -292,7 +293,7 @@ function handleTouchEnd(event) {
 function handleTouchMove(event) {
     event.preventDefault();
     const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, client.clientY });
+    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleClick(event) {
