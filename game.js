@@ -226,7 +226,7 @@ function drawDino() {
 
     if (currentDinoImage && currentDinoImage.complete) {
         console.log("Drawing dino image");
-        
+
         let drawWidth, drawHeight;
         const canvasAspectRatio = canvas.width / canvas.height;
         const imageAspectRatio = currentDinoImage.naturalWidth / currentDinoImage.naturalHeight;
@@ -239,8 +239,8 @@ function drawDino() {
             drawHeight = drawWidth / imageAspectRatio;
         }
 
-        dinoWidth = Math.round(drawWidth * clickScale);
-        dinoHeight = Math.round(drawHeight * clickScale);
+        dinoWidth = Math.round(drawWidth);
+        dinoHeight = Math.round(drawHeight);
         dinoX = Math.round((canvas.width - dinoWidth) / 2);
         dinoY = Math.round((canvas.height - dinoHeight) / 2);
 
