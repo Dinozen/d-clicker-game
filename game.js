@@ -89,7 +89,6 @@ function gameLoop(currentTime) {
 
 function startGame() {
     console.log("Starting game");
-    logToOverlay("Game started");
     initializeDOM();
     loadUserData();
     loadDinoImages();
@@ -143,54 +142,50 @@ function initializeDOM() {
 }
 
 function loadUserData() {
-    logToOverlay("Loading user data for telegramId: " + telegramId);
     const savedData = localStorage.getItem(telegramId);
     if (savedData) {
         const data = JSON.parse(savedData);
-        tokens = data.tokens || 0;
-        level = data.level || 1;
+        tokens = parseInt(data.tokens) || 0;
+        level = parseInt(data.level) || 1;
         completedTasks = data.completedTasks || [];
-        energy = data.energy || 3;
-        maxEnergy = data.maxEnergy || level + 2;
+        energy = parseInt(data.energy) || 3;
+        maxEnergy = parseInt(data.maxEnergy) || level + 2;
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime() || Date.now();
-        clicksRemaining = data.clicksRemaining || 300;
+        clicksRemaining = parseFloat(data.clicksRemaining) || 300;
         boostAvailable = data.boostAvailable !== undefined ? data.boostAvailable : true;
-        dailyStreak = data.dailyStreak || 0;
+        dailyStreak = parseInt(data.dailyStreak) || 0;
         lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
-        lastGiftTime = data.lastGiftTime || 0;
-        lastEnergyBoostTime = data.lastEnergyBoostTime || 0;
-        referralCount = data.referralCount || 0;
+        lastGiftTime = parseInt(data.lastGiftTime) || 0;
+        lastEnergyBoostTime = parseInt(data.lastEnergyBoostTime) || 0;
+        referralCount = parseInt(data.referralCount) || 0;
         autoBotActive = data.autoBotActive || false;
         autoBotPurchased = data.autoBotPurchased || false;
-        autoBotTokens = data.autoBotTokens || 0;
-        autoBotPurchaseTime = data.autoBotPurchaseTime || 0;
-        lastAutoBotCheckTime = data.lastAutoBotCheckTime || 0;
-        logToOverlay("User data loaded: " + JSON.stringify(data));
-    } else {
-        logToOverlay("No saved data found for this user");
+        autoBotTokens = parseInt(data.autoBotTokens) || 0;
+        autoBotPurchaseTime = parseInt(data.autoBotPurchaseTime) || 0;
+        lastAutoBotCheckTime = parseInt(data.lastAutoBotCheckTime) || 0;
     }
     updateDinoImage();
 }
 
 function saveUserData() {
     const data = {
-        tokens,
-        level,
-        energy,
-        maxEnergy,
+        tokens: parseInt(tokens),
+        level: parseInt(level),
+        energy: parseInt(energy),
+        maxEnergy: parseInt(maxEnergy),
         lastEnergyRefillTime,
-        clicksRemaining,
+        clicksRemaining: parseFloat(clicksRemaining),
         boostAvailable,
-        dailyStreak,
+        dailyStreak: parseInt(dailyStreak),
         lastLoginDate,
-        lastGiftTime,
-        lastEnergyBoostTime,
-        referralCount,
+        lastGiftTime: parseInt(lastGiftTime),
+        lastEnergyBoostTime: parseInt(lastEnergyBoostTime),
+        referralCount: parseInt(referralCount),
         autoBotActive,
         autoBotPurchased,
-        autoBotTokens,
-        autoBotPurchaseTime,
-        lastAutoBotCheckTime,
+        autoBotTokens: parseInt(autoBotTokens),
+        autoBotPurchaseTime: parseInt(autoBotPurchaseTime),
+        lastAutoBotCheckTime: parseInt(lastAutoBotCheckTime),
         completedTasks
     };
     localStorage.setItem(telegramId, JSON.stringify(data));
@@ -247,15 +242,11 @@ function drawDino() {
         ctx.stroke();
         
         ctx.drawImage(currentDinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
-        
-        console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
     } else {
-        console.log("Dino image not ready, drawing placeholder");
         ctx.fillStyle = 'green';
         ctx.fillRect(window.innerWidth / 2 - 50, window.innerHeight / 2 - 50, 100, 100);
     }
 }
-
 
 function setupClickHandler() {
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -288,7 +279,6 @@ function handleClick(event) {
 
     if (x >= dinoX && x <= dinoX + dinoWidth &&
         y >= dinoY && y <= dinoY + dinoHeight) {
-        logToOverlay("Dino clicked!");
         let tokenGain = 1 * getLevelMultiplier();
         if (isDoubleTokensActive) {
             tokenGain *= 2;
@@ -297,6 +287,7 @@ function handleClick(event) {
         createClickEffect(event.clientX, event.clientY, tokenGain);
         isClicking = true;
         clickScale = 1.1;
+        requestAnimationFrame(animateDino);
 
         if (clicksRemaining > 0) {
             tokens += tokenGain;
@@ -376,11 +367,13 @@ function updateGiftCooldownDisplay() {
 
 function animateDino() {
     if (isClicking) {
-        clickScale -= 0.005;
+        clickScale -= 0.01;
         if (clickScale <= 1) {
             clickScale = 1;
             isClicking = false;
         }
+        drawDino();
+        requestAnimationFrame(animateDino);
     }
 }
 
@@ -433,13 +426,10 @@ function loadDinoImages() {
 function updateDinoImage() {
     const dinoIndex = Math.min(level - 1, 4);
     currentDinoImage = dinoImages[dinoIndex];
-    logToOverlay(`Updating dino image for level: ${level}`);
-    logToOverlay(`Dino index: ${dinoIndex}`);
     if (currentDinoImage) {
-        logToOverlay(`Current dino image src: ${currentDinoImage.src}`);
         drawDino();
     } else {
-        logToOverlay(`Dino image not found for index: ${dinoIndex}`);
+        console.log(`Dino image not found for index: ${dinoIndex}`);
     }
 }
 
@@ -482,7 +472,7 @@ function toggleBoosters() {
 
 function updateBoostersModalContent() {
     if (!boostersModal) {
-        logToOverlay('Boosters modal not found');
+        console.log('Boosters modal not found');
         return;
     }
     boostersModal.innerHTML = `
@@ -1019,7 +1009,7 @@ window.addEventListener('resize', resizeCanvas);
 
 setInterval(() => {
     saveUserData();
-}, 1000);
+}, 5000);
 
 window.addEventListener('DOMContentLoaded', function () {
     const urlParams = new URLSearchParams(window.location.search);
@@ -1048,17 +1038,6 @@ document.getElementById('closeWheelResultModal').onclick = function () {
     document.getElementById('wheelResultModal').style.display = 'none';
 };
 
-function logToOverlay(message) {
-    const debugOverlay = document.getElementById('debugOverlay');
-    if (debugOverlay) {
-        const newLine = document.createElement('div');
-        newLine.textContent = message;
-        debugOverlay.appendChild(newLine);
-        debugOverlay.scrollTop = debugOverlay.scrollHeight;
-    }
-    console.log(message);
-}
-
 function preloadImages() {
     const images = ['dino1.png', 'dino2.png', 'dino3.png', 'dino4.png', 'dino5.png', 'token.png', 'gift-box.png', 'autobot.png'];
     images.forEach(src => {
@@ -1066,6 +1045,3 @@ function preloadImages() {
         img.src = src;
     });
 }
-
-// Debug overlay'i görünür yap
-document.getElementById('debugOverlay').style.display = 'block';
