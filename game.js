@@ -49,6 +49,9 @@ let cachedTokens = 0;
 let lastDrawTime = 0;
 const FRAME_RATE = 30; // Saniyede 30 kare
 
+let lastAutoCheckTime = 0;
+const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
+
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
@@ -65,11 +68,15 @@ function gameLoop(currentTime) {
             lastCooldownUpdateTime = currentTime;
         }
         
-        checkAutoBot();
+        // AutoBot kontrolünü daha az sıklıkta yap
+        if (currentTime - lastAutoCheckTime > AUTO_CHECK_INTERVAL) {
+            checkAutoBot();
+            lastAutoCheckTime = currentTime;
+        }
+
         animateDino();
         updateUI();
-        checkLevelUp();
-
+        
         // Çizim işlemleri
         drawDino();
 
@@ -206,13 +213,9 @@ function resizeCanvas() {
 }
 
 function drawDino() {
-    logToOverlay("Drawing dino...");
-    logToOverlay(`Canvas dimensions: ${canvas.width} x ${canvas.height}`);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (currentDinoImage && currentDinoImage.complete) {
-        logToOverlay(`Current dino image: ${currentDinoImage.src}`);
-
         const canvasAspectRatio = canvas.width / canvas.height;
         const imageAspectRatio = currentDinoImage.naturalWidth / currentDinoImage.naturalHeight;
         let drawWidth, drawHeight;
@@ -249,11 +252,6 @@ function drawDino() {
         ctx.stroke();
 
         ctx.drawImage(currentDinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
-
-        logToOverlay(`Dino drawn at: ${dinoX}, ${dinoY}, ${dinoWidth}, ${dinoHeight}`);
-    } else {
-        logToOverlay('Dino image not loaded yet or invalid');
-        logToOverlay(`Current dino image: ${currentDinoImage}`);
     }
 }
 
@@ -419,6 +417,7 @@ function loadDinoImages() {
             dinoImages.push(...loadedImages);
             logToOverlay(`All dino images loaded. Total: ${dinoImages.length}`);
             updateDinoImage();
+            drawDino(); // Resimleri yükledikten hemen sonra çiz
         })
         .catch((error) => {
             logToOverlay(`Error loading dino images: ${error}`);
@@ -839,7 +838,6 @@ function updateEnergyRefillRate() {
 }
 
 function checkAutoBot() {
-    logToOverlay("Checking AutoBot...");
     if (autoBotActive) {
         const currentTime = Date.now();
         const elapsedTime = Math.min((currentTime - lastAutoBotCheckTime) / 1000, 4 * 60 * 60); // Maximum 4 hours
@@ -849,14 +847,9 @@ function checkAutoBot() {
         lastAutoBotCheckTime = currentTime;
         saveUserData();
 
-        logToOverlay("AutoBot earned tokens: " + newTokens);
-        logToOverlay("Total AutoBot tokens: " + autoBotTokens);
-
         if (autoBotTokens > 0) {
             showAutoBotEarnings();
         }
-    } else {
-        logToOverlay("AutoBot is not active");
     }
 }
 
@@ -1049,10 +1042,17 @@ document.getElementById('closeWheelResultModal').onclick = function () {
     document.getElementById('wheelResultModal').style.display = 'none';
 };
 
+const MAX_LOG_LINES = 50;
+
 function logToOverlay(message) {
     const debugOverlay = document.getElementById('debugOverlay');
     if (debugOverlay) {
-        debugOverlay.innerHTML += message + '<br>';
+        const lines = debugOverlay.innerHTML.split('<br>');
+        if (lines.length > MAX_LOG_LINES) {
+            lines.splice(0, lines.length - MAX_LOG_LINES);
+        }
+        lines.push(message);
+        debugOverlay.innerHTML = lines.join('<br>');
         debugOverlay.scrollTop = debugOverlay.scrollHeight;
     }
     console.log(message);
