@@ -1,506 +1,417 @@
-console.log("Game script loaded");
-
-// Oyun değişkenleri
-let tokens = 0;
-let completedTasks = [];
-let level = 1;
-let energy = 3;
-let maxEnergy = 3;
-let lastEnergyRefillTime = Date.now();
-let clicksRemaining = 300;
-let telegramId = 'default';
-let boostAvailable = true;
-const boostCooldown = 3 * 60 * 60 * 1000; // 3 saat
-let dailyStreak = 0;
-let lastLoginDate = null;
-let lastGiftTime = 0;
-let lastEnergyBoostTime = 0;
-let referralCount = 0;
-let isDoubleTokensActive = false;
-let autoBotActive = false;
-let autoBotPurchased = false;
-let autoBotTokens = 0;
-let energyRefillRate = 1 / 3; // Başlangıçta 3 saniyede 1
-let autoBotPurchaseTime = 0;
-let lastAutoBotCheckTime = 0;
-
-// Level gereksinimleri
-const levelRequirements = [0, 3000, 8000, 20000, 40000];
-const clickLimits = [300, 500, 1000, 1500, 2000];
-
-// DOM elementleri
-let canvas, ctx, earnButton, tasksButton, boostButton, dailyRewardsButton, menuModal, dailyRewardDisplay, boostersModal, tasksModal, rewardTableModal;
-let autoBotSuccessModal, autoBotEarningsModal; 
-
-// Dinozor resimleri
-const dinoImages = [];
-
-let currentDinoImage;
-let dinoX, dinoY, dinoWidth, dinoHeight;
-let isClicking = false;
-let clickScale = 1;
-
-let lastTime = 0;
-let resizeTimeout;
-let lastClickIncreaseTime = 0;
-let lastCooldownUpdateTime = 0;
-let cachedTokens = 0;
-
-let lastDrawTime = 0;
-const FRAME_RATE = 30; // Saniyede 30 kare
-
-let lastAutoCheckTime = 0;
-const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
-
-const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-console.log("Is mobile device:", isMobile);
-
-function gameLoop(currentTime) {
-    requestAnimationFrame(gameLoop);
-
-    if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
-        // Oyun mantığı
-        if (currentTime - lastClickIncreaseTime > 1000) {
-            increaseClicks();
-            lastClickIncreaseTime = currentTime;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DinoZen Clicker Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Poppins&display=swap" rel="stylesheet">
+    <style>
+        @font-face {
+            font-family: 'BlockheadTypeface';
+            src: url('menufont.otf') format('opentype');
         }
-        
-        if (currentTime - lastCooldownUpdateTime > 1000) {
-            updateGiftCooldownDisplay();
-            updateEnergyBoostCooldownDisplay();
-            lastCooldownUpdateTime = currentTime;
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            color: #ffffff;
+            font-family: 'Lilita One', cursive;
+            overflow: hidden;
         }
-        
-        // AutoBot kontrolünü daha az sıklıkta yap
-        if (currentTime - lastAutoCheckTime > AUTO_CHECK_INTERVAL) {
-            checkAutoBot();
-            lastAutoCheckTime = currentTime;
+        #backgroundGif {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
         }
-
-        animateDino();
-        updateUI();
-        
-        // Çizim işlemleri
-        drawDino();
-
-        lastDrawTime = currentTime;
-    }
-}
-
-function startGame() {
-    console.log("Starting game");
-    logToOverlay("Game started");
-    initializeDOM();
-    loadUserData();
-    loadDinoImages();
-    resizeCanvas();
-    setupClickHandler();
-    setupResizeHandler();
-    preloadImages();
-
-    checkDailyLogin();
-    updateTaskButtons();
-    
-    requestAnimationFrame(gameLoop);
-    console.log("Game loop started");
-}
-
-function initializeDOM() {
-    canvas = document.getElementById('gameCanvas');
-    ctx = canvas.getContext('2d');
-    earnButton = document.getElementById('earnButton');
-    tasksButton = document.getElementById('tasksButton');
-    boostButton = document.getElementById('boostButton');
-    dailyRewardsButton = document.getElementById('dailyRewardsButton');
-    menuModal = document.getElementById('menuModal');
-    dailyRewardDisplay = document.getElementById('dailyRewardDisplay');
-    boostersModal = document.getElementById('boostersModal');
-    tasksModal = document.getElementById('tasksModal');
-    rewardTableModal = document.getElementById('rewardTableModal');
-    autoBotSuccessModal = document.getElementById('autoBotSuccessModal');
-    autoBotEarningsModal = document.getElementById('autoBotEarningsModal');
-
-    earnButton.addEventListener('click', toggleMenu);
-    tasksButton.addEventListener('click', showTasks);
-    boostButton.addEventListener('click', toggleBoosters);
-    dailyRewardsButton.addEventListener('click', showDailyStreaks);
-
-    document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
-    document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
-    document.getElementById('closeRewardTableButton').addEventListener('click', () => {
-        rewardTableModal.style.display = 'none';
-    });
-    document.getElementById('followUsButton').addEventListener('click', () => startTask('followX'));
-    document.getElementById('visitWebsiteButton').addEventListener('click', () => startTask('visitWebsite'));
-    document.getElementById('closeTasksModal').addEventListener('click', () => {
-        tasksModal.style.display = 'none';
-    });
-
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-    canvas.addEventListener('click', handleClick);
-}
-
-function loadUserData() {
-    logToOverlay("Loading user data for telegramId: " + telegramId);
-    const savedData = localStorage.getItem(telegramId);
-    if (savedData) {
-        const data = JSON.parse(savedData);
-        tokens = data.tokens || 0;
-        level = data.level || 1;
-        completedTasks = data.completedTasks || [];
-        energy = data.energy || 3;
-        maxEnergy = data.maxEnergy || level + 2;
-        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime() || Date.now();
-        clicksRemaining = data.clicksRemaining || 300;
-        boostAvailable = data.boostAvailable !== undefined ? data.boostAvailable : true;
-        dailyStreak = data.dailyStreak || 0;
-        lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
-        lastGiftTime = data.lastGiftTime || 0;
-        lastEnergyBoostTime = data.lastEnergyBoostTime || 0;
-        referralCount = data.referralCount || 0;
-        autoBotActive = data.autoBotActive || false;
-        autoBotPurchased = data.autoBotPurchased || false;
-        autoBotTokens = data.autoBotTokens || 0;
-        autoBotPurchaseTime = data.autoBotPurchaseTime || 0;
-        lastAutoBotCheckTime = data.lastAutoBotCheckTime || 0;
-        logToOverlay("User data loaded: " + JSON.stringify(data));
-    } else {
-        logToOverlay("No saved data found for this user");
-    }
-    updateDinoImage();
-}
-
-function saveUserData() {
-    const data = {
-        tokens,
-        level,
-        energy,
-        maxEnergy,
-        lastEnergyRefillTime,
-        clicksRemaining,
-        boostAvailable,
-        dailyStreak,
-        lastLoginDate,
-        lastGiftTime,
-        lastEnergyBoostTime,
-        referralCount,
-        autoBotActive,
-        autoBotPurchased,
-        autoBotTokens,
-        autoBotPurchaseTime,
-        lastAutoBotCheckTime,
-        completedTasks
-    };
-    localStorage.setItem(telegramId, JSON.stringify(data));
-}
-
-function setupResizeHandler() {
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(function() {
-            resizeCanvas();
-            drawDino();
-        }, 250);
-    });
-}
-
-function resizeCanvas() {
-    const scale = window.devicePixelRatio || 1;
-    canvas.width = window.innerWidth * scale;
-    canvas.height = window.innerHeight * scale;
-    canvas.style.width = `${window.innerWidth}px`;
-    canvas.style.height = `${window.innerHeight}px`;
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    console.log("Canvas resized:", canvas.width, canvas.height);
-    drawDino();
-}
-
-function drawDino() {
-    console.log("Drawing dino...");
-    console.log("Canvas dimensions:", canvas.width, canvas.height);
-    console.log("Current dino image:", currentDinoImage);
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (currentDinoImage && currentDinoImage.complete) {
-        console.log("Drawing dino image");
-
-        let drawWidth, drawHeight;
-        const canvasAspectRatio = canvas.width / canvas.height;
-        const imageAspectRatio = currentDinoImage.naturalWidth / currentDinoImage.naturalHeight;
-
-        if (canvasAspectRatio > imageAspectRatio) {
-            drawHeight = canvas.height * 0.4;
-            drawWidth = drawHeight * imageAspectRatio;
-        } else {
-            drawWidth = canvas.width * 0.4;
-            drawHeight = drawWidth / imageAspectRatio;
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
         }
-
-        dinoWidth = Math.round(drawWidth);
-        dinoHeight = Math.round(drawHeight);
-        dinoX = Math.round((canvas.width - dinoWidth) / 2);
-        dinoY = Math.round((canvas.height - dinoHeight) / 2);
-
-        // Daire çizimi
-        const centerX = dinoX + dinoWidth / 2;
-        const centerY = dinoY + dinoHeight / 2;
-        const circleRadius = Math.max(dinoWidth, dinoHeight) / 2 + 10;
-
-        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, circleRadius);
-        gradient.addColorStop(0, 'rgba(137, 207, 240, 0.8)');
-        gradient.addColorStop(1, 'rgba(100, 149, 237, 0.6)');
-
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
-        ctx.fill();
-
-        ctx.strokeStyle = 'rgba(25, 25, 112, 0.8)';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        ctx.drawImage(currentDinoImage, dinoX, dinoY, dinoWidth, dinoHeight);
-        console.log("Dino drawn at:", dinoX, dinoY, dinoWidth, dinoHeight);
-    } else {
-        console.log("Dino image not loaded or invalid");
-        ctx.fillStyle = 'green'; // Geçici olarak yeşil kare çizimi
-        ctx.fillRect(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
-    }
-}
-
-
-function setupClickHandler() {
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-    canvas.addEventListener('click', handleClick);
-}
-
-function handleTouchStart(event) {
-    event.preventDefault();
-    const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
-}
-
-function handleTouchEnd(event) {
-    event.preventDefault();
-    isClicking = false;
-}
-
-function handleTouchMove(event) {
-    event.preventDefault();
-    const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
-}
-
-function handleClick(event) {
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    if (x >= dinoX && x <= dinoX + dinoWidth &&
-        y >= dinoY && y <= dinoY + dinoHeight) {
-        logToOverlay("Dino clicked!");
-        let tokenGain = 1 * getLevelMultiplier();
-        if (isDoubleTokensActive) {
-            tokenGain *= 2;
+        #gameInfo {
+            position: fixed;
+            top: 5px;
+            left: 5px;
+            font-size: 14px;
+            z-index: 10;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
-
-        createClickEffect(event.clientX, event.clientY, tokenGain);
-        isClicking = true;
-        clickScale = 1.1;
-
-        if (clicksRemaining > 0) {
-            tokens += tokenGain;
-            clicksRemaining--;
-            updateUI();
-            checkLevelUp();
-            saveUserData();
-        } else if (energy > 0) {
-            energy--;
-            clicksRemaining = getMaxClicksForLevel();
-            updateUI();
+        .clickEffect {
+            position: absolute;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            animation: fadeOut 1s forwards;
+            pointer-events: none;
+            z-index: 1000;
         }
-    }
-}
-
-function createClickEffect(x, y, amount) {
-    const clickEffect = document.createElement('div');
-    clickEffect.className = 'clickEffect';
-    clickEffect.style.left = `${x}px`;
-    clickEffect.style.top = `${y}px`;
-    clickEffect.textContent = `+${amount}`;
-    document.body.appendChild(clickEffect);
-
-    setTimeout(() => {
-        clickEffect.remove();
-    }, 1000);
-}
-
-function formatNumber(number) {
-    if (number >= 10000) {
-        return (number / 1000).toFixed(1) + 'k';
-    } else if (number >= 1000) {
-        return number.toFixed(0);
-    }
-    return number.toFixed(0);
-}
-
-function formatClicks(number) {
-    return number.toFixed(2).slice(0, 5);  // En fazla 5 karakter göster
-}
-
-function updateUI() {
-    if (tokens !== cachedTokens) {
-        document.getElementById('tokenDisplay').textContent = formatNumber(tokens);
-        cachedTokens = tokens;
-    }
-
-    document.getElementById('energyDisplay').textContent = `${energy}/${maxEnergy}`;
-    document.getElementById('clicksDisplay').textContent = formatClicks(clicksRemaining);
-    document.getElementById('levelDisplay').textContent = `${level}`;
-
-    updateDailyRewardDisplay();
-    updateGiftCooldownDisplay();
-}
-
-function updateGiftCooldownDisplay() {
-    const now = Date.now();
-    const timeRemaining = Math.max(0, lastGiftTime + boostCooldown - now);
-    const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-
-    const cooldownDisplay = document.getElementById('giftCooldownDisplay');
-    const randomGiftButton = document.getElementById('randomGiftButton');
-    if (cooldownDisplay && randomGiftButton) {
-        if (timeRemaining > 0) {
-            cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
-            randomGiftButton.disabled = true;
-            randomGiftButton.classList.add('disabled');
-        } else {
-            cooldownDisplay.textContent = 'Random Gift available!';
-            randomGiftButton.disabled = false;
-            randomGiftButton.classList.remove('disabled');
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
         }
-    }
-}
-
-function animateDino() {
-    if (isClicking) {
-        clickScale -= 0.005;
-        if (clickScale <= 1) {
-            clickScale = 1;
-            isClicking = false;
+        .button {
+            font-family: 'BlockheadTypeface', sans-serif;
+            text-transform: uppercase;
+            font-size: 16px;
+            padding: 10px 20px;
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin: 5px;
+            z-index: 10;
         }
-    }
-}
-
-function checkLevelUp() {
-    const newLevel = levelRequirements.findIndex(req => tokens < req);
-    if (newLevel > level && newLevel <= 5) {
-        while (level < newLevel) {
-            levelUp();
+        .button:hover {
+            background-color: #21a1f1;
         }
-    }
-}
-
-function loadDinoImages() {
-    console.log("Loading dino images...");
-    const loadPromises = [];
-
-    function loadSingleImage(index) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.src = `dino${index}.png`;
-            console.log(`Loading image: ${img.src}`);
-            img.onload = () => {
-                console.log(`Dino image ${index} loaded successfully`);
-                resolve(img);
-            };
-            img.onerror = (error) => {
-                console.error(`Failed to load dino image ${index}:`, error);
-                reject(error);
-            };
-        });
-    }
-
-    for (let i = 1; i <= 5; i++) {
-        loadPromises.push(loadSingleImage(i));
-    }
-
-    Promise.all(loadPromises)
-        .then(loadedImages => {
-            dinoImages.length = 0; // Clear existing images
-            dinoImages.push(...loadedImages);
-            console.log(`All dino images loaded. Total: ${dinoImages.length}`);
-            updateDinoImage();
-            drawDino();
-        })
-        .catch(error => {
-            console.error(`Error loading dino images:`, error);
-        });
-}
-
-function updateDinoImage() {
-    const dinoIndex = Math.min(level - 1, 4);
-    currentDinoImage = dinoImages[dinoIndex];
-    logToOverlay(`Updating dino image for level: ${level}`);
-    logToOverlay(`Dino index: ${dinoIndex}`);
-    if (currentDinoImage) {
-        logToOverlay(`Current dino image src: ${currentDinoImage.src}`);
-        drawDino();
-    } else {
-        logToOverlay(`Dino image not found for index: ${dinoIndex}`);
-    }
-}
-
-function createLevelUpEffect() {
-    const levelUpEffect = document.createElement('div');
-    levelUpEffect.className = 'levelUpEffect';
-    levelUpEffect.style.position = 'absolute';
-    levelUpEffect.style.left = '50%';
-    levelUpEffect.style.top = '50%';
-    levelUpEffect.style.transform = 'translate(-50%, -50%)';
-    levelUpEffect.style.fontSize = '48px';
-    levelUpEffect.style.color = 'gold';
-    levelUpEffect.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
-    levelUpEffect.style.zIndex = '1000';
-    levelUpEffect.textContent = `Level Up! ${level}`;
-    document.body.appendChild(levelUpEffect);
-
-    setTimeout(() => {
-        levelUpEffect.remove();
-    }, 2000);
-}
-
-function toggleMenu() {
-    if (menuModal.style.display === 'none' || menuModal.style.display === '') {
-        menuModal.style.display = 'block';
-        updateMenuContent();
-    } else {
-        menuModal.style.display = 'none';
-    }
-}
-
-function toggleBoosters() {
-    if (boostersModal.style.display === 'none' || boostersModal.style.display === '') {
-        boostersModal.style.display = 'block';
-        updateBoostersModalContent();
-    } else {
-        boostersModal.style.display = 'none';
-    }
-}
-
-function updateBoostersModalContent() {
-    if (!boostersModal) {
-        logToOverlay('Boosters modal not found');
-        return;
-    }
-    boostersModal.innerHTML = `
+        .button.disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #333;
+            color: #fff;
+            border: 2px solid #61dafb;
+            box-shadow: 0 0 10px #61dafb;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 300px;
+            text-align: center;
+        }
+        .close-btn {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .close-btn:hover {
+            background-color: #d32f2f;
+        }
+        .referral-link-container {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        #referralLink {
+            width: 70%;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px 0 0 5px;
+        }
+        #copyButton {
+            padding: 5px 10px;
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+        }
+        #dailyRewardDisplay {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            text-align: center;
+        }
+        #randomGiftButton {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            width: 100%;
+        }
+        #buttonsContainer {
+            position: fixed;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            z-index: 10;
+        }
+        #randomGiftButton img {
+            width: 40px;
+            margin-bottom: 5px;
+        }
+        .daily-streak {
+            width: 90%;
+            max-width: 250px;
+            background-color: #000;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+            position: relative;
+            color: #fff;
+            margin: 20px auto;
+            font-family: 'Poppins', sans-serif;
+            font-size: 12px;
+        }
+        .daily-streak .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #ff5e57;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .daily-streak .close-btn::before {
+            content: "X";
+            font-size: 16px;
+            line-height: 1;
+        }
+        .daily-streak table {
+            border-collapse: collapse;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .daily-streak th, .daily-streak td {
+            border: 1px solid #fff;
+            padding: 3px;
+            text-align: center;
+            color: #fff;
+        }
+        .daily-streak th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .daily-streak td {
+            background-color: #222;
+        }
+        #dinoTokenDisplay {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            font-size: 36px;
+            display: flex;
+            align-items: center;
+        }
+        #dinoTokenDisplay img {
+            width: 36px;
+            height: 36px;
+            margin-right: 10px;
+        }
+        #tokenDisplay {
+            color: white;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+        #dailyRewardsButton {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            font-size: 14px;
+            padding: 5px 10px;
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            z-index: 10;
+        }
+        #dailyRewardsButton:hover {
+            background-color: #21a1f1;
+        }
+        #giftCooldownDisplay {
+            text-align: center;
+            margin-top: 10px;
+        }
+        .reward-item img {
+            width: 16px;
+            height: 16px;
+            vertical-align: middle;
+        }
+        #closeRewardTableButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            font-size: 20px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .reward-item.claimed .claim-btn {
+            background-color: #4CAF50;
+            cursor: not-allowed;
+        }
+        .claim-btn {
+            padding: 5px 10px;
+            background-color: #61dafb;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .claim-btn:hover {
+            background-color: #21a1f1;
+        }
+        .reward-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .nav-btn {
+            background-color: #61dafb;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .nav-btn:hover {
+            background-color: #21a1f1;
+        }
+        #debugOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            max-height: 50%;
+            overflow-y: auto;
+            z-index: 9999;
+            display: none;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        #mobileDebug {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            max-height: 30%;
+            overflow-y: auto;
+            z-index: 9999;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <img id="backgroundGif" src="background.gif" alt="background gif">
+    <canvas id="gameCanvas"></canvas>
+    <div id="gameInfo">
+        <div class="counter"><span>Energy:</span><span id="energyDisplay">3/3</span></div>
+        <div class="counter"><span>Clicks:</span><span id="clicksDisplay">300</span></div>
+        <div class="counter"><span>Level:</span><span id="levelDisplay">1</span></div>
+    </div>
+    <div id="dinoTokenDisplay">
+        <img src="token.png" alt="token">
+        <span id="tokenDisplay">0</span>
+    </div>
+    <div id="buttonsContainer">
+        <button id="earnButton" class="button">EARN</button>
+        <button id="tasksButton" class="button">TASKS</button>
+        <button id="boostButton" class="button">BOOST</button>
+        <button id="dailyRewardsButton" class="button">DAILY REWARDS</button>
+    </div>
+    <div id="tasksModal" class="modal">
+        <div class="modal-content">
+            <h3>Tasks</h3>
+            <div class="task-item">
+                <p>1. Follow us on X!</p>
+                <button id="followUsButton" class="button">START</button>
+            </div>
+            <div class="task-item">
+                <p>2. Visit our official website!</p>
+                <button id="visitWebsiteButton" class="button">START</button>
+            </div>
+            <button id="closeTasksModal" class="close-btn">X</button>
+        </div>
+    </div>
+    <div id="rewardTableModal" class="modal">
+        <div class="modal-content daily-streak">
+            <button id="closeRewardTableButton" class="close-btn"></button>
+            <h3>Daily Streak Rewards</h3>
+            <div id="rewardPages">
+                <div class="reward-page" id="rewardPage1"></div>
+                <div class="reward-page" id="rewardPage2" style="display:none;"></div>
+            </div>
+            <div class="reward-navigation">
+                <button id="prevRewardPage" class="nav-btn" disabled>◀</button>
+                <button id="nextRewardPage" class="nav-btn">▶</button>
+            </div>
+        </div>
+    </div>
+    <div id="menuModal" class="modal">
+        <div class="modal-content">
+            <h2>Menu</h2>
+            <button id="randomGiftButton" class="button">
+                <img src="gift-box.png" alt="Gift">
+                Random Gift
+            </button>
+            <div id="giftCooldownDisplay"></div>
+            <button id="referralButton" class="button">Invite Friends</button>
+            <p>Your Referrals: <span id="referralCount">0</span></p>
+            <button id="closeMenuButton" class="button close-btn">X</button>
+        </div>
+    </div>
+    <div id="boostersModal" class="modal">
         <div class="modal-content">
             <h3>Boosters</h3>
             <div id="energyBoostContainer" style="display: flex; flex-direction: column; align-items: center;">
@@ -508,7 +419,7 @@ function updateBoostersModalContent() {
                 <button id="energyBoostButton" class="button">Restore Full Energy</button>
                 <div id="energyBoostCooldownDisplay"></div>
             </div>
-            <div id="autoBotContainer" style="display: flex; flex-direction: column; align-items: center;">
+           <div id="autoBotContainer" style="display: flex; flex-direction: column; align-items: center;">
                 <img src="autobot.png" alt="AutoBot" id="autoBotImage" style="width: 100px; height: 100px;">
                 <div id="autoBotInfo">
                     <h3>AutoBot</h3>
@@ -518,565 +429,88 @@ function updateBoostersModalContent() {
             </div>
             <button id="closeBoostersModal" class="close-btn">X</button>
         </div>
-    `;
-
-    const energyBoostButton = document.getElementById('energyBoostButton');
-    const autoBotButton = document.getElementById('autoBotButton');
-    const closeBoostersModalButton = document.getElementById('closeBoostersModal');
-
-    if (energyBoostButton) {
-        energyBoostButton.addEventListener('click', activateEnergyBoost);
-    }
-    if (autoBotButton) {
-        autoBotButton.addEventListener('click', activateAutoBot);
-    }
-    if (closeBoostersModalButton) {
-        closeBoostersModalButton.addEventListener('click', toggleBoosters);
-    }
-
-    updateEnergyBoostCooldownDisplay();
-}
-
-function activateEnergyBoost() {
-    const now = Date.now();
-    if (now - lastEnergyBoostTime >= boostCooldown) {
-        energy = maxEnergy;
-        lastEnergyBoostTime = now;
-        updateUI();
-        saveUserData();
-        showMessage('Energy fully restored!');
-        updateEnergyBoostCooldownDisplay();
-    } else {
-        showMessage('Energy Boost is not available yet.');
-    }
-    toggleBoosters();
-}
-
-function activateAutoBot() {
-    if (tokens >= 10000 && !autoBotPurchased) {
-        tokens -= 10000;
-        autoBotActive = true;
-        autoBotPurchased = true;
-        autoBotPurchaseTime = Date.now();
-        lastAutoBotCheckTime = Date.now();
-        saveUserData();
-        updateUI();
-        showAutoBotSuccessMessage();
-        document.getElementById('autoBotButton').textContent = 'AutoBot Activated';
-        document.getElementById('autoBotButton').disabled = true;
-    } else if (autoBotPurchased) {
-        showMessage('AutoBot is already purchased.');
-    } else {
-        showMessage('Not enough tokens to activate AutoBot.');
-    }
-    toggleBoosters();
-}
-
-function showAutoBotSuccessMessage() {
-    autoBotSuccessModal.style.display = 'block';
-    document.getElementById('closeAutoBotSuccessModal').onclick = function () {
-        autoBotSuccessModal.style.display = 'none';
-    };
-}
-
-function updateEnergyBoostCooldownDisplay() {
-    const now = Date.now();
-    const timeRemaining = Math.max(0, lastEnergyBoostTime + boostCooldown - now);
-    const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-
-    const cooldownDisplay = document.getElementById('energyBoostCooldownDisplay');
-    const energyBoostButton = document.getElementById('energyBoostButton');
-    if (cooldownDisplay && energyBoostButton) {
-        if (timeRemaining > 0) {
-            cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
-            energyBoostButton.disabled = true;
-            energyBoostButton.classList.add('disabled');
-        } else {
-            cooldownDisplay.textContent = 'Energy Boost available!';
-            energyBoostButton.disabled = false;
-            energyBoostButton.classList.remove('disabled');
-        }
-    }
-}
-
-function showMessage(message) {
-    const messageModal = document.createElement('div');
-    messageModal.className = 'modal';
-    messageModal.innerHTML = `
+    </div>
+    <div id="referralModal" class="modal">
         <div class="modal-content">
-            <p>${message}</p>
-            <button id="closeMessageModal" class="button">OK</button>
+            <h3>Your Referral Link</h3>
+            <div class="referral-link-container">
+                <input type="text" id="referralLink" readonly>
+                <button id="copyButton">Copy</button>
+            </div>
+            <div id="referralRewards">
+                <h4>Referral Rewards:</h4>
+                <p>1 Referral: 3,000 tokens</p>
+                <p>5 Referrals: 15,000 tokens</p>
+                <p>10 Referrals: 30,000 tokens</p>
+                <p>20 Referrals: 75,000 tokens</p>
+                <p>50 Referrals: 300,000 tokens</p>
+                <p>100 Referrals: 600,000 tokens</p>
+                <p>500 Referrals: 3M tokens</p>
+                <p>1000 Referrals: 10M tokens</p>
+            </div>
+            <button id="closeReferralModal" class="close-btn">X</button>
         </div>
-    `;
-    document.body.appendChild(messageModal);
-    messageModal.style.display = 'block';
-    
-    const closeModal = () => {
-        messageModal.style.display = 'none';
-        document.body.removeChild(messageModal);
-    };
-
-    document.getElementById('closeMessageModal').onclick = closeModal;
-
-    // 10 saniye sonra otomatik olarak kapat
-    setTimeout(closeModal, 10000);
-}
-
-function updateMenuContent() {
-    const now = Date.now();
-    const giftAvailable = now - lastGiftTime >= boostCooldown;
-
-    menuModal.innerHTML = `
+    </div>
+    <div id="loginStreakModal" class="modal">
         <div class="modal-content">
-            <h2>Menu</h2>
-            <button id="randomGiftButton" class="button" ${giftAvailable ? '' : 'disabled'}>
-                <img src="gift-box.png" alt="Gift">
-                Random Gift
-            </button>
-            <div id="giftCooldownDisplay"></div>
-            <button id="referralButton" class="button">Invite Friends</button>
-            <p>Your Referrals: ${referralCount}</p>
-            <button id="closeMenuButton" class="button close-btn">X</button>
+            <h3>Daily Login Reward</h3>
+            <p id="loginStreakMessage"></p>
+            <button id="claimDailyReward" class="button">Claim Reward</button>
+            <button id="closeLoginStreakModal" class="close-btn">X</button>
         </div>
-    `;
-
-    document.getElementById('randomGiftButton').addEventListener('click', function () {
-        if (giftAvailable) {
-            const rewards = ['Clicks', 'Tokens', 'Double Tokens'];
-            const reward = rewards[Math.floor(Math.random() * rewards.length)];
-            let amount;
-
-            switch (reward) {
-                case 'Clicks':
-                    amount = Math.floor(Math.random() * (1200 - 600 + 1)) + 600;
-                    clicksRemaining += amount;
-                    break;
-                case 'Tokens':
-                    amount = Math.floor(Math.random() * (1000 - 500 + 1)) + 500;
-                    tokens += amount * getLevelMultiplier();
-                    break;
-                case 'Double Tokens':
-                    activateDoubleTokens();
-                    amount = null;
-                    break;
-            }
-
-            updateUI();
-            saveUserData();
-            showRandomGiftResult(reward, amount);
-            lastGiftTime = Date.now();
-            updateGiftCooldownDisplay();
-        }
-    });
-
-    document.getElementById('referralButton').addEventListener('click', showReferralLink);
-    document.getElementById('closeMenuButton').addEventListener('click', toggleMenu);
-    updateGiftCooldownDisplay();
-}
-
-function showReferralLink() {
-    const referralModal = document.getElementById('referralModal');
-    referralModal.style.display = 'block';
-
-    const referralLink = document.getElementById('referralLink');
-    referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
-
-    document.getElementById('copyButton').onclick = function () {
-        referralLink.select();
-        document.execCommand('copy');
-        this.textContent = 'Copied!';
-        setTimeout(() => {
-            this.textContent = 'Copy Link';
-        }, 2000);
-    };
-
-    document.getElementById('closeReferralModal').onclick = function () {
-        referralModal.style.display = 'none';
-    };
-}
-
-function getLevelMultiplier() {
-    return 1 + (level - 1) * 0.25;
-}
-
-function activateDoubleTokens() {
-    const duration = 20000;
-    isDoubleTokensActive = true;
-    const originalClicksRemaining = clicksRemaining;
-    clicksRemaining = Infinity;
-    setTimeout(() => {
-        isDoubleTokensActive = false;
-        clicksRemaining = originalClicksRemaining;
-        updateUI();
-    }, duration);
-    showMessage('Double Tokens activated for 20 seconds! Click as fast as you can!');
-}
-
-function levelUp() {
-    const previousLevel = level;
-    level++;
-    maxEnergy = level + 2;
-    updateDinoImage();
-    updateEnergyRefillRate();
-    checkLevelUp();
-    saveUserData();
-    updateUI();
-    createLevelUpEffect();
-    showLevelUpModal(previousLevel, level);
-}
-
-function showLevelUpModal(previousLevel, newLevel) {
-    const previousClicks = clickLimits[previousLevel - 1];
-    const newClicks = clickLimits[newLevel - 1];
-    const previousEnergy = 3 + (previousLevel - 1);
-    const newEnergy = 3 + (newLevel - 1);
-    const previousRefillRate = previousLevel === 1 ? 0.33 : previousLevel === 2 ? 0.5 : previousLevel === 3 ? 0.67 : previousLevel === 4 ? 1 : 2;
-    const newRefillRate = newLevel === 1 ? 0.33 : newLevel === 2 ? 0.5 : newLevel === 3 ? 0.67 : newLevel === 4 ? 1 : 2;
-
-    const levelUpModal = document.createElement('div');
-    levelUpModal.className = 'modal';
-    levelUpModal.innerHTML = `
+    </div>
+    <div id="wheelResultModal" class="modal">
+        <div class="modal-content">
+            <h3>Wheel Result</h3>
+            <p id="wheelResultMessage"></p>
+            <button id="closeWheelResultModal" class="button">Awesome!</button>
+        </div>
+    </div>
+    <div id="autoBotSuccessModal" class="modal">
+        <div class="modal-content">
+            <h3>AutoBot Purchased</h3>
+            <p>You have successfully purchased AutoBot!</p>
+            <button id="closeAutoBotSuccessModal" class="close-btn">X</button>
+        </div>
+    </div>
+    <div id="autoBotEarningsModal" class="modal">
+        <div class="modal-content">
+            <h3>AutoBot Earnings</h3>
+            <img src="autobot.png" alt="AutoBot" id="autoBotEarningsImage" style="width: 100px; height: 100px; margin-bottom: 10px;">
+            <p>Tokens Collected: <span id="autoBotTokensCollected">0</span></p>
+            <button id="claimAutoBotTokens" class="button">Claim Tokens</button>
+            <button id="closeAutoBotEarningsModal" class="close-btn">X</button>
+        </div>
+    </div>
+    <div id="levelUpModal" class="modal">
         <div class="modal-content">
             <h3>Level Up!</h3>
-            <p>Congratulations! Your Dino reached Level ${newLevel}!</p>
-            <p>Here are your updated stats:</p>
-            <table>
+            <p id="levelUpMessage"></p>
+            <table id="levelUpStats">
                 <tr>
                     <th>Stat</th>
                     <th>Previous</th>
-                    <th></th>
                     <th>New</th>
                 </tr>
-                <tr>
-                    <td>Clicks</td>
-                    <td>${previousClicks}</td>
-                    <td>→</td>
-                    <td>${newClicks}</td>
-                </tr>
-                <tr>
-                    <td>Energy</td>
-                    <td>${previousEnergy}</td>
-                    <td>→</td>
-                    <td>${newEnergy}</td>
-                </tr>
-                <tr>
-                    <td>Energy Refill Rate</td>
-                    <td>${previousRefillRate.toFixed(2)}/s</td>
-                    <td>→</td>
-                    <td>${newRefillRate.toFixed(2)}/s</td>
-                </tr>
+                <!-- Level up stats will be dynamically inserted here -->
             </table>
             <button id="closeLevelUpModal" class="close-btn">X</button>
         </div>
-    `;
-    document.body.appendChild(levelUpModal);
-    levelUpModal.style.display = 'block';
-
-    document.getElementById('closeLevelUpModal').onclick = function () {
-        levelUpModal.style.display = 'none';
-        document.body.removeChild(levelUpModal);
-    };
-}
-
-function checkDailyLogin() {
-    const currentDate = new Date();
-    const offset = 3 * 60 * 60 * 1000; // 3 saat offset (UTC+3)
-    currentDate.setTime(currentDate.getTime() + offset);
-    currentDate.setUTCHours(0, 0, 0, 0); // Günün başlangıcı (UTC+3'e göre)
-
-    if (!lastLoginDate || new Date(lastLoginDate) < currentDate) {
-        dailyStreak++;
-        if (dailyStreak > 30) dailyStreak = 1;
-        lastLoginDate = currentDate.toISOString();
-
-        const reward = calculateDailyReward(dailyStreak);
-
-        const loginStreakModal = document.getElementById('loginStreakModal');
-        const loginStreakMessage = document.getElementById('loginStreakMessage');
-        const claimRewardButton = document.getElementById('claimDailyReward');
-
-        loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Streak: ${dailyStreak} days`;
-        loginStreakModal.style.display = 'block';
-
-        claimRewardButton.onclick = function () {
-            tokens += reward;
-            updateUI();
-            saveUserData();
-            loginStreakModal.style.display = 'none';
-        };
-    }
-}
-
-function calculateDailyReward(streak) {
-    const rewardTable = [
-        1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000,
-        11500, 13000, 14500, 16000, 17500, 19000, 20500, 22000, 23500, 25000,
-        27000, 29000, 31000, 33000, 35000, 37000, 39000, 41000, 43000, 45000
-    ];
-    return rewardTable[streak - 1] || rewardTable[rewardTable.length - 1];
-}
-
-function updateDailyRewardDisplay() {
-    if (dailyRewardDisplay) {
-        dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
-    }
-}
-
-function increaseClicks() {
-    const maxClicks = getMaxClicksForLevel();
-    if (clicksRemaining < maxClicks) {
-        clicksRemaining = Math.min(clicksRemaining + energyRefillRate, maxClicks);
-        updateUI();
-    }
-}
-
-function getMaxClicksForLevel() {
-    return clickLimits[level - 1] || clickLimits[clickLimits.length - 1];
-}
-
-function updateEnergyRefillRate() {
-    switch (level) {
-        case 1:
-            energyRefillRate = 1 / 3;
-            break;
-        case 2:
-            energyRefillRate = 1 / 2;
-            break;
-        case 3:
-            energyRefillRate = 2 / 3;
-            break;
-        case 4:
-            energyRefillRate = 1;
-            break;
-        case 5:
-            energyRefillRate = 2;
-            break;
-        default:
-            energyRefillRate = 2;
-    }
-}
-
-function checkAutoBot() {
-    if (autoBotActive) {
-        const currentTime = Date.now();
-        const elapsedTime = Math.min((currentTime - lastAutoBotCheckTime) / 1000, 4 * 60 * 60); // Maximum 4 hours
-        const tokensPerSecond = level * 0.1;
-        const newTokens = Math.floor(elapsedTime * tokensPerSecond);
-        autoBotTokens += newTokens;
-        lastAutoBotCheckTime = currentTime;
-        saveUserData();
-
-        if (autoBotTokens > 0) {
-            showAutoBotEarnings();
-        }
-    }
-}
-
-function showAutoBotEarnings() {
-    document.getElementById('autoBotTokensCollected').textContent = formatNumber(autoBotTokens);
-    autoBotEarningsModal.style.display = 'block';
-
-    document.getElementById('claimAutoBotTokens').onclick = function () {
-        tokens += autoBotTokens;
-        autoBotTokens = 0;
-        updateUI();
-        saveUserData();
-        autoBotEarningsModal.style.display = 'none';
-    };
-
-    document.getElementById('closeAutoBotEarningsModal').onclick = function () {
-        autoBotEarningsModal.style.display = 'none';
-    };
-}
-
-function formatTime(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
-}
-
-function showRandomGiftResult(reward, amount) {
-    const randomGiftModal = document.createElement('div');
-    randomGiftModal.className = 'modal';
-    randomGiftModal.innerHTML = `
+    </div>
+    <div id="randomGiftResultModal" class="modal">
         <div class="modal-content">
             <h3>Random Gift</h3>
-            <p>You won: ${reward} ${amount ? `(${formatNumber(amount)})` : ''}</p>
-            <button id="closeRandomGiftModal" class="close-btn">X</button>
+            <p id="randomGiftResult"></p>
+            <button id="closeRandomGiftResultModal" class="close-btn">X</button>
         </div>
-    `;
-    document.body.appendChild(randomGiftModal);
-    randomGiftModal.style.display = 'block';
-
-    document.getElementById('closeRandomGiftModal').onclick = function () {
-        randomGiftModal.style.display = 'none';
-        document.body.removeChild(randomGiftModal);
-    };
-}
-
-function showTasks() {
-    tasksModal.style.display = 'block';
-    updateTaskButtons();
-}
-
-function updateTaskButtons() {
-    const followUsButton = document.getElementById('followUsButton');
-    const visitWebsiteButton = document.getElementById('visitWebsiteButton');
-
-    if (completedTasks.includes('followX')) {
-        followUsButton.textContent = 'COMPLETED';
-        followUsButton.disabled = true;
-    } else {
-        followUsButton.textContent = 'START';
-        followUsButton.disabled = false;
-    }
-
-    if (completedTasks.includes('visitWebsite')) {
-        visitWebsiteButton.textContent = 'COMPLETED';
-        visitWebsiteButton.disabled = true;
-    } else {
-        visitWebsiteButton.textContent = 'START';
-        visitWebsiteButton.disabled = false;
-    }
-}
-
-function startTask(taskType) {
-    if (completedTasks.includes(taskType)) {
-        showMessage('You have already completed this task!');
-        return;
-    }
-
-    let url, buttonId;
-
-    if (taskType === 'followX') {
-        url = 'https://x.com/dinozenofficial';
-        buttonId = 'followUsButton';
-    } else if (taskType === 'visitWebsite') {
-        url = 'https://www.dinozen.online/';
-        buttonId = 'visitWebsiteButton';
-    }
-
-    const taskWindow = window.open(url, '_blank');
-    const button = document.getElementById(buttonId);
-    button.textContent = 'CHECKING...';
-    button.disabled = true;
-
-    setTimeout(() => {
-        if (taskWindow && !taskWindow.closed) {
-            completeTask(taskType);
-            taskWindow.close();
-        } else {
-            button.textContent = 'START';
-            button.disabled = false;
-            showMessage('Please keep the task window open for at least 5 seconds to complete the task.');
-        }
-    }, 5000);
-}
-
-function completeTask(taskType) {
-    if (!completedTasks.includes(taskType)) {
-        completedTasks.push(taskType);
-        tokens += 1000;
-        updateUI();
-        saveUserData();
-        showMessage('Task completed! You earned 1000 tokens.');
-        updateTaskButtons();
-    }
-}
-
-function showDailyStreaks() {
-    populateRewardPages();
-    document.getElementById('rewardTableModal').style.display = 'block';
-}
-
-function populateRewardPages() {
-    const page1 = document.getElementById('rewardPage1');
-    const page2 = document.getElementById('rewardPage2');
-
-    page1.innerHTML = rewardData.slice(0, 15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
-    page2.innerHTML = rewardData.slice(15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
-}
-
-function createRewardItem(day, tokens, isClaimable) {
-    return `
-        <div class="reward-item ${isClaimable ? 'claimable' : ''}" data-day="${day}">
-            <span>Day ${day}: <img src="token.png" alt="token" style="width: 16px; height: 16px;"> ${tokens} tokens</span>
+    </div>
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <p id="messageText"></p>
+            <button id="closeMessageModal" class="button">OK</button>
         </div>
-    `;
-}
-
-let currentPage = 1;
-
-function toggleRewardPage() {
-    const page1 = document.getElementById('rewardPage1');
-    const page2 = document.getElementById('rewardPage2');
-    const prevBtn = document.getElementById('prevRewardPage');
-    const nextBtn = document.getElementById('nextRewardPage');
-
-    if (currentPage === 1) {
-        page1.style.display = 'none';
-        page2.style.display = 'block';
-        prevBtn.disabled = false;
-        nextBtn.disabled = true;
-        currentPage = 2;
-    } else {
-        page1.style.display = 'block';
-        page2.style.display = 'none';
-        prevBtn.disabled = true;
-        nextBtn.disabled = false;
-        currentPage = 1;
-    }
-}
-
-window.addEventListener('resize', resizeCanvas);
-
-window.addEventListener('DOMContentLoaded', function () {
-    const urlParams = new URLSearchParams(window.location.search);
-    const userTelegramId = urlParams.get('id');
-    if (userTelegramId) {
-        telegramId = userTelegramId;
-    }
-    loadDinoImages();
-    startGame();
-});
-
-const rewardData = [
-    { day: 1, tokens: 1000 }, { day: 2, tokens: 2000 }, { day: 3, tokens: 3000 },
-    { day: 4, tokens: 4000 }, { day: 5, tokens: 5000 }, { day: 6, tokens: 6000 },
-    { day: 7, tokens: 7000 }, { day: 8, tokens: 8000 }, { day: 9, tokens: 9000 },
-    { day: 10, tokens: 10000 }, { day: 11, tokens: 11500 }, { day: 12, tokens: 13000 },
-    { day: 13, tokens: 14500 }, { day: 14, tokens: 16000 }, { day: 15, tokens: 17500 },
-    { day: 16, tokens: 19000 }, { day: 17, tokens: 20500 }, { day: 18, tokens: 22000 },
-    { day: 19, tokens: 23500 }, { day: 20, tokens: 25000 }, { day: 21, tokens: 27000 },
-    { day: 22, tokens: 29000 }, { day: 23, tokens: 31000 }, { day: 24, tokens: 33000 },
-    { day: 25, tokens: 35000 }, { day: 26, tokens: 37000 }, { day: 27, tokens: 39000 },
-    { day: 28, tokens: 41000 }, { day: 29, tokens: 43000 }, { day: 30, tokens: 45000 }
-];
-
-document.getElementById('closeWheelResultModal').onclick = function () {
-    document.getElementById('wheelResultModal').style.display = 'none';
-};
-
-function logToOverlay(message) {
-    const debugOverlay = document.getElementById('debugOverlay');
-    if (debugOverlay) {
-        const newLine = document.createElement('div');
-        newLine.textContent = message;
-        debugOverlay.appendChild(newLine);
-        debugOverlay.scrollTop = debugOverlay.scrollHeight;
-    }
-    console.log(message);
-}
-
-function preloadImages() {
-    const images = ['dino1.png', 'dino2.png', 'dino3.png', 'dino4.png', 'dino5.png', 'token.png', 'gift-box.png', 'autobot.png'];
-    images.forEach(src => {
-        const img = new Image();
-        img.src = src;
-    });
-}
-
-// Debug overlay'i görünür yap
-document.getElementById('debugOverlay').style.display = 'block';
+    </div>
+    <div id="debugOverlay"></div>
+    <script src="game.js"></script>
+</body>
+</html>
