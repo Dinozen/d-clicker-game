@@ -170,10 +170,14 @@ function initializeDOM() {
     });
 
     claimRewardButton.addEventListener('click', () => {
-        tokens += calculateDailyReward(dailyStreak);
+        const reward = calculateDailyReward(dailyStreak);
+        tokens += reward;
         updateUI();
         saveUserData();
+        showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
         loginStreakModal.style.display = 'none';
+        claimRewardButton.disabled = true;
+        claimRewardButton.textContent = 'Claimed';
     });
 }
 
@@ -578,6 +582,7 @@ function activateAutoBot() {
         document.getElementById('autoBotButton').textContent = 'AutoBot Activated';
         document.getElementById('autoBotButton').disabled = true;
         console.log("AutoBot activated");
+        checkAutoBot(); // Hemen kontrol et
     } else if (autoBotPurchased) {
         showMessage('AutoBot is already purchased.');
     } else {
@@ -887,7 +892,7 @@ function showAutoBotEarnings() {
 }
 
 function checkAutoBotOnLogin() {
-    if (autoBotPurchased) {
+    if (autoBotPurchased && autoBotActive) {
         checkAutoBot();
         if (autoBotTokens > 0) {
             showMessage(`Welcome back! Your AutoBot has earned ${formatNumber(autoBotTokens)} tokens while you were away.`);
