@@ -30,7 +30,7 @@ const clickLimits = [300, 500, 1000, 1500, 2000];
 
 // DOM elementleri
 let canvas, ctx, earnButton, tasksButton, boostButton, dailyRewardsButton, menuModal, dailyRewardDisplay, boostersModal, tasksModal, rewardTableModal;
-let autoBotSuccessModal, autoBotEarningsModal; 
+let autoBotSuccessModal, autoBotEarningsModal, loginStreakModal, loginStreakMessage, claimRewardButton;
 
 // Dinozor resimleri
 const dinoImages = [];
@@ -59,7 +59,6 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
     if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
-        // Oyun mantığı
         if (currentTime - lastClickIncreaseTime > 1000) {
             increaseClicks();
             lastClickIncreaseTime = currentTime;
@@ -71,7 +70,6 @@ function gameLoop(currentTime) {
             lastCooldownUpdateTime = currentTime;
         }
         
-        // AutoBot kontrolünü daha az sıklıkta yap
         if (currentTime - lastAutoCheckTime > AUTO_CHECK_INTERVAL) {
             checkAutoBot();
             lastAutoCheckTime = currentTime;
@@ -79,8 +77,6 @@ function gameLoop(currentTime) {
 
         animateDino();
         updateUI();
-        
-        // Çizim işlemleri
         drawDino();
 
         lastDrawTime = currentTime;
@@ -102,6 +98,10 @@ function startGame() {
     
     requestAnimationFrame(gameLoop);
     console.log("Game loop started");
+
+    if (autoBotPurchased) {
+        checkAutoBot();
+    }
 }
 
 function initializeDOM() {
@@ -118,6 +118,9 @@ function initializeDOM() {
     rewardTableModal = document.getElementById('rewardTableModal');
     autoBotSuccessModal = document.getElementById('autoBotSuccessModal');
     autoBotEarningsModal = document.getElementById('autoBotEarningsModal');
+    loginStreakModal = document.getElementById('loginStreakModal');
+    loginStreakMessage = document.getElementById('loginStreakMessage');
+    claimRewardButton = document.getElementById('claimDailyReward');
 
     earnButton.addEventListener('click', toggleMenu);
     tasksButton.addEventListener('click', showTasks);
@@ -139,6 +142,29 @@ function initializeDOM() {
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
+
+    document.getElementById('closeBoostersModal').addEventListener('click', () => {
+        boostersModal.style.display = 'none';
+    });
+
+    document.getElementById('closeAutoBotSuccessModal').addEventListener('click', () => {
+        autoBotSuccessModal.style.display = 'none';
+    });
+
+    document.getElementById('closeAutoBotEarningsModal').addEventListener('click', () => {
+        autoBotEarningsModal.style.display = 'none';
+    });
+
+    document.getElementById('closeMessageModal').addEventListener('click', () => {
+        document.getElementById('messageModal').style.display = 'none';
+    });
+
+    claimRewardButton.addEventListener('click', () => {
+        tokens += calculateDailyReward(dailyStreak);
+        updateUI();
+        saveUserData();
+        loginStreakModal.style.display = 'none';
+    });
 }
 
 function loadUserData() {
@@ -222,12 +248,10 @@ function drawDino() {
         dinoX = Math.round((window.innerWidth - dinoWidth) / 2);
         dinoY = Math.round((window.innerHeight - dinoHeight) / 2);
         
-        // Arka plan dairesi çiz
         const centerX = dinoX + dinoWidth / 2;
         const centerY = dinoY + dinoHeight / 2;
         const circleRadius = Math.max(dinoWidth, dinoHeight) / 2 + 5;
         
-        // Gradient oluştur
         const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, circleRadius);
         gradient.addColorStop(0, 'rgba(137, 207, 240, 0.8)');
         gradient.addColorStop(1, 'rgba(100, 149, 237, 0.6)');
@@ -237,7 +261,6 @@ function drawDino() {
         ctx.fillStyle = gradient;
         ctx.fill();
         
-        // Daha kontrastlı kenarlık
         ctx.strokeStyle = 'rgba(25, 25, 112, 0.8)';
         ctx.lineWidth = 3;
         ctx.stroke();
@@ -280,27 +303,30 @@ function handleClick(event) {
 
     if (x >= dinoX && x <= dinoX + dinoWidth &&
         y >= dinoY && y <= dinoY + dinoHeight) {
-        let tokenGain = 1 * getLevelMultiplier();
-        if (isDoubleTokensActive) {
-            tokenGain *= 2;
-        }
+        if (!isClicking) {
+            let tokenGain = 1 * getLevelMultiplier();
+            if (isDoubleTokensActive) {
+                tokenGain *= 2;
+            }
 
-        createClickEffect(event.clientX, event.clientY, tokenGain);
-        isClicking = true;
-        clickScale = 1.1;
-        requestAnimationFrame(animateDino);
+            createClickEffect(event.clientX, event.clientY, tokenGain);
+            isClicking = true;
+            clickScale = 1.1;
+            requestAnimationFrame(animateDino);
 
-        if (clicksRemaining > 0) {
-            tokens += tokenGain;
-            clicksRemaining--;
-            updateUI();
-            checkLevelUp();
-            saveUserData();
-        } else if (energy > 0) {
-            energy--;
-            clicksRemaining = getMaxClicksForLevel();
-            updateUI();
-            saveUserData();
+            if (clicksRemaining > 0) {
+                tokens += tokenGain;
+                clicksRemaining--;
+                updateUI();
+                checkLevelUp();
+                saveUserData();
+            } else if (energy > 0) {
+                energy--;
+                clicksRemaining = getMaxClicksForLevel();
+                updateUI();
+                saveUserData();
+            }
+            setTimeout(() => { isClicking = false; }, 200);
         }
     }
 }
@@ -580,6 +606,7 @@ function updateEnergyBoostCooldownDisplay() {
 
 function showMessage(message) {
     const messageModal = document.createElement('div');
+    messageModal.id = 'messageModal';
     messageModal.className = 'modal';
     messageModal.innerHTML = `
         <div class="modal-content">
@@ -597,7 +624,6 @@ function showMessage(message) {
 
     document.getElementById('closeMessageModal').addEventListener('click', closeModal);
 
-    // 4 saniye sonra otomatik olarak kapat
     setTimeout(closeModal, 4000);
 }
 
@@ -765,10 +791,8 @@ function checkDailyLogin() {
 
     if (!lastLoginDate || new Date(lastLoginDate) < currentDate) {
         if (lastLoginDate && (new Date(lastLoginDate).getTime() + 24 * 60 * 60 * 1000) >= currentDate.getTime()) {
-            // Kullanıcı ardışık gün giriş yapmış
             dailyStreak++;
         } else {
-            // Kullanıcı bir gün atlayarak giriş yapmış, streak sıfırlanır
             dailyStreak = 1;
         }
         
@@ -777,22 +801,12 @@ function checkDailyLogin() {
 
         const reward = calculateDailyReward(dailyStreak);
 
-        const loginStreakModal = document.getElementById('loginStreakModal');
-        const loginStreakMessage = document.getElementById('loginStreakMessage');
-        const claimRewardButton = document.getElementById('claimDailyReward');
-
         loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Streak: ${dailyStreak} days`;
         loginStreakModal.style.display = 'block';
-
-        claimRewardButton.onclick = function () {
-            tokens += reward;
-            updateUI();
-            saveUserData();
-            loginStreakModal.style.display = 'none';
-        };
     }
-    saveUserData(); // Her kontrolden sonra verileri kaydet
+    saveUserData();
 }
+
 function calculateDailyReward(streak) {
     const rewardTable = [
         1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000,
@@ -926,32 +940,6 @@ function updateTaskButtons() {
     }
 }
 
-function showTasks() {
-    tasksModal.style.display = 'block';
-    updateTaskButtons();
-}
-
-function updateTaskButtons() {
-    const followUsButton = document.getElementById('followUsButton');
-    const visitWebsiteButton = document.getElementById('visitWebsiteButton');
-
-    if (completedTasks.includes('followX')) {
-        followUsButton.textContent = 'COMPLETED';
-        followUsButton.disabled = true;
-    } else {
-        followUsButton.textContent = 'START';
-        followUsButton.disabled = false;
-    }
-
-    if (completedTasks.includes('visitWebsite')) {
-        visitWebsiteButton.textContent = 'COMPLETED';
-        visitWebsiteButton.disabled = true;
-    } else {
-        visitWebsiteButton.textContent = 'START';
-        visitWebsiteButton.disabled = false;
-    }
-}
-
 function startTask(taskType) {
     if (completedTasks.includes(taskType)) {
         showMessage('You have already completed this task!');
@@ -998,7 +986,7 @@ function completeTask(taskType) {
 
 function showDailyStreaks() {
     populateRewardPages();
-    document.getElementById('rewardTableModal').style.display = 'block';
+    rewardTableModal.style.display = 'block';
 }
 
 function populateRewardPages() {
