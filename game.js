@@ -579,6 +579,7 @@ function activateAutoBot() {
         showAutoBotSuccessMessage();
         document.getElementById('autoBotButton').textContent = 'AutoBot Activated';
         document.getElementById('autoBotButton').disabled = true;
+        console.log("AutoBot activated"); // Hata ayıklama için
     } else if (autoBotPurchased) {
         showMessage('AutoBot is already purchased.');
     } else {
@@ -791,6 +792,8 @@ function checkDailyLogin() {
 
         loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Streak: ${dailyStreak} days`;
         loginStreakModal.style.display = 'block';
+        
+        console.log("Daily login modal should be displayed"); // Hata ayıklama için
     }
     saveUserData();
 }
@@ -814,6 +817,7 @@ function increaseClicks() {
     const maxClicks = getMaxClicksForLevel();
     if (clicksRemaining < maxClicks) {
         clicksRemaining = Math.min(clicksRemaining + energyRefillRate, maxClicks);
+        console.log(`Clicks increased: ${clicksRemaining}`); // Hata ayıklama için
         updateUI();
     }
 }
@@ -842,6 +846,7 @@ function updateEnergyRefillRate() {
         default:
             energyRefillRate = 2;
     }
+    console.log(`Energy refill rate updated: ${energyRefillRate}`); // Hata ayıklama için
 }
 
 function checkAutoBot() {
@@ -853,6 +858,8 @@ function checkAutoBot() {
         autoBotTokens += newTokens;
         lastAutoBotCheckTime = currentTime;
         saveUserData();
+
+        console.log(`AutoBot earned ${newTokens} tokens`); // Hata ayıklama için
 
         if (autoBotTokens > 0) {
             showAutoBotEarnings();
