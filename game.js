@@ -86,7 +86,6 @@ function gameLoop(currentTime) {
 function startGame() {
     console.log("Starting game");
     initializeDOM();
-    initializeModalCloseEvents(); // Modal kapatma fonksiyonlarını ekle
     loadUserData();
     loadDinoImages();
     resizeCanvas();
@@ -160,48 +159,23 @@ function initializeDOM() {
         document.getElementById('messageModal').style.display = 'none';
     });
 
+    document.getElementById('closeLevelUpModal').addEventListener('click', () => {
+        document.getElementById('levelUpModal').style.display = 'none';
+    });
+
+    document.getElementById('closeLoginStreakModal').addEventListener('click', () => {
+        loginStreakModal.style.display = 'none';
+    });
+
+    document.getElementById('closeRandomGiftResultModal').addEventListener('click', () => {
+        document.getElementById('randomGiftResultModal').style.display = 'none';
+    });
+
     claimRewardButton.addEventListener('click', () => {
         tokens += calculateDailyReward(dailyStreak);
         updateUI();
         saveUserData();
         loginStreakModal.style.display = 'none';
-    });
-}
-
-function initializeModalCloseEvents() {
-    // Level up modalını kapatma fonksiyonu
-    document.getElementById('closeLevelUpModal').addEventListener('click', function () {
-        document.getElementById('levelUpModal').style.display = 'none';
-    });
-
-    // AutoBot başarısı modalını kapatma fonksiyonu
-    document.getElementById('closeAutoBotSuccessModal').addEventListener('click', function () {
-        document.getElementById('autoBotSuccessModal').style.display = 'none';
-    });
-
-    // AutoBot kazanç modalını kapatma fonksiyonu
-    document.getElementById('closeAutoBotEarningsModal').addEventListener('click', function () {
-        document.getElementById('autoBotEarningsModal').style.display = 'none';
-    });
-
-    // Daily login streak modalını kapatma fonksiyonu
-    document.getElementById('closeLoginStreakModal').addEventListener('click', function () {
-        document.getElementById('loginStreakModal').style.display = 'none';
-    });
-
-    // Task modallarını kapatma fonksiyonu
-    document.getElementById('closeTasksModal').addEventListener('click', function () {
-        document.getElementById('tasksModal').style.display = 'none';
-    });
-
-    // Random hediye modalını kapatma fonksiyonu
-    document.getElementById('closeRandomGiftResultModal').addEventListener('click', function () {
-        document.getElementById('randomGiftResultModal').style.display = 'none';
-    });
-
-    // Mesaj modalını kapatma fonksiyonu
-    document.getElementById('closeMessageModal').addEventListener('click', function () {
-        document.getElementById('messageModal').style.display = 'none';
     });
 }
 
@@ -643,26 +617,14 @@ function updateEnergyBoostCooldownDisplay() {
 }
 
 function showMessage(message) {
-    const messageModal = document.createElement('div');
-    messageModal.id = 'messageModal';
-    messageModal.className = 'modal';
-    messageModal.innerHTML = `
-        <div class="modal-content">
-            <p>${message}</p>
-            <button id="closeMessageModal" class="button">OK</button>
-        </div>
-    `;
-    document.body.appendChild(messageModal);
+    const messageModal = document.getElementById('messageModal');
+    const messageModalText = document.getElementById('messageModalText');
+    messageModalText.textContent = message;
     messageModal.style.display = 'block';
-    
-    const closeModal = () => {
+
+    document.getElementById('closeMessageModal').onclick = function () {
         messageModal.style.display = 'none';
-        document.body.removeChild(messageModal);
     };
-
-    document.getElementById('closeMessageModal').addEventListener('click', closeModal);
-
-    setTimeout(closeModal, 4000);
 }
 
 function updateMenuContent() {
@@ -776,50 +738,37 @@ function showLevelUpModal(previousLevel, newLevel) {
     const previousRefillRate = previousLevel === 1 ? 0.33 : previousLevel === 2 ? 0.5 : previousLevel === 3 ? 0.67 : previousLevel === 4 ? 1 : 2;
     const newRefillRate = newLevel === 1 ? 0.33 : newLevel === 2 ? 0.5 : newLevel === 3 ? 0.67 : newLevel === 4 ? 1 : 2;
 
-    const levelUpModal = document.createElement('div');
-    levelUpModal.className = 'modal';
-    levelUpModal.id = 'levelUpModal'; // Add ID for modal
-    levelUpModal.innerHTML = `
-        <div class="modal-content">
-            <h3>Level Up!</h3>
-            <p>Congratulations! Your Dino reached Level ${newLevel}!</p>
-            <p>Here are your updated stats:</p>
-            <table>
-                <tr>
-                    <th>Stat</th>
-                    <th>Previous</th>
-                    <th></th>
-                    <th>New</th>
-                </tr>
-                <tr>
-                    <td>Clicks</td>
-                    <td>${previousClicks}</td>
-                    <td>→</td>
-                    <td>${newClicks}</td>
-                </tr>
-                <tr>
-                    <td>Energy</td>
-                    <td>${previousEnergy}</td>
-                    <td>→</td>
-                    <td>${newEnergy}</td>
-                </tr>
-                <tr>
-                    <td>Energy Refill Rate</td>
-                    <td>${previousRefillRate.toFixed(2)}/s</td>
-                    <td>→</td>
-                    <td>${newRefillRate.toFixed(2)}/s</td>
-                </tr>
-            </table>
-            <button id="closeLevelUpModal" class="close-btn">X</button>
-        </div>
+    const levelUpModal = document.getElementById('levelUpModal');
+    const levelUpTable = document.getElementById('levelUpTable');
+
+    levelUpTable.innerHTML = `
+        <tr>
+            <th>Stat</th>
+            <th>Previous</th>
+            <th>New</th>
+        </tr>
+        <tr>
+            <td>Clicks</td>
+            <td>${previousClicks}</td>
+            <td>${newClicks}</td>
+        </tr>
+        <tr>
+            <td>Energy</td>
+            <td>${previousEnergy}</td>
+            <td>${newEnergy}</td>
+        </tr>
+        <tr>
+            <td>Energy Refill Rate</td>
+            <td>${previousRefillRate.toFixed(2)}/s</td>
+            <td>${newRefillRate.toFixed(2)}/s</td>
+        </tr>
     `;
-    document.body.appendChild(levelUpModal);
+
     levelUpModal.style.display = 'block';
 
-    document.getElementById('closeLevelUpModal').addEventListener('click', function () {
+    document.getElementById('closeLevelUpModal').onclick = function () {
         levelUpModal.style.display = 'none';
-        document.body.removeChild(levelUpModal);
-    });
+    };
 }
 
 function checkDailyLogin() {
@@ -935,23 +884,14 @@ function formatTime(seconds) {
 }
 
 function showRandomGiftResult(reward, amount) {
-    const randomGiftModal = document.createElement('div');
-    randomGiftModal.className = 'modal';
-    randomGiftModal.id = 'randomGiftResultModal'; // Add ID for modal
-    randomGiftModal.innerHTML = `
-        <div class="modal-content">
-            <h3>Random Gift</h3>
-            <p>You won: ${reward} ${amount ? `(${formatNumber(amount)})` : ''}</p>
-            <button id="closeRandomGiftModal" class="close-btn">X</button>
-        </div>
-    `;
-    document.body.appendChild(randomGiftModal);
+    const randomGiftModal = document.getElementById('randomGiftResultModal');
+    const randomGiftResultMessage = document.getElementById('randomGiftResultMessage');
+    randomGiftResultMessage.textContent = `You won: ${reward} ${amount ? `(${formatNumber(amount)})` : ''}`;
     randomGiftModal.style.display = 'block';
 
-    document.getElementById('closeRandomGiftModal').addEventListener('click', function () {
+    document.getElementById('closeRandomGiftResultModal').onclick = function () {
         randomGiftModal.style.display = 'none';
-        document.body.removeChild(randomGiftModal);
-    });
+    };
 }
 
 function showTasks() {
