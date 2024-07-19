@@ -94,14 +94,12 @@ function startGame() {
     preloadImages();
 
     checkDailyLogin();
+    checkAutoBotOnLogin();
     updateTaskButtons();
+    updateEnergyRefillRate();
     
     requestAnimationFrame(gameLoop);
     console.log("Game loop started");
-
-    if (autoBotPurchased) {
-        checkAutoBot();
-    }
 }
 
 function initializeDOM() {
@@ -579,7 +577,7 @@ function activateAutoBot() {
         showAutoBotSuccessMessage();
         document.getElementById('autoBotButton').textContent = 'AutoBot Activated';
         document.getElementById('autoBotButton').disabled = true;
-        console.log("AutoBot activated"); // Hata ayıklama için
+        console.log("AutoBot activated");
     } else if (autoBotPurchased) {
         showMessage('AutoBot is already purchased.');
     } else {
@@ -623,9 +621,9 @@ function showMessage(message) {
     messageModalText.textContent = message;
     messageModal.style.display = 'block';
 
-    document.getElementById('closeMessageModal').onclick = function () {
+    setTimeout(() => {
         messageModal.style.display = 'none';
-    };
+    }, 5000);
 }
 
 function updateMenuContent() {
@@ -773,10 +771,12 @@ function showLevelUpModal(previousLevel, newLevel) {
 }
 
 function checkDailyLogin() {
+    console.log("Checking daily login...");
     const currentDate = new Date();
-    const offset = 3 * 60 * 60 * 1000; // 3 saat offset (UTC+3)
-    currentDate.setTime(currentDate.getTime() + offset);
-    currentDate.setUTCHours(0, 0, 0, 0); // Günün başlangıcı (UTC+3'e göre)
+    currentDate.setHours(0, 0, 0, 0);
+
+    console.log("Current date:", currentDate);
+    console.log("Last login date:", lastLoginDate);
 
     if (!lastLoginDate || new Date(lastLoginDate) < currentDate) {
         if (lastLoginDate && (new Date(lastLoginDate).getTime() + 24 * 60 * 60 * 1000) >= currentDate.getTime()) {
@@ -789,13 +789,13 @@ function checkDailyLogin() {
         lastLoginDate = currentDate.toISOString();
 
         const reward = calculateDailyReward(dailyStreak);
+        console.log(`Daily reward calculated: ${reward} tokens, Streak: ${dailyStreak}`);
 
-        loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Streak: ${dailyStreak} days`;
-        loginStreakModal.style.display = 'block';
-        
-        console.log("Daily login modal should be displayed"); // Hata ayıklama için
+        showLoginStreakModal(reward);
+        saveUserData();
+    } else {
+        console.log("Same day, no reward.");
     }
-    saveUserData();
 }
 
 function calculateDailyReward(streak) {
@@ -805,6 +805,24 @@ function calculateDailyReward(streak) {
         27000, 29000, 31000, 33000, 35000, 37000, 39000, 41000, 43000, 45000
     ];
     return rewardTable[streak - 1] || rewardTable[rewardTable.length - 1];
+}
+
+function showLoginStreakModal(reward) {
+    loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Streak: ${dailyStreak} days`;
+    loginStreakModal.style.display = 'block';
+    
+    const claimRewardButton = document.getElementById('claimDailyReward');
+    claimRewardButton.disabled = false;
+    claimRewardButton.textContent = 'Claim Reward';
+    claimRewardButton.onclick = function() {
+        tokens += reward;
+        updateUI();
+        saveUserData();
+        showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
+        loginStreakModal.style.display = 'none';
+        this.disabled = true;
+        this.textContent = 'Claimed';
+    };
 }
 
 function updateDailyRewardDisplay() {
@@ -817,7 +835,7 @@ function increaseClicks() {
     const maxClicks = getMaxClicksForLevel();
     if (clicksRemaining < maxClicks) {
         clicksRemaining = Math.min(clicksRemaining + energyRefillRate, maxClicks);
-        console.log(`Clicks increased: ${clicksRemaining}`); // Hata ayıklama için
+        console.log(`Clicks increased to: ${clicksRemaining.toFixed(2)}/${maxClicks}`);
         updateUI();
     }
 }
@@ -828,38 +846,25 @@ function getMaxClicksForLevel() {
 
 function updateEnergyRefillRate() {
     switch (level) {
-        case 1:
-            energyRefillRate = 1 / 3;
-            break;
-        case 2:
-            energyRefillRate = 1 / 2;
-            break;
-        case 3:
-            energyRefillRate = 2 / 3;
-            break;
-        case 4:
-            energyRefillRate = 1;
-            break;
-        case 5:
-            energyRefillRate = 2;
-            break;
-        default:
-            energyRefillRate = 2;
+        case 1: energyRefillRate = 1 / 3; break;
+        case 2: energyRefillRate = 1 / 2; break;
+        case 3: energyRefillRate = 2 / 3; break;
+        case 4: energyRefillRate = 1; break;
+        default: energyRefillRate = 2;
     }
-    console.log(`Energy refill rate updated: ${energyRefillRate}`); // Hata ayıklama için
+    console.log(`Energy refill rate updated: ${energyRefillRate.toFixed(2)}/s`);
 }
 
 function checkAutoBot() {
     if (autoBotActive) {
         const currentTime = Date.now();
-        const elapsedTime = Math.min((currentTime - lastAutoBotCheckTime) / 1000, 4 * 60 * 60); // Maximum 4 hours
+        const elapsedTime = Math.min((currentTime - lastAutoBotCheckTime) / 1000, 4 * 60 * 60);
         const tokensPerSecond = level * 0.1;
         const newTokens = Math.floor(elapsedTime * tokensPerSecond);
         autoBotTokens += newTokens;
         lastAutoBotCheckTime = currentTime;
+        console.log(`AutoBot earned ${newTokens} tokens. Total: ${autoBotTokens}`);
         saveUserData();
-
-        console.log(`AutoBot earned ${newTokens} tokens`); // Hata ayıklama için
 
         if (autoBotTokens > 0) {
             showAutoBotEarnings();
@@ -873,15 +878,21 @@ function showAutoBotEarnings() {
 
     document.getElementById('claimAutoBotTokens').onclick = function () {
         tokens += autoBotTokens;
+        showMessage(`You claimed ${formatNumber(autoBotTokens)} tokens from AutoBot!`);
         autoBotTokens = 0;
         updateUI();
         saveUserData();
         autoBotEarningsModal.style.display = 'none';
     };
+}
 
-    document.getElementById('closeAutoBotEarningsModal').onclick = function () {
-        autoBotEarningsModal.style.display = 'none';
-    };
+function checkAutoBotOnLogin() {
+    if (autoBotPurchased) {
+        checkAutoBot();
+        if (autoBotTokens > 0) {
+            showMessage(`Welcome back! Your AutoBot has earned ${formatNumber(autoBotTokens)} tokens while you were away.`);
+        }
+    }
 }
 
 function formatTime(seconds) {
@@ -1017,9 +1028,8 @@ function toggleRewardPage() {
 
 window.addEventListener('resize', resizeCanvas);
 
-setInterval(() => {
-    saveUserData();
-}, 5000);
+// Düzenli Veri Kaydetme (her saniye)
+setInterval(saveUserData, 1000);
 
 window.addEventListener('DOMContentLoaded', function () {
     const urlParams = new URLSearchParams(window.location.search);
