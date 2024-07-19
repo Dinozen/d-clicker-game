@@ -86,6 +86,7 @@ function gameLoop(currentTime) {
 function startGame() {
     console.log("Starting game");
     initializeDOM();
+    initializeModalCloseEvents(); // Modal kapatma fonksiyonlarını ekle
     loadUserData();
     loadDinoImages();
     resizeCanvas();
@@ -164,6 +165,43 @@ function initializeDOM() {
         updateUI();
         saveUserData();
         loginStreakModal.style.display = 'none';
+    });
+}
+
+function initializeModalCloseEvents() {
+    // Level up modalını kapatma fonksiyonu
+    document.getElementById('closeLevelUpModal').addEventListener('click', function () {
+        document.getElementById('levelUpModal').style.display = 'none';
+    });
+
+    // AutoBot başarısı modalını kapatma fonksiyonu
+    document.getElementById('closeAutoBotSuccessModal').addEventListener('click', function () {
+        document.getElementById('autoBotSuccessModal').style.display = 'none';
+    });
+
+    // AutoBot kazanç modalını kapatma fonksiyonu
+    document.getElementById('closeAutoBotEarningsModal').addEventListener('click', function () {
+        document.getElementById('autoBotEarningsModal').style.display = 'none';
+    });
+
+    // Daily login streak modalını kapatma fonksiyonu
+    document.getElementById('closeLoginStreakModal').addEventListener('click', function () {
+        document.getElementById('loginStreakModal').style.display = 'none';
+    });
+
+    // Task modallarını kapatma fonksiyonu
+    document.getElementById('closeTasksModal').addEventListener('click', function () {
+        document.getElementById('tasksModal').style.display = 'none';
+    });
+
+    // Random hediye modalını kapatma fonksiyonu
+    document.getElementById('closeRandomGiftResultModal').addEventListener('click', function () {
+        document.getElementById('randomGiftResultModal').style.display = 'none';
+    });
+
+    // Mesaj modalını kapatma fonksiyonu
+    document.getElementById('closeMessageModal').addEventListener('click', function () {
+        document.getElementById('messageModal').style.display = 'none';
     });
 }
 
@@ -740,6 +778,7 @@ function showLevelUpModal(previousLevel, newLevel) {
 
     const levelUpModal = document.createElement('div');
     levelUpModal.className = 'modal';
+    levelUpModal.id = 'levelUpModal'; // Add ID for modal
     levelUpModal.innerHTML = `
         <div class="modal-content">
             <h3>Level Up!</h3>
@@ -898,6 +937,7 @@ function formatTime(seconds) {
 function showRandomGiftResult(reward, amount) {
     const randomGiftModal = document.createElement('div');
     randomGiftModal.className = 'modal';
+    randomGiftModal.id = 'randomGiftResultModal'; // Add ID for modal
     randomGiftModal.innerHTML = `
         <div class="modal-content">
             <h3>Random Gift</h3>
