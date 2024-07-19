@@ -165,6 +165,7 @@ function loadUserData() {
         lastAutoBotCheckTime = parseInt(data.lastAutoBotCheckTime) || 0;
     }
     updateDinoImage();
+    updateUI();
 }
 
 function saveUserData() {
@@ -286,7 +287,7 @@ function handleClick(event) {
 
         createClickEffect(event.clientX, event.clientY, tokenGain);
         isClicking = true;
-        clickScale = 1.1;
+        clickScale = 1.15; // %15 daha fazla büyüme
         requestAnimationFrame(animateDino);
 
         if (clicksRemaining > 0) {
@@ -299,6 +300,7 @@ function handleClick(event) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
             updateUI();
+            saveUserData();
         }
     }
 }
@@ -367,7 +369,7 @@ function updateGiftCooldownDisplay() {
 
 function animateDino() {
     if (isClicking) {
-        clickScale -= 0.005;
+        clickScale -= 0.0025; // Daha yavaş küçülme
         if (clickScale <= 1) {
             clickScale = 1;
             isClicking = false;
