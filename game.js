@@ -103,7 +103,6 @@ function startGame() {
     requestAnimationFrame(gameLoop);
     console.log("Game loop started");
 }
-
 function initializeDOM() {
     canvas = document.getElementById('gameCanvas');
     ctx = canvas.getContext('2d');
@@ -257,24 +256,20 @@ function setupClickHandler() {
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 }
-
 function handleTouchStart(event) {
     event.preventDefault();
     const touch = event.touches[0];
     handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
-
 function handleTouchEnd(event) {
     event.preventDefault();
     isClicking = false;
 }
-
 function handleTouchMove(event) {
     event.preventDefault();
     const touch = event.touches[0];
     handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
-
 function handleClick(event) {
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -307,19 +302,17 @@ function handleClick(event) {
     }
 }
 
-function createClickEffect(x, y, amount) {
-    const clickEffect = document.createElement('div');
-    clickEffect.className = 'clickEffect';
-    clickEffect.style.left = `${x}px`;
-    clickEffect.style.top = `${y}px`;
-    clickEffect.textContent = `+${amount}`;
-    document.body.appendChild(clickEffect);
-
-    setTimeout(() => {
-        clickEffect.remove();
-    }, 1000);
+function animateDino() {
+    if (isClicking) {
+        clickScale -= 0.005; // Daha yavaş küçülme
+        if (clickScale <= 1) {
+            clickScale = 1;
+            isClicking = false;
+        }
+        drawDino();
+        requestAnimationFrame(animateDino);
+    }
 }
-
 function formatNumber(number) {
     if (number >= 10000) {
         return (number / 1000).toFixed(1) + 'k';
@@ -752,13 +745,11 @@ function showLevelUpModal(previousLevel, newLevel) {
     `;
     document.body.appendChild(levelUpModal);
     levelUpModal.style.display = 'block';
-
-    document.getElementById('closeLevelUpModal').addEventListener('click', function () {
+document.getElementById('closeLevelUpModal').addEventListener('click', function () {
         levelUpModal.style.display = 'none';
         document.body.removeChild(levelUpModal);
     });
 }
-
 function checkDailyLogin() {
     const currentDate = new Date();
     const offset = 3 * 60 * 60 * 1000; // 3 saat offset (UTC+3)
@@ -795,7 +786,6 @@ function checkDailyLogin() {
     }
     saveUserData(); // Her kontrolden sonra verileri kaydet
 }
-
 function calculateDailyReward(streak) {
     const rewardTable = [
         1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000,
