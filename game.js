@@ -97,7 +97,7 @@ function startGame() {
     setupResizeHandler();
     preloadImages();
 
-    checkDailyLogin();
+    checkDailyLogin(); // Daily login kontrolü burada yapılıyor
     updateTaskButtons();
     
     requestAnimationFrame(gameLoop);
@@ -131,6 +131,8 @@ function initializeDOM() {
     });
     document.getElementById('followUsButton').addEventListener('click', () => startTask('followX'));
     document.getElementById('visitWebsiteButton').addEventListener('click', () => startTask('visitWebsite'));
+    
+    // Bu satırı ekleyin veya güncelleyin
     document.getElementById('closeTasksModal').addEventListener('click', () => {
         tasksModal.style.display = 'none';
     });
@@ -597,8 +599,8 @@ function showMessage(message) {
 
     document.getElementById('closeMessageModal').addEventListener('click', closeModal);
 
-    // 10 saniye sonra otomatik olarak kapat
-    setTimeout(closeModal, 10000);
+    // 4 saniye sonra otomatik olarak kapat
+    setTimeout(closeModal, 4000);
 }
 
 function updateMenuContent() {
@@ -764,7 +766,14 @@ function checkDailyLogin() {
     currentDate.setUTCHours(0, 0, 0, 0); // Günün başlangıcı (UTC+3'e göre)
 
     if (!lastLoginDate || new Date(lastLoginDate) < currentDate) {
-        dailyStreak++;
+        if (lastLoginDate && (new Date(lastLoginDate).getTime() + 24 * 60 * 60 * 1000) >= currentDate.getTime()) {
+            // Kullanıcı ardışık gün giriş yapmış
+            dailyStreak++;
+        } else {
+            // Kullanıcı bir gün atlayarak giriş yapmış, streak sıfırlanır
+            dailyStreak = 1;
+        }
+        
         if (dailyStreak > 30) dailyStreak = 1;
         lastLoginDate = currentDate.toISOString();
 
@@ -784,6 +793,7 @@ function checkDailyLogin() {
             loginStreakModal.style.display = 'none';
         };
     }
+    saveUserData(); // Her kontrolden sonra verileri kaydet
 }
 
 function calculateDailyReward(streak) {
@@ -891,6 +901,32 @@ function showRandomGiftResult(reward, amount) {
         randomGiftModal.style.display = 'none';
         document.body.removeChild(randomGiftModal);
     });
+}
+
+function showTasks() {
+    tasksModal.style.display = 'block';
+    updateTaskButtons();
+}
+
+function updateTaskButtons() {
+    const followUsButton = document.getElementById('followUsButton');
+    const visitWebsiteButton = document.getElementById('visitWebsiteButton');
+
+    if (completedTasks.includes('followX')) {
+        followUsButton.textContent = 'COMPLETED';
+        followUsButton.disabled = true;
+    } else {
+        followUsButton.textContent = 'START';
+        followUsButton.disabled = false;
+    }
+
+    if (completedTasks.includes('visitWebsite')) {
+        visitWebsiteButton.textContent = 'COMPLETED';
+        visitWebsiteButton.disabled = true;
+    } else {
+        visitWebsiteButton.textContent = 'START';
+        visitWebsiteButton.disabled = false;
+    }
 }
 
 function showTasks() {
