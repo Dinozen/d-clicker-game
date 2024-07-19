@@ -885,10 +885,10 @@ function showRandomGiftResult(reward, amount) {
     document.body.appendChild(randomGiftModal);
     randomGiftModal.style.display = 'block';
 
-    document.getElementById('closeRandomGiftModal').onclick = function () {
+    document.getElementById('closeRandomGiftModal').addEventListener('click', function () {
         randomGiftModal.style.display = 'none';
         document.body.removeChild(randomGiftModal);
-    };
+    });
 }
 
 function showTasks() {
@@ -1033,10 +1033,6 @@ const rewardData = [
     { day: 25, tokens: 35000 }, { day: 26, tokens: 37000 }, { day: 27, tokens: 39000 },
     { day: 28, tokens: 41000 }, { day: 29, tokens: 43000 }, { day: 30, tokens: 45000 }
 ];
-
-document.getElementById('closeWheelResultModal').onclick = function () {
-    document.getElementById('wheelResultModal').style.display = 'none';
-};
 
 function preloadImages() {
     const images = ['dino1.png', 'dino2.png', 'dino3.png', 'dino4.png', 'dino5.png', 'token.png', 'gift-box.png', 'autobot.png'];
