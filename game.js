@@ -96,9 +96,11 @@ function startGame() {
     setupResizeHandler();
     preloadImages();
     checkDailyLogin();
-    checkAutoBotOnLogin(); // Oturum açıldığında autobot kontrolü
+    checkAutoBotOnStartup(); // Sadece oyun başlangıcında AutoBot kontrolü
     updateTaskButtons();
     updateEnergyRefillRate();
+    
+    setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
     
     requestAnimationFrame(gameLoop);
     console.log("Game loop started");
@@ -194,9 +196,9 @@ function loadUserData() {
         tokens = parseInt(data.tokens) || 0;
         level = parseInt(data.level) || 1;
         completedTasks = data.completedTasks || [];
-        energy = parseInt(data.energy) || 3;
+        energy = parseInt(data.energy) || maxEnergy;
         maxEnergy = parseInt(data.maxEnergy) || level + 2;
-        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime() || Date.now();
+        lastEnergyRefillTime = parseInt(data.lastEnergyRefillTime) || Date.now();
         clicksRemaining = parseFloat(data.clicksRemaining) || getMaxClicksForLevel();
         boostAvailable = data.boostAvailable !== undefined ? data.boostAvailable : true;
         dailyStreak = parseInt(data.dailyStreak) || 0;
@@ -238,8 +240,8 @@ function saveUserData() {
         autoBotPurchaseTime: parseInt(autoBotPurchaseTime),
         lastAutoBotCheckTime: parseInt(lastAutoBotCheckTime),
         lastPlayerActivityTime: parseInt(lastPlayerActivityTime),
-        completedTasks, // Görevlerin durumunu kaydediyoruz
-        autoBotShownThisSession // Bu da kaydedilir
+        completedTasks,
+        autoBotShownThisSession
     };
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
@@ -903,7 +905,7 @@ function checkAutoBot() {
     const inactiveTime = (currentTime - lastPlayerActivityTime) / 1000; // saniye cinsinden
 
     if (autoBotActive && autoBotPurchased && inactiveTime >= 60) { // Oyuncu en az 1 dakika inaktif olmalı
-        const timeSinceLastCheck = (currentTime - lastSessionCloseTime) / 1000; // saniye cinsinden
+        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
         const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
 
         if (timeSinceLastCheck > 0) {
@@ -912,7 +914,6 @@ function checkAutoBot() {
             const newTokens = Math.floor(earningTime * tokensPerSecond);
             
             autoBotTokens += newTokens;
-            lastSessionCloseTime = currentTime;
             lastAutoBotCheckTime = currentTime;
             
             console.log(`AutoBot earned ${newTokens} tokens. Total: ${autoBotTokens}`);
@@ -921,8 +922,9 @@ function checkAutoBot() {
             
             saveUserData();
 
-            if (autoBotTokens > 0) {
+            if (autoBotTokens > 0 && !autoBotShownThisSession) {
                 showAutoBotEarnings();
+                autoBotShownThisSession = true;
             }
         } else {
             console.log("No time has passed since last check.");
@@ -932,11 +934,29 @@ function checkAutoBot() {
     }
 }
 
-function checkAutoBotOnLogin() {
-    if (autoBotPurchased && !autoBotShownThisSession) {
-        autoBotShownThisSession = true;
-        saveUserData();
-        showAutoBotEarnings();
+function checkAutoBotOnStartup() {
+    console.log("Checking AutoBot on startup...");
+    if (autoBotPurchased) {
+        const currentTime = Date.now();
+        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
+        const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
+
+        const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
+        const tokensPerSecond = level * 0.1;
+        const newTokens = Math.floor(earningTime * tokensPerSecond);
+        
+        if (newTokens > 0) {
+            autoBotTokens += newTokens;
+            lastAutoBotCheckTime = currentTime;
+            
+            console.log(`AutoBot earned ${newTokens} tokens. Total: ${autoBotTokens}`);
+            saveUserData();
+            showAutoBotEarnings();
+        } else {
+            console.log("No new tokens earned by AutoBot.");
+        }
+    } else {
+        console.log("AutoBot is not purchased.");
     }
 }
 
@@ -1084,6 +1104,19 @@ function toggleRewardPage() {
     }
 }
 
+function increaseEnergy() {
+    const now = Date.now();
+    const timePassed = now - lastEnergyRefillTime;
+    const energyToAdd = Math.floor(timePassed / (5 * 60 * 1000)); // Her 5 dakikada 1 enerji
+
+    if (energyToAdd > 0) {
+        energy = Math.min(energy + energyToAdd, maxEnergy);
+        lastEnergyRefillTime = now;
+        saveUserData();
+        updateUI();
+    }
+}
+
 window.addEventListener('resize', resizeCanvas);
 
 // Düzenli Veri Kaydetme (her saniye)
@@ -1113,7 +1146,7 @@ const rewardData = [
 ];
 
 function preloadImages() {
-    const images = ['dino1.png', 'dino2.png', 'dino3.png', 'dino4.png', 'dino5.png', 'token.png', 'gift-box.png', 'autobot.png'];
+    const images = ['dino1.png', 'dino2.png', 'dino3.png', 'dino4.png', 'dino5.png', 'token.png', 'gift-box.png', 'autobot.png', 'boost.png'];
     images.forEach(src => {
         const img = new Image();
         img.src = src;
