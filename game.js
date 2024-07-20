@@ -58,6 +58,61 @@ const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 console.log("Is mobile device:", isMobile);
 
+// Yeni eklenen fonksiyonlar
+async function loadUserData() {
+  try {
+    const response = await fetch(`https://your-heroku-app-name.herokuapp.com/api/player/${telegramId}`);
+    const data = await response.json();
+    // Oyuncu verilerini güncelle
+    tokens = data.tokens;
+    level = data.level;
+    energy = data.energy;
+    maxEnergy = data.maxEnergy;
+    clicksRemaining = data.clicksRemaining;
+    lastEnergyRefillTime = new Date(data.lastEnergyRefillTime);
+    dailyStreak = data.dailyStreak;
+    lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
+    completedTasks = data.completedTasks;
+    referralCount = data.referralCount;
+    autoBotActive = data.autoBotActive;
+    autoBotPurchased = data.autoBotPurchased;
+    autoBotTokens = data.autoBotTokens;
+    lastAutoBotCheckTime = data.lastAutoBotCheckTime ? new Date(data.lastAutoBotCheckTime) : null;
+    updateUI();
+  } catch (error) {
+    console.error('Error loading user data:', error);
+  }
+}
+
+async function saveUserData() {
+  try {
+    const response = await fetch(`https://your-heroku-app-name.herokuapp.com/api/update/${telegramId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tokens,
+        level,
+        energy,
+        maxEnergy,
+        clicksRemaining,
+        lastEnergyRefillTime,
+        dailyStreak,
+        lastLoginDate,
+        completedTasks,
+        referralCount,
+        autoBotActive,
+        autoBotPurchased,
+        autoBotTokens,
+        lastAutoBotCheckTime
+      }),
+    });
+    const data = await response.json();
+    console.log('Data saved:', data);
+  } catch (error) {
+    console.error('Error saving user data:', error);
+  }
+}
+
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
@@ -89,7 +144,7 @@ function gameLoop(currentTime) {
 function startGame() {
     console.log("Starting game");
     initializeDOM();
-    loadUserData();
+    loadUserData(); // Yeni eklenen satır
     loadDinoImages();
     resizeCanvas();
     setupClickHandler();
@@ -187,63 +242,6 @@ function initializeDOM() {
     document.addEventListener('mousemove', () => {
         lastPlayerActivityTime = Date.now();
     });
-}
-
-function loadUserData() {
-    const savedData = localStorage.getItem(telegramId);
-    if (savedData) {
-        const data = JSON.parse(savedData);
-        tokens = parseInt(data.tokens) || 0;
-        level = parseInt(data.level) || 1;
-        completedTasks = data.completedTasks || [];
-        energy = parseInt(data.energy) || maxEnergy;
-        maxEnergy = parseInt(data.maxEnergy) || level + 2;
-        lastEnergyRefillTime = parseInt(data.lastEnergyRefillTime) || Date.now();
-        clicksRemaining = parseFloat(data.clicksRemaining) || getMaxClicksForLevel();
-        boostAvailable = data.boostAvailable !== undefined ? data.boostAvailable : true;
-        dailyStreak = parseInt(data.dailyStreak) || 0;
-        lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
-        lastGiftTime = parseInt(data.lastGiftTime) || 0;
-        lastEnergyBoostTime = parseInt(data.lastEnergyBoostTime) || 0;
-        referralCount = parseInt(data.referralCount) || 0;
-        autoBotActive = data.autoBotActive || false;
-        autoBotPurchased = data.autoBotPurchased || false;
-        lastSessionCloseTime = parseInt(data.lastSessionCloseTime) || Date.now();
-        autoBotTokens = parseInt(data.autoBotTokens) || 0;
-        autoBotPurchaseTime = parseInt(data.autoBotPurchaseTime) || 0;
-        lastAutoBotCheckTime = parseInt(data.lastAutoBotCheckTime) || 0;
-        lastPlayerActivityTime = parseInt(data.lastPlayerActivityTime) || Date.now();
-        autoBotShownThisSession = false; // Her oturumda sıfırlanır
-    }
-    updateDinoImage();
-    updateUI();
-}
-
-function saveUserData() {
-    const data = {
-        tokens: parseInt(tokens),
-        level: parseInt(level),
-        energy: parseInt(energy),
-        maxEnergy: parseInt(maxEnergy),
-        lastEnergyRefillTime,
-        clicksRemaining: parseFloat(clicksRemaining),
-        boostAvailable,
-        dailyStreak: parseInt(dailyStreak),
-        lastLoginDate,
-        lastGiftTime: parseInt(lastGiftTime),
-        lastEnergyBoostTime: parseInt(lastEnergyBoostTime),
-        referralCount: parseInt(referralCount),
-        autoBotActive,
-        autoBotPurchased,
-        lastSessionCloseTime: Date.now(),
-        autoBotTokens: parseInt(autoBotTokens),
-        autoBotPurchaseTime: parseInt(autoBotPurchaseTime),
-        lastAutoBotCheckTime: parseInt(lastAutoBotCheckTime),
-        lastPlayerActivityTime: parseInt(lastPlayerActivityTime),
-        completedTasks,
-        autoBotShownThisSession
-    };
-    localStorage.setItem(telegramId, JSON.stringify(data));
 }
 
 function setupResizeHandler() {
@@ -346,12 +344,12 @@ function handleClick(event) {
             clicksRemaining--;
             updateUI();
             checkLevelUp();
-            saveUserData();
+            saveUserData(); // Yeni eklenen satır
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
             updateUI();
-            saveUserData();
+            saveUserData(); // Yeni eklenen satır
         }
     }
 }
@@ -368,7 +366,6 @@ function createClickEffect(x, y, amount) {
         clickEffect.remove();
     }, 1000);
 }
-
 function formatNumber(number) {
     if (number >= 10000) {
         return (number / 1000).toFixed(1) + 'k';
@@ -1119,6 +1116,7 @@ function increaseEnergy() {
 
 window.addEventListener('resize', resizeCanvas);
 
+// Düzenli Veri Kaydetme (her saniye)
 // Düzenli Veri Kaydetme (her saniye)
 setInterval(saveUserData, 1000);
 

@@ -526,5 +526,12 @@
         </div>
     </div>
     <script src="game.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const telegramId = urlParams.get('id');
+        if (!telegramId) {
+            alert('Please start the game from the Telegram bot.');
+        }
+    </script>
 </body>
 </html>
