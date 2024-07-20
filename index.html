@@ -349,23 +349,6 @@
             50% { opacity: 0.7; transform: scale(1.2); }
             100% { opacity: 0; transform: scale(1.5); }
         }
-        .boost-button-container {
-            position: relative;
-            display: inline-block;
-        }
-        .boost-button {
-            position: relative;
-            z-index: 1;
-        }
-        .boost-button::before {
-            content: url('boost.png');
-            position: absolute;
-            top: -10px;
-            left: -10px;
-            width: 20px;
-            height: 20px;
-            z-index: 2;
-        }
     </style>
 </head>
 <body>
@@ -383,9 +366,7 @@
     <div id="buttonsContainer">
         <button id="earnButton" class="button">EARN</button>
         <button id="tasksButton" class="button">TASKS</button>
-        <div class="boost-button-container">
-            <button id="boostButton" class="boost-button">BOOST</button>
-        </div>
+        <button id="boostButton" class="button">BOOST</button>
         <button id="dailyRewardsButton" class="button">DAILY REWARDS</button>
     </div>
     <div id="tasksModal" class="modal">
