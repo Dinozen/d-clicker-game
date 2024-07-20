@@ -13,6 +13,7 @@ let boostAvailable = true;
 const boostCooldown = 3 * 60 * 60 * 1000; // 3 saat
 let dailyStreak = 0;
 let lastLoginDate = null;
+let lastSessionCloseTime = 0;
 let lastGiftTime = 0;
 let lastEnergyBoostTime = 0;
 let referralCount = 0;
@@ -92,9 +93,8 @@ function startGame() {
     setupClickHandler();
     setupResizeHandler();
     preloadImages();
-
     checkDailyLogin();
-    checkAutoBotOnLogin();
+    checkAutoBot();
     updateTaskButtons();
     updateEnergyRefillRate();
     
@@ -200,6 +200,7 @@ function loadUserData() {
         referralCount = parseInt(data.referralCount) || 0;
         autoBotActive = data.autoBotActive || false;
         autoBotPurchased = data.autoBotPurchased || false;
+        lastSessionCloseTime = parseInt(data.lastSessionCloseTime) || Date.now();
         autoBotTokens = parseInt(data.autoBotTokens) || 0;
         autoBotPurchaseTime = parseInt(data.autoBotPurchaseTime) || 0;
         lastAutoBotCheckTime = parseInt(data.lastAutoBotCheckTime) || 0;
@@ -224,6 +225,7 @@ function saveUserData() {
         referralCount: parseInt(referralCount),
         autoBotActive,
         autoBotPurchased,
+        lastSessionCloseTime: Date.now(),
         autoBotTokens: parseInt(autoBotTokens),
         autoBotPurchaseTime: parseInt(autoBotPurchaseTime),
         lastAutoBotCheckTime: parseInt(lastAutoBotCheckTime),
@@ -255,7 +257,7 @@ function resizeCanvas() {
 function drawDino() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    if (currentDinoImage.complete && currentDinoImage.naturalWidth > 0) {
+    if (currentDinoImage && currentDinoImage.complete && currentDinoImage.naturalWidth > 0) {
         const scale = Math.min(window.innerWidth / currentDinoImage.naturalWidth, window.innerHeight / currentDinoImage.naturalHeight) * 0.4;
         dinoWidth = Math.round(currentDinoImage.naturalWidth * scale * clickScale);
         dinoHeight = Math.round(currentDinoImage.naturalHeight * scale * clickScale);
@@ -317,30 +319,27 @@ function handleClick(event) {
 
     if (x >= dinoX && x <= dinoX + dinoWidth &&
         y >= dinoY && y <= dinoY + dinoHeight) {
-        if (!isClicking) {
-            let tokenGain = 1 * getLevelMultiplier();
-            if (isDoubleTokensActive) {
-                tokenGain *= 2;
-            }
+        let tokenGain = 1 * getLevelMultiplier();
+        if (isDoubleTokensActive) {
+            tokenGain *= 2;
+        }
 
-            createClickEffect(event.clientX, event.clientY, tokenGain);
-            isClicking = true;
-            clickScale = 1.1;
-            requestAnimationFrame(animateDino);
+        createClickEffect(event.clientX, event.clientY, tokenGain);
+        isClicking = true;
+        clickScale = 1.1;
+        requestAnimationFrame(animateDino);
 
-            if (clicksRemaining > 0) {
-                tokens += tokenGain;
-                clicksRemaining--;
-                updateUI();
-                checkLevelUp();
-                saveUserData();
-            } else if (energy > 0) {
-                energy--;
-                clicksRemaining = getMaxClicksForLevel();
-                updateUI();
-                saveUserData();
-            }
-            setTimeout(() => { isClicking = false; }, 200);
+        if (clicksRemaining > 0) {
+            tokens += tokenGain;
+            clicksRemaining--;
+            updateUI();
+            checkLevelUp();
+            saveUserData();
+        } else if (energy > 0) {
+            energy--;
+            clicksRemaining = getMaxClicksForLevel();
+            updateUI();
+            saveUserData();
         }
     }
 }
@@ -368,7 +367,11 @@ function formatNumber(number) {
 }
 
 function formatClicks(number) {
-    return number.toFixed(2).slice(0, 5);  // En fazla 5 karakter göster
+    if (number === Infinity) {
+        return '∞';  // Sonsuzluk sembolü
+}
+    return number.toFixed(2).slice(0, 6);  // En fazla 6 karakter göster
+    
 }
 
 function updateUI() {
@@ -713,12 +716,37 @@ function activateDoubleTokens() {
     isDoubleTokensActive = true;
     const originalClicksRemaining = clicksRemaining;
     clicksRemaining = Infinity;
+
+    // Modal gösterimi
+    showMessage('Double Tokens activated for 20 seconds! Click as fast as you can!');
+    setTimeout(() => {
+        document.getElementById('messageModal').style.display = 'none';
+    }, 2000);
+
+    // TAP efekti
+    const tapInterval = setInterval(() => {
+        createTapEffect();
+    }, 300);
+
     setTimeout(() => {
         isDoubleTokensActive = false;
         clicksRemaining = originalClicksRemaining;
         updateUI();
+        clearInterval(tapInterval);
     }, duration);
-    showMessage('Double Tokens activated for 20 seconds! Click as fast as you can!');
+}
+
+function createTapEffect() {
+    const tapEffect = document.createElement('div');
+    tapEffect.className = 'tap-effect';
+    tapEffect.textContent = 'TAP';
+    tapEffect.style.left = `${dinoX + Math.random() * dinoWidth}px`;
+    tapEffect.style.top = `${dinoY + Math.random() * dinoHeight}px`;
+    document.body.appendChild(tapEffect);
+
+    setTimeout(() => {
+        tapEffect.remove();
+    }, 500);
 }
 
 function levelUp() {
@@ -861,19 +889,35 @@ function updateEnergyRefillRate() {
 }
 
 function checkAutoBot() {
-    if (autoBotActive) {
+    console.log("Checking AutoBot...");
+    if (autoBotActive && autoBotPurchased) {
         const currentTime = Date.now();
-        const elapsedTime = Math.min((currentTime - lastAutoBotCheckTime) / 1000, 4 * 60 * 60);
-        const tokensPerSecond = level * 0.1;
-        const newTokens = Math.floor(elapsedTime * tokensPerSecond);
-        autoBotTokens += newTokens;
-        lastAutoBotCheckTime = currentTime;
-        console.log(`AutoBot earned ${newTokens} tokens. Total: ${autoBotTokens}`);
-        saveUserData();
+        const timeSinceLastCheck = (currentTime - lastSessionCloseTime) / 1000; // saniye cinsinden
+        const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
 
-        if (autoBotTokens > 0) {
-            showAutoBotEarnings();
+        if (timeSinceLastCheck > 0) {
+            const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
+            const tokensPerSecond = level * 0.1;
+            const newTokens = Math.floor(earningTime * tokensPerSecond);
+            
+            autoBotTokens += newTokens;
+            lastSessionCloseTime = currentTime;
+            lastAutoBotCheckTime = currentTime;
+            
+            console.log(`AutoBot earned ${newTokens} tokens. Total: ${autoBotTokens}`);
+            console.log(`Time since last check: ${timeSinceLastCheck} seconds`);
+            console.log(`Earning time: ${earningTime} seconds`);
+            
+            saveUserData();
+
+            if (autoBotTokens > 0) {
+                showAutoBotEarnings();
+            }
+        } else {
+            console.log("No time has passed since last check.");
         }
+    } else {
+        console.log("AutoBot is not active or not purchased");
     }
 }
 
@@ -881,12 +925,22 @@ function showAutoBotEarnings() {
     document.getElementById('autoBotTokensCollected').textContent = formatNumber(autoBotTokens);
     autoBotEarningsModal.style.display = 'block';
 
-    document.getElementById('claimAutoBotTokens').onclick = function () {
-        tokens += autoBotTokens;
-        showMessage(`You claimed ${formatNumber(autoBotTokens)} tokens from AutoBot!`);
-        autoBotTokens = 0;
-        updateUI();
-        saveUserData();
+    const claimAutoBotTokens = document.getElementById('claimAutoBotTokens');
+    if (claimAutoBotTokens) {
+        claimAutoBotTokens.onclick = function () {
+            tokens += autoBotTokens;
+            showMessage(`You claimed ${formatNumber(autoBotTokens)} tokens from AutoBot!`);
+            autoBotTokens = 0;
+            updateUI();
+            saveUserData();
+            autoBotEarningsModal.style.display = 'none';
+            console.log("AutoBot tokens claimed");
+        };
+    } else {
+        console.error("Claim AutoBot tokens button not found");
+    }
+
+    document.getElementById('closeAutoBotEarningsModal').onclick = function () {
         autoBotEarningsModal.style.display = 'none';
     };
 }
@@ -895,7 +949,7 @@ function checkAutoBotOnLogin() {
     if (autoBotPurchased && autoBotActive) {
         checkAutoBot();
         if (autoBotTokens > 0) {
-            showMessage(`Welcome back! Your AutoBot has earned ${formatNumber(autoBotTokens)} tokens while you were away.`);
+            showAutoBotEarnings();
         }
     }
 }

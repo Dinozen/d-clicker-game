@@ -87,9 +87,9 @@
             text-transform: uppercase;
             font-size: 16px;
             padding: 10px 20px;
-            background-color: #61dafb;
-            color: #000;
-            border: none;
+            background-color: black;
+            color: white;
+            border: 2px solid #007bff;
             border-radius: 10px;
             cursor: pointer;
             transition: background-color 0.3s ease;
@@ -97,7 +97,7 @@
             z-index: 10;
         }
         .button:hover {
-            background-color: #21a1f1;
+            background-color: #007bff;
         }
         .button.disabled {
             background-color: #999;
@@ -267,16 +267,16 @@
             right: 10px;
             font-size: 14px;
             padding: 5px 10px;
-            background-color: #61dafb;
-            color: #000;
-            border: none;
+            background-color: black;
+            color: white;
+            border: 2px solid #007bff;
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s ease;
             z-index: 10;
         }
         #dailyRewardsButton:hover {
-            background-color: #21a1f1;
+            background-color: #007bff;
         }
         #giftCooldownDisplay {
             text-align: center;
@@ -335,6 +335,19 @@
         }
         .nav-btn:hover {
             background-color: #21a1f1;
+        }
+        .tap-effect {
+            position: absolute;
+            font-size: 24px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+            animation: tapAnimation 0.5s forwards;
+        }
+        @keyframes tapAnimation {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+            100% { opacity: 0; transform: scale(1.5); }
         }
     </style>
 </head>
@@ -411,7 +424,7 @@
                 <h3>AutoBot</h3>
                 <p>(10,000 tokens)</p>
             </div>
-            <button id="autoBotButton" class="button">Activate AutoBot</button>
+           <button id="autoBotButton" class="button">Activate AutoBot</button>
         </div>
         <button id="closeBoostersModal" class="close-btn">X</button>
     </div>
