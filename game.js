@@ -238,6 +238,7 @@ function saveUserData() {
         autoBotPurchaseTime: parseInt(autoBotPurchaseTime),
         lastAutoBotCheckTime: parseInt(lastAutoBotCheckTime),
         lastPlayerActivityTime: parseInt(lastPlayerActivityTime),
+        completedTasks, // Görevlerin durumunu kaydediyoruz
         autoBotShownThisSession // Bu da kaydedilir
     };
     localStorage.setItem(telegramId, JSON.stringify(data));
@@ -933,12 +934,9 @@ function checkAutoBot() {
 
 function checkAutoBotOnLogin() {
     if (autoBotPurchased && !autoBotShownThisSession) {
-        checkAutoBot();
         autoBotShownThisSession = true;
         saveUserData();
-        if (autoBotTokens > 0) {
-            showAutoBotEarnings();
-        }
+        showAutoBotEarnings();
     }
 }
 
