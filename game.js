@@ -24,6 +24,8 @@ let autoBotTokens = 0;
 let energyRefillRate = 1 / 3; // Başlangıçta 3 saniyede 1
 let autoBotPurchaseTime = 0;
 let lastAutoBotCheckTime = 0;
+let lastPlayerActivityTime = Date.now();
+let autoBotShownThisSession = false;
 
 // Level gereksinimleri
 const levelRequirements = [0, 3000, 8000, 20000, 40000];
@@ -72,34 +74,6 @@ function gameLoop(currentTime) {
         }
         
         if (currentTime - lastAutoCheckTime > AUTO_CHECK_INTERVAL) {
-            if (!isClicking) {
-                checkAutoBot();  // Sadece oyuncu aktif olmadığında kontrol et
-            }
-            lastAutoCheckTime = currentTime;
-        }
-
-        animateDino();
-        updateUI();
-        drawDino();
-
-        lastDrawTime = currentTime;
-    }
-}
-    requestAnimationFrame(gameLoop);
-
-    if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
-        if (currentTime - lastClickIncreaseTime > 1000) {
-            increaseClicks();
-            lastClickIncreaseTime = currentTime;
-        }
-        
-        if (currentTime - lastCooldownUpdateTime > 1000) {
-            updateGiftCooldownDisplay();
-            updateEnergyBoostCooldownDisplay();
-            lastCooldownUpdateTime = currentTime;
-        }
-        
-        if (currentTime - lastAutoCheckTime > AUTO_CHECK_INTERVAL) {
             checkAutoBot();
             lastAutoCheckTime = currentTime;
         }
@@ -122,32 +96,7 @@ function startGame() {
     setupResizeHandler();
     preloadImages();
     checkDailyLogin();
-    checkAutoBotOnLogin();  // Oyuna girişte autobotu kontrol et
-    updateTaskButtons();
-    updateEnergyRefillRate();
-    
-    requestAnimationFrame(gameLoop);
-    console.log("Game loop started");
-}
-
-function checkAutoBotOnLogin() {
-    if (autoBotPurchased && autoBotActive) {
-        checkAutoBot();
-        if (autoBotTokens > 0) {
-            showAutoBotEarnings();
-        }
-    }
-}
-    console.log("Starting game");
-    initializeDOM();
-    loadUserData();
-    loadDinoImages();
-    resizeCanvas();
-    setupClickHandler();
-    setupResizeHandler();
-    preloadImages();
-    checkDailyLogin();
-    checkAutoBot();
+    checkAutoBotOnLogin(); // Oturum açıldığında autobot kontrolü
     updateTaskButtons();
     updateEnergyRefillRate();
     
@@ -222,15 +171,17 @@ function initializeDOM() {
         document.getElementById('randomGiftResultModal').style.display = 'none';
     });
 
-    claimRewardButton.addEventListener('click', () => {
-        const reward = calculateDailyReward(dailyStreak);
-        tokens += reward;
-        updateUI();
-        saveUserData();
-        showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
-        loginStreakModal.style.display = 'none';
-        claimRewardButton.disabled = true;
-        claimRewardButton.textContent = 'Claimed';
+    // Oyuncu aktivitelerini izleme
+    document.addEventListener('click', () => {
+        lastPlayerActivityTime = Date.now();
+    });
+
+    document.addEventListener('keydown', () => {
+        lastPlayerActivityTime = Date.now();
+    });
+
+    document.addEventListener('mousemove', () => {
+        lastPlayerActivityTime = Date.now();
     });
 }
 
@@ -257,6 +208,8 @@ function loadUserData() {
         autoBotTokens = parseInt(data.autoBotTokens) || 0;
         autoBotPurchaseTime = parseInt(data.autoBotPurchaseTime) || 0;
         lastAutoBotCheckTime = parseInt(data.lastAutoBotCheckTime) || 0;
+        lastPlayerActivityTime = parseInt(data.lastPlayerActivityTime) || Date.now();
+        autoBotShownThisSession = data.autoBotShownThisSession || false;
     }
     updateDinoImage();
     updateUI();
@@ -282,7 +235,8 @@ function saveUserData() {
         autoBotTokens: parseInt(autoBotTokens),
         autoBotPurchaseTime: parseInt(autoBotPurchaseTime),
         lastAutoBotCheckTime: parseInt(lastAutoBotCheckTime),
-        completedTasks
+        lastPlayerActivityTime: parseInt(lastPlayerActivityTime),
+        autoBotShownThisSession
     };
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
@@ -943,8 +897,10 @@ function updateEnergyRefillRate() {
 
 function checkAutoBot() {
     console.log("Checking AutoBot...");
-    if (autoBotActive && autoBotPurchased && !isClicking) {  // isClicking kontrolü ekleniyor
-        const currentTime = Date.now();
+    const currentTime = Date.now();
+    const inactiveTime = (currentTime - lastPlayerActivityTime) / 1000; // saniye cinsinden
+
+    if (autoBotActive && autoBotPurchased && inactiveTime >= 60) { // Oyuncu en az 1 dakika inaktif olmalı
         const timeSinceLastCheck = (currentTime - lastSessionCloseTime) / 1000; // saniye cinsinden
         const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
 
@@ -970,38 +926,18 @@ function checkAutoBot() {
             console.log("No time has passed since last check.");
         }
     } else {
-        console.log("AutoBot is not active or not purchased");
+        console.log("AutoBot is not active, not purchased, or player is active.");
     }
 }
-    console.log("Checking AutoBot...");
-    if (autoBotActive && autoBotPurchased) {
-        const currentTime = Date.now();
-        const timeSinceLastCheck = (currentTime - lastSessionCloseTime) / 1000; // saniye cinsinden
-        const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
 
-        if (timeSinceLastCheck > 0) {
-            const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
-            const tokensPerSecond = level * 0.1;
-            const newTokens = Math.floor(earningTime * tokensPerSecond);
-            
-            autoBotTokens += newTokens;
-            lastSessionCloseTime = currentTime;
-            lastAutoBotCheckTime = currentTime;
-            
-            console.log(`AutoBot earned ${newTokens} tokens. Total: ${autoBotTokens}`);
-            console.log(`Time since last check: ${timeSinceLastCheck} seconds`);
-            console.log(`Earning time: ${earningTime} seconds`);
-            
-            saveUserData();
-
-            if (autoBotTokens > 0) {
-                showAutoBotEarnings();
-            }
-        } else {
-            console.log("No time has passed since last check.");
+function checkAutoBotOnLogin() {
+    if (autoBotPurchased && !autoBotShownThisSession) {
+        checkAutoBot();
+        autoBotShownThisSession = true;
+        saveUserData();
+        if (autoBotTokens > 0) {
+            showAutoBotEarnings();
         }
-    } else {
-        console.log("AutoBot is not active or not purchased");
     }
 }
 
@@ -1029,21 +965,7 @@ function showAutoBotEarnings() {
     };
 }
 
-function checkAutoBotOnLogin() {
-    if (autoBotPurchased && autoBotActive) {
-        checkAutoBot();
-        if (autoBotTokens > 0) {
-            showAutoBotEarnings();
-        }
-    }
-}
-
-function formatTime(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
-}
-
+// Diğer fonksiyonlar burada yer almaktadır...
 function showRandomGiftResult(reward, amount) {
     const randomGiftModal = document.getElementById('randomGiftResultModal');
     const randomGiftResultMessage = document.getElementById('randomGiftResultMessage');
