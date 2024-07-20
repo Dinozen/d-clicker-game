@@ -96,10 +96,12 @@ function startGame() {
     setupResizeHandler();
     preloadImages();
     checkDailyLogin();
-    checkAutoBotOnLogin(); // Oturum açıldığında autobot kontrolü
     updateTaskButtons();
     updateEnergyRefillRate();
     
+    // AutoBot kontrolü yalnızca oyun başında yapılacak
+    checkAutoBotOnLogin();
+
     requestAnimationFrame(gameLoop);
     console.log("Game loop started");
 }
@@ -194,7 +196,7 @@ function loadUserData() {
         tokens = parseInt(data.tokens) || 0;
         level = parseInt(data.level) || 1;
         completedTasks = data.completedTasks || [];
-        energy = parseInt(data.energy) || 3;
+        energy = parseInt(data.energy) || 3;  // Buradaki default değer silinmeli
         maxEnergy = parseInt(data.maxEnergy) || level + 2;
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime).getTime() || Date.now();
         clicksRemaining = parseFloat(data.clicksRemaining) || getMaxClicksForLevel();
@@ -899,8 +901,8 @@ function updateEnergyRefillRate() {
 
 function checkAutoBot() {
     console.log("Checking AutoBot...");
-    const currentTime = Date.now();
-    const inactiveTime = (currentTime - lastPlayerActivityTime) / 1000; // saniye cinsinden
+    
+    }
 
     if (autoBotActive && autoBotPurchased && inactiveTime >= 60) { // Oyuncu en az 1 dakika inaktif olmalı
         const timeSinceLastCheck = (currentTime - lastSessionCloseTime) / 1000; // saniye cinsinden
