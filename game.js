@@ -211,7 +211,7 @@ function loadUserData() {
         autoBotPurchaseTime = parseInt(data.autoBotPurchaseTime) || 0;
         lastAutoBotCheckTime = parseInt(data.lastAutoBotCheckTime) || 0;
         lastPlayerActivityTime = parseInt(data.lastPlayerActivityTime) || Date.now();
-        autoBotShownThisSession = data.autoBotShownThisSession || false;
+        autoBotShownThisSession = false; // Her oturumda sıfırlanır
     }
     updateDinoImage();
     updateUI();
@@ -238,7 +238,7 @@ function saveUserData() {
         autoBotPurchaseTime: parseInt(autoBotPurchaseTime),
         lastAutoBotCheckTime: parseInt(lastAutoBotCheckTime),
         lastPlayerActivityTime: parseInt(lastPlayerActivityTime),
-        autoBotShownThisSession
+        autoBotShownThisSession // Bu da kaydedilir
     };
     localStorage.setItem(telegramId, JSON.stringify(data));
 }
