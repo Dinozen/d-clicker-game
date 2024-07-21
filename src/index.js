@@ -7,9 +7,17 @@ const TelegramBot = require('node-telegram-bot-api');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
+
+// MongoDB connection
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -20,6 +28,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(() => console.log('MongoDB connected...'))
 .catch(err => console.log('MongoDB connection error:', err));
 
+// Player Schema
 const PlayerSchema = new mongoose.Schema({
   telegramId: { type: String, unique: true, required: true },
   tokens: { type: Number, default: 0 },
@@ -41,6 +50,7 @@ const PlayerSchema = new mongoose.Schema({
 
 const Player = mongoose.model('Player', PlayerSchema);
 
+// Telegram Bot
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
 bot.onText(/\/start(.*)/, async (msg, match) => {
@@ -70,21 +80,25 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   bot.sendMessage(chatId, `Click here to play: https://dinozen.github.io/d-clicker-game/?id=${chatId}`);
 });
 
+// Routes
 app.get('/', (req, res) => {
   res.send('DinoZen Game Backend is running!');
 });
 
 app.get('/api/player/:telegramId', async (req, res) => {
+  console.log(`Fetching player data for telegramId: ${req.params.telegramId}`);
   try {
     const player = await Player.findOne({ telegramId: req.params.telegramId });
     if (!player) return res.status(404).json({ message: 'Player not found' });
     res.json(player);
   } catch (error) {
+    console.error('Error fetching player:', error);
     res.status(500).json({ message: error.message });
   }
 });
 
 app.post('/api/update/:telegramId', async (req, res) => {
+  console.log(`Updating player data for telegramId: ${req.params.telegramId}`, req.body);
   try {
     const player = await Player.findOneAndUpdate(
       { telegramId: req.params.telegramId },
@@ -94,8 +108,21 @@ app.post('/api/update/:telegramId', async (req, res) => {
     if (!player) return res.status(404).json({ message: 'Player not found' });
     res.json(player);
   } catch (error) {
+    console.error('Error updating player:', error);
     res.status(500).json({ message: error.message });
   }
 });
 
+// Test endpoint
+app.get('/test', (req, res) => {
+  res.json({ message: "Test endpoint is working" });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
+
+// Start server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
