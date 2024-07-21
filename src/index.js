@@ -25,8 +25,8 @@ mongoose.connect(process.env.MONGODB_URI, {
   socketTimeoutMS: 45000,
   family: 4
 })
-.then(() => console.log('MongoDB connected...'))
-.catch(err => console.log('MongoDB connection error:', err));
+.then(() => console.log('MongoDB connected successfully'))
+.catch(err => console.error('MongoDB connection error:', err));
 
 // Player Schema
 const PlayerSchema = new mongoose.Schema({
@@ -57,27 +57,32 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const referrerId = match[1].trim();
   
-  let player = await Player.findOne({ telegramId: chatId.toString() });
-  
-  if (!player) {
-    player = new Player({ telegramId: chatId.toString() });
-    if (referrerId) {
-      player.referredBy = referrerId;
-      const referrer = await Player.findOne({ telegramId: referrerId });
-      if (referrer) {
-        referrer.referralCount += 1;
-        referrer.tokens += 3000; // Example reward
-        await referrer.save();
-        bot.sendMessage(referrerId, 'You got a new referral! 3000 tokens added to your account.');
+  try {
+    let player = await Player.findOne({ telegramId: chatId.toString() });
+    
+    if (!player) {
+      player = new Player({ telegramId: chatId.toString() });
+      if (referrerId) {
+        player.referredBy = referrerId;
+        const referrer = await Player.findOne({ telegramId: referrerId });
+        if (referrer) {
+          referrer.referralCount += 1;
+          referrer.tokens += 3000; // Example reward
+          await referrer.save();
+          bot.sendMessage(referrerId, 'You got a new referral! 3000 tokens added to your account.');
+        }
       }
+      await player.save();
+      bot.sendMessage(chatId, 'Welcome to DinoZen! Your account has been created.');
+    } else {
+      bot.sendMessage(chatId, 'Welcome back to DinoZen!');
     }
-    await player.save();
-    bot.sendMessage(chatId, 'Welcome to DinoZen! Your account has been created.');
-  } else {
-    bot.sendMessage(chatId, 'Welcome back to DinoZen!');
+    
+    bot.sendMessage(chatId, `Click here to play: https://dinozen.github.io/d-clicker-game/?id=${chatId}`);
+  } catch (error) {
+    console.error('Error in Telegram bot handler:', error);
+    bot.sendMessage(chatId, 'Sorry, an error occurred. Please try again later.');
   }
-  
-  bot.sendMessage(chatId, `Click here to play: https://dinozen.github.io/d-clicker-game/?id=${chatId}`);
 });
 
 // Routes
@@ -103,7 +108,7 @@ app.post('/api/update/:telegramId', async (req, res) => {
     const player = await Player.findOneAndUpdate(
       { telegramId: req.params.telegramId },
       req.body,
-      { new: true }
+      { new: true, runValidators: true }
     );
     if (!player) return res.status(404).json({ message: 'Player not found' });
     res.json(player);
