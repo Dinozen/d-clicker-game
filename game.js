@@ -1132,9 +1132,11 @@ window.addEventListener('DOMContentLoaded', function () {
     const userTelegramId = urlParams.get('id');
     if (userTelegramId) {
         telegramId = userTelegramId;
-        console.log("Telegram ID set to:", telegramId); // Debugging için
+        console.log("Telegram ID set to:", telegramId);
+        loadUserData(); // Kullanıcı verilerini yükle
     } else {
-        console.log("No Telegram ID found in URL"); // Debugging için
+        console.log("No Telegram ID found in URL");
+        // Burada bir hata mesajı gösterebilir veya kullanıcıdan ID isteyebilirsiniz
     }
     loadDinoImages();
     startGame();
