@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const TelegramBot = require('node-telegram-bot-api');
+const { spawn } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -51,7 +52,16 @@ const PlayerSchema = new mongoose.Schema({
 const Player = mongoose.model('Player', PlayerSchema);
 
 // Telegram Bot
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { webHook: { port: PORT } });
+
+// Set the webhook
+bot.setWebHook(`${process.env.HEROKU_URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
+
+// Webhook route
+app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
 
 bot.onText(/\/start(.*)/, async (msg, match) => {
   const chatId = msg.chat.id;
@@ -129,5 +139,27 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
-// Start server
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Start Python bot
+function startPythonBot() {
+  const pythonProcess = spawn('python', ['game.py']);
+
+  pythonProcess.stdout.on('data', (data) => {
+    console.log(`Python Bot: ${data}`);
+  });
+
+  pythonProcess.stderr.on('data', (data) => {
+    console.error(`Python Bot Error: ${data}`);
+  });
+
+  pythonProcess.on('close', (code) => {
+    console.log(`Python Bot process exited with code ${code}`);
+    // Restart the Python bot if it crashes
+    setTimeout(startPythonBot, 5000);
+  });
+}
+
+// Start server and Python bot
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  startPythonBot();
+});
