@@ -1,5 +1,7 @@
 console.log("Game script loaded");
 
+const BACKEND_URL = 'https://dino-game-backend-913ad8a618a0.herokuapp.com';
+
 // Oyun değişkenleri
 let tokens = 0;
 let completedTasks = [];
@@ -61,8 +63,10 @@ console.log("Is mobile device:", isMobile);
 // Yeni eklenen fonksiyonlar
 async function loadUserData() {
   try {
-    const response = await fetch(`https://your-heroku-app-name.herokuapp.com/api/player/${telegramId}`);
+    console.log("Loading user data for Telegram ID:", telegramId);
+    const response = await fetch(`${BACKEND_URL}/api/player/${telegramId}`);
     const data = await response.json();
+    console.log("Loaded user data:", data);
     // Oyuncu verilerini güncelle
     tokens = data.tokens;
     level = data.level;
@@ -86,10 +90,12 @@ async function loadUserData() {
 
 async function saveUserData() {
   try {
-    const response = await fetch(`https://your-heroku-app-name.herokuapp.com/api/update/${telegramId}`, {
+    console.log("Saving user data for Telegram ID:", telegramId);
+    const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        telegramId,
         tokens,
         level,
         energy,
@@ -366,6 +372,7 @@ function createClickEffect(x, y, amount) {
         clickEffect.remove();
     }, 1000);
 }
+
 function formatNumber(number) {
     if (number >= 10000) {
         return (number / 1000).toFixed(1) + 'k';
@@ -700,6 +707,7 @@ function showReferralLink() {
 
     const referralLink = document.getElementById('referralLink');
     referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
+    console.log("Generated referral link:", referralLink.value); // Debugging için
 
     document.getElementById('copyButton').onclick = function () {
         referralLink.select();
@@ -1117,7 +1125,6 @@ function increaseEnergy() {
 window.addEventListener('resize', resizeCanvas);
 
 // Düzenli Veri Kaydetme (her saniye)
-// Düzenli Veri Kaydetme (her saniye)
 setInterval(saveUserData, 1000);
 
 window.addEventListener('DOMContentLoaded', function () {
@@ -1125,6 +1132,9 @@ window.addEventListener('DOMContentLoaded', function () {
     const userTelegramId = urlParams.get('id');
     if (userTelegramId) {
         telegramId = userTelegramId;
+        console.log("Telegram ID set to:", telegramId); // Debugging için
+    } else {
+        console.log("No Telegram ID found in URL"); // Debugging için
     }
     loadDinoImages();
     startGame();
