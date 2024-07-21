@@ -13,7 +13,7 @@ app.use(express.json());
 
 // Logging middleware
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
   next();
 });
 
@@ -119,8 +119,8 @@ app.post('/api/update/:telegramId', async (req, res) => {
 });
 
 // Test endpoint
-app.get('/test', (req, res) => {
-  res.json({ message: "Test endpoint is working" });
+app.get('/api/test', (req, res) => {
+  res.json({ message: "API is working" });
 });
 
 // Error handling middleware
