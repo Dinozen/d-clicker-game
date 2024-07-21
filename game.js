@@ -1,5 +1,7 @@
 console.log("Game script loaded");
 
+const BACKEND_URL = 'https://dino-game-backend-913ad8a618a0.herokuapp.com';
+
 // Oyun değişkenleri
 let tokens = 0;
 let completedTasks = [];
@@ -61,7 +63,7 @@ console.log("Is mobile device:", isMobile);
 // Yeni eklenen fonksiyonlar
 async function loadUserData() {
   try {
-    const response = await fetch(`https://your-heroku-app-name.herokuapp.com/api/player/${telegramId}`);
+    const response = await fetch(`${BACKEND_URL}/api/player/${telegramId}`);
     const data = await response.json();
     // Oyuncu verilerini güncelle
     tokens = data.tokens;
@@ -86,7 +88,7 @@ async function loadUserData() {
 
 async function saveUserData() {
   try {
-    const response = await fetch(`https://your-heroku-app-name.herokuapp.com/api/update/${telegramId}`, {
+    const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -366,6 +368,7 @@ function createClickEffect(x, y, amount) {
         clickEffect.remove();
     }, 1000);
 }
+
 function formatNumber(number) {
     if (number >= 10000) {
         return (number / 1000).toFixed(1) + 'k';
@@ -1116,7 +1119,6 @@ function increaseEnergy() {
 
 window.addEventListener('resize', resizeCanvas);
 
-// Düzenli Veri Kaydetme (her saniye)
 // Düzenli Veri Kaydetme (her saniye)
 setInterval(saveUserData, 1000);
 
