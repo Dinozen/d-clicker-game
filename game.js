@@ -63,8 +63,10 @@ console.log("Is mobile device:", isMobile);
 // Yeni eklenen fonksiyonlar
 async function loadUserData() {
   try {
+    console.log("Loading user data for Telegram ID:", telegramId);
     const response = await fetch(`${BACKEND_URL}/api/player/${telegramId}`);
     const data = await response.json();
+    console.log("Loaded user data:", data);
     // Oyuncu verilerini güncelle
     tokens = data.tokens;
     level = data.level;
@@ -88,10 +90,12 @@ async function loadUserData() {
 
 async function saveUserData() {
   try {
+    console.log("Saving user data for Telegram ID:", telegramId);
     const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        telegramId,
         tokens,
         level,
         energy,
@@ -703,6 +707,7 @@ function showReferralLink() {
 
     const referralLink = document.getElementById('referralLink');
     referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
+    console.log("Generated referral link:", referralLink.value); // Debugging için
 
     document.getElementById('copyButton').onclick = function () {
         referralLink.select();
@@ -1127,6 +1132,9 @@ window.addEventListener('DOMContentLoaded', function () {
     const userTelegramId = urlParams.get('id');
     if (userTelegramId) {
         telegramId = userTelegramId;
+        console.log("Telegram ID set to:", telegramId); // Debugging için
+    } else {
+        console.log("No Telegram ID found in URL"); // Debugging için
     }
     loadDinoImages();
     startGame();
