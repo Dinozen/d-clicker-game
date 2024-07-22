@@ -3,6 +3,7 @@ console.log("Game script loaded");
 const BACKEND_URL = 'https://dino-game-backend-913ad8a618a0.herokuapp.com';
 
 // Oyun değişkenleri
+let saveInterval;
 let tokens = 0;
 let completedTasks = [];
 let level = 1;
@@ -62,61 +63,71 @@ console.log("Is mobile device:", isMobile);
 
 // Yeni eklenen fonksiyonlar
 async function loadUserData() {
-  try {
-    console.log("Loading user data for Telegram ID:", telegramId);
-    const response = await fetch(`${BACKEND_URL}/api/player/${telegramId}`);
-    const data = await response.json();
-    console.log("Loaded user data:", data);
-    // Oyuncu verilerini güncelle
-    tokens = data.tokens;
-    level = data.level;
-    energy = data.energy;
-    maxEnergy = data.maxEnergy;
-    clicksRemaining = data.clicksRemaining;
-    lastEnergyRefillTime = new Date(data.lastEnergyRefillTime);
-    dailyStreak = data.dailyStreak;
-    lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
-    completedTasks = data.completedTasks;
-    referralCount = data.referralCount;
-    autoBotActive = data.autoBotActive;
-    autoBotPurchased = data.autoBotPurchased;
-    autoBotTokens = data.autoBotTokens;
-    lastAutoBotCheckTime = data.lastAutoBotCheckTime ? new Date(data.lastAutoBotCheckTime) : null;
-    updateUI();
-  } catch (error) {
-    console.error('Error loading user data:', error);
-  }
+    try {
+        console.log("Loading user data for Telegram ID:", telegramId);
+        const response = await fetch(`${BACKEND_URL}/api/player/${telegramId}`);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        console.log("Loaded user data:", data);
+        // Oyuncu verilerini güncelle
+        tokens = data.tokens || 0;
+        level = data.level || 1;
+        energy = data.energy || 3;
+        maxEnergy = data.maxEnergy || 3;
+        clicksRemaining = data.clicksRemaining || 300;
+        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime || Date.now());
+        dailyStreak = data.dailyStreak || 0;
+        lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
+        completedTasks = data.completedTasks || [];
+        referralCount = data.referralCount || 0;
+        autoBotActive = data.autoBotActive || false;
+        autoBotPurchased = data.autoBotPurchased || false;
+        autoBotTokens = data.autoBotTokens || 0;
+        lastAutoBotCheckTime = data.lastAutoBotCheckTime ? new Date(data.lastAutoBotCheckTime) : null;
+        lastGiftTime = data.lastGiftTime || 0;
+        updateUI();
+    } catch (error) {
+        console.error('Error loading user data:', error);
+        showMessage('Failed to load user data. Please try refreshing the page.');
+    }
 }
 
 async function saveUserData() {
-  try {
-    console.log("Saving user data for Telegram ID:", telegramId);
-    const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        telegramId,
-        tokens,
-        level,
-        energy,
-        maxEnergy,
-        clicksRemaining,
-        lastEnergyRefillTime,
-        dailyStreak,
-        lastLoginDate,
-        completedTasks,
-        referralCount,
-        autoBotActive,
-        autoBotPurchased,
-        autoBotTokens,
-        lastAutoBotCheckTime
-      }),
-    });
-    const data = await response.json();
-    console.log('Data saved:', data);
-  } catch (error) {
-    console.error('Error saving user data:', error);
-  }
+    try {
+        console.log("Saving user data for Telegram ID:", telegramId);
+        const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegramId,
+                tokens,
+                level,
+                energy,
+                maxEnergy,
+                clicksRemaining,
+                lastEnergyRefillTime,
+                dailyStreak,
+                lastLoginDate,
+                completedTasks,
+                referralCount,
+                autoBotActive,
+                autoBotPurchased,
+                autoBotTokens,
+                lastAutoBotCheckTime,
+                lastGiftTime
+            }),
+        });
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        console.log('Data saved:', data);
+    } catch (error) {
+        console.error('Error saving user data:', error);
+        showMessage('Failed to save game progress. Please check your internet connection.');
+    }
 }
 
 function gameLoop(currentTime) {
@@ -150,21 +161,23 @@ function gameLoop(currentTime) {
 function startGame() {
     console.log("Starting game");
     initializeDOM();
-    loadUserData(); // Yeni eklenen satır
-    loadDinoImages();
-    resizeCanvas();
-    setupClickHandler();
-    setupResizeHandler();
-    preloadImages();
-    checkDailyLogin();
-    checkAutoBotOnStartup(); // Sadece oyun başlangıcında AutoBot kontrolü
-    updateTaskButtons();
-    updateEnergyRefillRate();
-    
-    setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
-    
-    requestAnimationFrame(gameLoop);
-    console.log("Game loop started");
+    loadUserData().then(() => {
+        loadDinoImages();
+        resizeCanvas();
+        setupClickHandler();
+        setupResizeHandler();
+        preloadImages();
+        checkDailyLogin();
+        checkAutoBotOnStartup();
+        updateTaskButtons();
+        updateEnergyRefillRate();
+        
+        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
+        saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
+        
+        requestAnimationFrame(gameLoop);
+        console.log("Game loop started");
+    });
 }
 
 function initializeDOM() {
@@ -1127,19 +1140,31 @@ window.addEventListener('resize', resizeCanvas);
 // Düzenli Veri Kaydetme (her saniye)
 setInterval(saveUserData, 1000);
 
+
 window.addEventListener('DOMContentLoaded', function () {
     const urlParams = new URLSearchParams(window.location.search);
     const userTelegramId = urlParams.get('id');
     if (userTelegramId) {
         telegramId = userTelegramId;
         console.log("Telegram ID set to:", telegramId);
-        loadUserData(); // Kullanıcı verilerini yükle
+        loadUserData()
+            .then(() => {
+                loadDinoImages();
+                startGame();
+            })
+            .catch(error => {
+                console.error("Error loading user data:", error);
+                showMessage("Failed to load user data. Please refresh the page.");
+            });
     } else {
         console.log("No Telegram ID found in URL");
-        // Burada bir hata mesajı gösterebilir veya kullanıcıdan ID isteyebilirsiniz
+        showMessage("No Telegram ID found. Please start the game from the Telegram bot.");
     }
-    loadDinoImages();
-    startGame();
+});
+
+window.addEventListener('beforeunload', function() {
+    clearInterval(saveInterval);
+    saveUserData();
 });
 
 const rewardData = [
