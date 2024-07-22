@@ -60,13 +60,11 @@ const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 console.log("Is mobile device:", isMobile);
 
+// Yeni eklenen fonksiyonlar
 async function loadUserData() {
   try {
     console.log("Loading user data for Telegram ID:", telegramId);
     const response = await fetch(`${BACKEND_URL}/api/player/${telegramId}`);
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
     const data = await response.json();
     console.log("Loaded user data:", data);
     // Oyuncu verilerini güncelle
@@ -87,7 +85,6 @@ async function loadUserData() {
     updateUI();
   } catch (error) {
     console.error('Error loading user data:', error);
-    showMessage('Failed to load user data. Please try refreshing the page.');
   }
 }
 
@@ -115,14 +112,10 @@ async function saveUserData() {
         lastAutoBotCheckTime
       }),
     });
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
     const data = await response.json();
     console.log('Data saved:', data);
   } catch (error) {
     console.error('Error saving user data:', error);
-    showMessage('Failed to save game progress. Please check your internet connection.');
   }
 }
 
@@ -157,23 +150,21 @@ function gameLoop(currentTime) {
 function startGame() {
     console.log("Starting game");
     initializeDOM();
-    loadUserData().then(() => {
-        loadDinoImages();
-        resizeCanvas();
-        setupClickHandler();
-        setupResizeHandler();
-        preloadImages();
-        checkDailyLogin();
-        checkAutoBotOnStartup();
-        updateTaskButtons();
-        updateEnergyRefillRate();
-        
-        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
-        setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
-        
-        requestAnimationFrame(gameLoop);
-        console.log("Game loop started");
-    });
+    loadUserData(); // Yeni eklenen satır
+    loadDinoImages();
+    resizeCanvas();
+    setupClickHandler();
+    setupResizeHandler();
+    preloadImages();
+    checkDailyLogin();
+    checkAutoBotOnStartup(); // Sadece oyun başlangıcında AutoBot kontrolü
+    updateTaskButtons();
+    updateEnergyRefillRate();
+    
+    setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
+    
+    requestAnimationFrame(gameLoop);
+    console.log("Game loop started");
 }
 
 function initializeDOM() {
@@ -359,10 +350,12 @@ function handleClick(event) {
             clicksRemaining--;
             updateUI();
             checkLevelUp();
+            saveUserData(); // Yeni eklenen satır
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
             updateUI();
+            saveUserData(); // Yeni eklenen satır
         }
     }
 }
@@ -1131,4 +1124,41 @@ function increaseEnergy() {
 
 window.addEventListener('resize', resizeCanvas);
 
-// Düzenli Veri Kaydetme
+// Düzenli Veri Kaydetme (her saniye)
+setInterval(saveUserData, 1000);
+
+window.addEventListener('DOMContentLoaded', function () {
+    const urlParams = new URLSearchParams(window.location.search);
+    const userTelegramId = urlParams.get('id');
+    if (userTelegramId) {
+        telegramId = userTelegramId;
+        console.log("Telegram ID set to:", telegramId);
+        loadUserData(); // Kullanıcı verilerini yükle
+    } else {
+        console.log("No Telegram ID found in URL");
+        // Burada bir hata mesajı gösterebilir veya kullanıcıdan ID isteyebilirsiniz
+    }
+    loadDinoImages();
+    startGame();
+});
+
+const rewardData = [
+    { day: 1, tokens: 1000 }, { day: 2, tokens: 2000 }, { day: 3, tokens: 3000 },
+    { day: 4, tokens: 4000 }, { day: 5, tokens: 5000 }, { day: 6, tokens: 6000 },
+    { day: 7, tokens: 7000 }, { day: 8, tokens: 8000 }, { day: 9, tokens: 9000 },
+    { day: 10, tokens: 10000 }, { day: 11, tokens: 11500 }, { day: 12, tokens: 13000 },
+    { day: 13, tokens: 14500 }, { day: 14, tokens: 16000 }, { day: 15, tokens: 17500 },
+    { day: 16, tokens: 19000 }, { day: 17, tokens: 20500 }, { day: 18, tokens: 22000 },
+    { day: 19, tokens: 23500 }, { day: 20, tokens: 25000 }, { day: 21, tokens: 27000 },
+    { day: 22, tokens: 29000 }, { day: 23, tokens: 31000 }, { day: 24, tokens: 33000 },
+    { day: 25, tokens: 35000 }, { day: 26, tokens: 37000 }, { day: 27, tokens: 39000 },
+    { day: 28, tokens: 41000 }, { day: 29, tokens: 43000 }, { day: 30, tokens: 45000 }
+];
+
+function preloadImages() {
+    const images = ['dino1.png', 'dino2.png', 'dino3.png', 'dino4.png', 'dino5.png', 'token.png', 'gift-box.png', 'autobot.png', 'boost.png'];
+    images.forEach(src => {
+        const img = new Image();
+        img.src = src;
+    });
+}
