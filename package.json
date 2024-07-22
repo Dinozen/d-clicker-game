@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "name": "dinozen-game",
   "version": "1.0.0",
@@ -19,3 +20,26 @@
     "python": "3.9.16"
   }
 }
+=======
+{
+  "name": "dinozen-game",
+  "version": "1.0.0",
+  "description": "DinoZen Telegram Bot Game",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^8.6.0",
+    "express": "^4.17.1",
+    "mongodb": "^6.8.0",
+    "mongoose": "^5.12.3",
+    "node-telegram-bot-api": "^0.51.0"
+  },
+  "engines": {
+    "node": "20.x",
+    "python": "3.9.16"
+  }
+}
+>>>>>>> 5159573db64709d3a8eb68dbf6c0fa8301e36a8a

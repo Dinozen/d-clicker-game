@@ -1,1 +1,6 @@
+<<<<<<< HEAD
 python-telegram-bot==20.6
+=======
+python-telegram-bot==20.4
+urllib3==1.26.5
+>>>>>>> 5159573db64709d3a8eb68dbf6c0fa8301e36a8a
