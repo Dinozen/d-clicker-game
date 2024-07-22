@@ -2,9 +2,9 @@ import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackContext
 
-API_KEY = os.environ.get('TELEGRAM_BOT_TOKEN', '7232543351:AAEIEL74ZB6Zpls30bbMamnd_-G-w7OQigk')
+API_KEY = os.environ.get('TELEGRAM_BOT_TOKEN')
 WEB_APP_URL = 'https://dinozen.github.io/d-clicker-game/'
-WEBHOOK_URL = os.environ.get('HEROKU_URL', 'https://dino-game-backend-913ad8a618a0.herokuapp.com')
+WEBHOOK_URL = os.environ.get('HEROKU_URL')
 PORT = int(os.environ.get('PORT', 5000))
 
 
@@ -31,7 +31,7 @@ def main():
     application.run_webhook(
         listen="0.0.0.0",
         port=PORT,
-        url_path=API_KEY,
+        url_path=f"bot{API_KEY}",
         webhook_url=f"{WEBHOOK_URL}/bot{API_KEY}"
     )
 
