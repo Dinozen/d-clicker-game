@@ -52,7 +52,7 @@ const PlayerSchema = new mongoose.Schema({
 const Player = mongoose.model('Player', PlayerSchema);
 
 // Telegram Bot
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { webHook: { port: PORT } });
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { webHook: { port: process.env.PORT } });
 
 // Set the webhook
 bot.setWebHook(`${process.env.HEROKU_URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
@@ -153,8 +153,7 @@ function startPythonBot() {
 
   pythonProcess.on('close', (code) => {
     console.log(`Python Bot process exited with code ${code}`);
-    // Restart the Python bot if it crashes
-    setTimeout(startPythonBot, 5000);
+    // Don't restart the Python bot automatically, as it might conflict with the webhook
   });
 }
 
