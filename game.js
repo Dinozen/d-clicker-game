@@ -160,6 +160,7 @@ function gameLoop(currentTime) {
 
 function startGame() {
     console.log("Starting game");
+    showLoading(); // Yükleme ekranını göster
     initializeDOM();
     loadUserData().then(() => {
         loadDinoImages();
@@ -177,8 +178,21 @@ function startGame() {
         
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
+        hideLoading(); // Yükleme tamamlandığında yükleme ekranını gizle
+    }).catch(error => {
+        console.error("Error starting game:", error);
+        hideLoading(); // Hata durumunda da yükleme ekranını gizle
+        showMessage("Failed to start the game. Please try refreshing the page.");
     });
 }
+
+function showLoading() {
+    document.getElementById('loading-screen').style.display = 'flex';
+  }
+  
+  function hideLoading() {
+    document.getElementById('loading-screen').style.display = 'none';
+  }
 
 function initializeDOM() {
     canvas = document.getElementById('gameCanvas');
@@ -1142,6 +1156,7 @@ setInterval(saveUserData, 1000);
 
 
 window.addEventListener('DOMContentLoaded', function () {
+    showLoading(); // Sayfa yüklenirken yükleme ekranını göster
     const urlParams = new URLSearchParams(window.location.search);
     const userTelegramId = urlParams.get('id');
     if (userTelegramId) {
@@ -1154,10 +1169,12 @@ window.addEventListener('DOMContentLoaded', function () {
             })
             .catch(error => {
                 console.error("Error loading user data:", error);
+                hideLoading(); // Hata durumunda yükleme ekranını gizle
                 showMessage("Failed to load user data. Please refresh the page.");
             });
     } else {
         console.log("No Telegram ID found in URL");
+        hideLoading(); // Telegram ID bulunamadığında yükleme ekranını gizle
         showMessage("No Telegram ID found. Please start the game from the Telegram bot.");
     }
 });
