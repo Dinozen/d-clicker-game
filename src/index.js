@@ -1,11 +1,9 @@
-const express = require('express');
-const app = express();
-app.set('view engine', 'ejs');
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const TelegramBot = require('node-telegram-bot-api');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +11,10 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// View engine setup
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -25,10 +27,27 @@ mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
   useCreateIndex: true,
-  useFindAndModify: false
+  useFindAndModify: false,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
 })
 .then(() => console.log('MongoDB connected successfully'))
-.catch(err => console.error('MongoDB connection error:', err));
+.catch(err => {
+  console.error('MongoDB connection error:', err);
+  process.exit(1);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected. Attempting to reconnect...');
+  mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    useCreateIndex: true,
+    useFindAndModify: false,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  });
+});
 
 // Player Schema
 const PlayerSchema = new mongoose.Schema({
@@ -105,19 +124,19 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
       await player.save();
       bot.sendMessage(chatId, 'Welcome to DinoZen! Your account has been created.');
     } else {
-      bot.sendMessage(chatId, 'Welcome back to DinoZen! Get ready to dive into the dino-tastic world of Dino Farm! Click the button below to start farming your $DINOZ fortune! 🦖💰');
+      bot.sendMessage(chatId, 'Welcome back to DinoZen! Get ready to dive into the dino-tastic world of Dino Farm!');
     }
     
     const keyboard = {
       inline_keyboard: [[
         {
           text: "🚀 Launch Game 🚀",
-          url: `https://dinozen.github.io/d-clicker-game/?id=${chatId}`
+          web_app: {url: `https://dinozen.github.io/d-clicker-game/?id=${chatId}`}
         }
       ]]
     };
     
-    bot.sendMessage(chatId, "Get ready to dive into the dino-tastic world of Dino Farm! Click the button below to start farming your $DINOZ fortune! 🦖💰", {
+    bot.sendMessage(chatId, "Click the button below to start farming your $DINOZ fortune! 🦖💰", {
       reply_markup: keyboard
     });
   } catch (error) {
@@ -159,13 +178,14 @@ app.post('/api/update/:telegramId', async (req, res) => {
   }
 });
 
+// Admin route
 app.get('/admin', async (req, res) => {
   try {
     const playerCount = await Player.countDocuments();
-    const players = await Player.find().sort({_id: -1}).limit(100); // Son 100 oyuncu
+    const players = await Player.find().sort({ _id: -1 }).limit(10);
     res.render('admin', { playerCount, players });
   } catch (error) {
-    console.error('Admin panel error:', error);
+    console.error('Error in admin route:', error);
     res.status(500).send('An error occurred');
   }
 });
@@ -175,13 +195,25 @@ app.get('/api/test', (req, res) => {
   res.json({ message: "API is working" });
 });
 
-// Error handling middleware
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
+  console.error('Unhandled error:', err);
+  res.status(500).send('An unexpected error occurred');
 });
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully.');
+  server.close(() => {
+    console.log('Server closed. Exiting process.');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB connection closed.');
+      process.exit(0);
+    });
+  });
 });
