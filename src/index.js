@@ -39,14 +39,16 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 mongoose.connection.on('disconnected', () => {
   console.log('MongoDB disconnected. Attempting to reconnect...');
-  mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-  });
+  setTimeout(() => {
+    mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      useCreateIndex: true,
+      useFindAndModify: false,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
+  }, 5000);
 });
 
 // Player Schema
@@ -66,7 +68,8 @@ const PlayerSchema = new mongoose.Schema({
   autoBotPurchased: { type: Boolean, default: false },
   autoBotTokens: { type: Number, default: 0 },
   lastAutoBotCheckTime: { type: Date },
-  referredBy: { type: String }
+  referredBy: { type: String },
+  lastGiftTime: { type: Number, default: 0 }
 });
 
 const Player = mongoose.model('Player', PlayerSchema);
@@ -168,9 +171,8 @@ app.post('/api/update/:telegramId', async (req, res) => {
     const player = await Player.findOneAndUpdate(
       { telegramId: req.params.telegramId },
       req.body,
-      { new: true, runValidators: true }
+      { new: true, runValidators: true, upsert: true }
     );
-    if (!player) return res.status(404).json({ message: 'Player not found' });
     res.json(player);
   } catch (error) {
     console.error('Error updating player:', error);
@@ -199,6 +201,17 @@ app.get('/api/test', (req, res) => {
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).send('An unexpected error occurred');
+});
+
+// Error handling for uncaught exceptions and unhandled rejections
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Burada hata bilgilerini bir loglama servisine gönderebilirsiniz
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Burada hata bilgilerini bir loglama servisine gönderebilirsiniz
 });
 
 // Start server
