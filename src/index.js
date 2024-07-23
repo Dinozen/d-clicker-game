@@ -37,19 +37,28 @@ mongoose.connect(process.env.MONGODB_URI, {
   process.exit(1);
 });
 
-mongoose.connection.on('disconnected', () => {
-  console.log('MongoDB disconnected. Attempting to reconnect...');
-  setTimeout(() => {
-    mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      useCreateIndex: true,
-      useFindAndModify: false,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    });
-  }, 5000);
+mongoose.connection.on('disconnected', function() {
+  console.log('MongoDB disconnected!');
+  mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    useCreateIndex: true,
+    useFindAndModify: false,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  });
 });
+
+setInterval(function() {
+  mongoose.connection.db.admin().ping(function(err, result) {
+    if (err) {
+      console.log('MongoDB connection error:', err);
+      mongoose.connect(process.env.MONGODB_URI);
+    } else {
+      console.log('MongoDB connection is alive');
+    }
+  });
+}, 300000); // Her 5 dakikada bir kontrol et
 
 // Player Schema
 const PlayerSchema = new mongoose.Schema({
@@ -182,14 +191,28 @@ app.post('/api/update/:telegramId', async (req, res) => {
 
 // Admin route
 app.get('/admin', async (req, res) => {
+  console.log('Admin route hit');
   try {
+    console.log('Counting players...');
     const playerCount = await Player.countDocuments();
+    console.log(`Player count: ${playerCount}`);
+    
+    console.log('Fetching recent players...');
     const players = await Player.find().sort({ _id: -1 }).limit(10);
+    console.log(`Fetched ${players.length} players`);
+    
+    console.log('Rendering admin view...');
     res.render('admin', { playerCount, players });
+    console.log('Admin view rendered successfully');
   } catch (error) {
     console.error('Error in admin route:', error);
-    res.status(500).send('An error occurred');
+    res.status(500).json({ error: error.message, stack: error.stack });
   }
+});
+
+// Ping route to keep the app awake
+app.get('/ping', (req, res) => {
+  res.status(200).send('OK');
 });
 
 // Test endpoint
