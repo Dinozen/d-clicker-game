@@ -1,3 +1,4 @@
+process.env.NTBA_FIX_319 = 1;
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
@@ -22,7 +23,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// MongoDB connection
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -37,16 +37,14 @@ mongoose.connect(process.env.MONGODB_URI, {
   process.exit(1);
 });
 
-mongoose.connection.on('disconnected', function() {
-  console.log('MongoDB disconnected!');
-  mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-  });
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err);
+  mongoose.connect(process.env.MONGODB_URI);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected. Attempting to reconnect...');
+  mongoose.connect(process.env.MONGODB_URI);
 });
 
 setInterval(function() {
