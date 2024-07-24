@@ -3,6 +3,7 @@ console.log("Game script loaded");
 const BACKEND_URL = 'https://dino-game-backend-913ad8a618a0.herokuapp.com';
 
 // Oyun değişkenleri
+let saveInterval;
 let tokens = 0;
 let completedTasks = [];
 let level = 1;
@@ -60,7 +61,6 @@ const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 console.log("Is mobile device:", isMobile);
 
-// Yeni eklenen fonksiyonlar
 async function loadUserData() {
     try {
         console.log("Loading user data for Telegram ID:", telegramId);
@@ -71,19 +71,19 @@ async function loadUserData() {
         const data = await response.json();
         console.log("Loaded user data:", data);
         // Oyuncu verilerini güncelle
-        tokens = data.tokens;
-        level = data.level;
-        energy = data.energy;
-        maxEnergy = data.maxEnergy;
-        clicksRemaining = data.clicksRemaining;
-        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime);
-        dailyStreak = data.dailyStreak;
+        tokens = data.tokens || 0;
+        level = data.level || 1;
+        energy = data.energy || 3;
+        maxEnergy = data.maxEnergy || 3;
+        clicksRemaining = data.clicksRemaining || 300;
+        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime || Date.now());
+        dailyStreak = data.dailyStreak || 0;
         lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
-        completedTasks = data.completedTasks;
-        referralCount = data.referralCount;
-        autoBotActive = data.autoBotActive;
-        autoBotPurchased = data.autoBotPurchased;
-        autoBotTokens = data.autoBotTokens;
+        completedTasks = data.completedTasks || [];
+        referralCount = data.referralCount || 0;
+        autoBotActive = data.autoBotActive || false;
+        autoBotPurchased = data.autoBotPurchased || false;
+        autoBotTokens = data.autoBotTokens || 0;
         lastAutoBotCheckTime = data.lastAutoBotCheckTime ? new Date(data.lastAutoBotCheckTime) : null;
         lastGiftTime = data.lastGiftTime || 0;
         updateUI();
@@ -159,6 +159,7 @@ function gameLoop(currentTime) {
 
 function startGame() {
     console.log("Starting game");
+    showLoading(); // Yükleme ekranını göster
     initializeDOM();
     loadUserData().then(() => {
         loadDinoImages();
@@ -172,14 +173,27 @@ function startGame() {
         updateEnergyRefillRate();
         
         setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
-        setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
+        saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
         
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
+        hideLoading(); // Yükleme tamamlandığında yükleme ekranını gizle
+    }).catch(error => {
+        console.error("Error starting game:", error);
+        hideLoading(); // Hata durumunda da yükleme ekranını gizle
+        showMessage("Failed to start the game. Please try refreshing the page.");
     });
 }
+
+function showLoading() {
+    document.getElementById('loading-screen').style.display = 'flex';
+}
+  
+function hideLoading() {
+    document.getElementById('loading-screen').style.display = 'none';
+}
+
 function initializeDOM() {
-    // DOM elementlerini tanımlama
     canvas = document.getElementById('gameCanvas');
     ctx = canvas.getContext('2d');
     earnButton = document.getElementById('earnButton');
@@ -362,10 +376,12 @@ function handleClick(event) {
             clicksRemaining--;
             updateUI();
             checkLevelUp();
+            saveUserData(); // Yeni eklenen satır
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
             updateUI();
+            saveUserData(); // Yeni eklenen satır
         }
     }
 }
@@ -407,27 +423,10 @@ function updateUI() {
 
     document.getElementById('energyDisplay').textContent = `${energy}/${maxEnergy}`;
     document.getElementById('clicksDisplay').textContent = formatClicks(clicksRemaining);
+    document.getElementById('levelDisplay').textContent = `${level}`;
 
-    updateLevelInfo();
     updateDailyRewardDisplay();
     updateGiftCooldownDisplay();
-}
-
-function updateLevelInfo() {
-    const currentLevelElement = document.getElementById('currentLevel');
-    const nextLevelElement = document.getElementById('nextLevel');
-    const nextLevelTokensElement = document.getElementById('nextLevelTokens');
-
-    currentLevelElement.textContent = `Level: ${level}`;
-  
-    const nextLevelRequirement = levelRequirements[level] || 'Max';
-    nextLevelElement.innerHTML = `Level ${level + 1}: <img src="token.png" alt="token" class="token-icon"> <span id="nextLevelTokens">${formatNumber(nextLevelRequirement)}</span>`;
-}
-
-function updateDailyRewardDisplay() {
-    if (dailyRewardDisplay) {
-        dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
-    }
 }
 
 function updateGiftCooldownDisplay() {
@@ -450,20 +449,6 @@ function updateGiftCooldownDisplay() {
             randomGiftButton.classList.remove('disabled');
         }
     }
-}
-
-    const cooldownDisplay = document.getElementById('giftCooldownDisplay');
-    const randomGiftButton = document.getElementById('randomGiftButton');
-    if (cooldownDisplay && randomGiftButton) {
-        if (timeRemaining > 0) {
-            cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
-            randomGiftButton.disabled = true;
-            randomGiftButton.classList.add('disabled');
-        } else {
-            cooldownDisplay.textContent = 'Random Gift available!';
-            randomGiftButton.disabled = false;
-            randomGiftButton.classList.remove('disabled');
-        }
 }
 
 function animateDino() {
@@ -748,7 +733,406 @@ function showReferralLink() {
 
     const referralLink = document.getElementById('referralLink');
     referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
-    console.log("Generated referral link:", referralLink.value); // Debugging için
+    console.log("Generated referral link:", referralLink.value);
+
+    document.getElementById('copyButton').onclick = function () {
+        referralLink.select();
+        document.execCommand('copy');
+        this.textContent = 'Copied!';
+        setTimeout(() => {
+            this.textContent = 'Copy Link';
+        }, 2000);
+    };
+
+    document.getElementById('closeReferralModal').onclick = function () {
+        referralModal.style.display = 'none';
+    };
+}
+
+function getLevelMultiplier() {
+    return 1 + (level - 1) * 0.25;
+}
+
+function handleClick(event) {
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    if (x >= dinoX && x <= dinoX + dinoWidth &&
+        y >= dinoY && y <= dinoY + dinoHeight) {
+        let tokenGain = 1 * getLevelMultiplier();
+        if (isDoubleTokensActive) {
+            tokenGain *= 2;
+        }
+
+        createClickEffect(event.clientX, event.clientY, tokenGain);
+        isClicking = true;
+        clickScale = 1.1;
+        requestAnimationFrame(animateDino);
+
+        if (clicksRemaining > 0) {
+            tokens += tokenGain;
+            clicksRemaining--;
+            updateUI();
+            checkLevelUp();
+            saveUserData(); // Yeni eklenen satır
+        } else if (energy > 0) {
+            energy--;
+            clicksRemaining = getMaxClicksForLevel();
+            updateUI();
+            saveUserData(); // Yeni eklenen satır
+        }
+    }
+}
+
+function createClickEffect(x, y, amount) {
+    const clickEffect = document.createElement('div');
+    clickEffect.className = 'clickEffect';
+    clickEffect.style.left = `${x}px`;
+    clickEffect.style.top = `${y}px`;
+    clickEffect.textContent = `+${amount}`;
+    document.body.appendChild(clickEffect);
+
+    setTimeout(() => {
+        clickEffect.remove();
+    }, 1000);
+}
+
+function formatNumber(number) {
+    if (number >= 10000) {
+        return (number / 1000).toFixed(1) + 'k';
+    } else if (number >= 1000) {
+        return number.toFixed(0);
+    }
+    return number.toFixed(0);
+}
+
+function formatClicks(number) {
+    if (number === Infinity) {
+        return '∞';  // Sonsuzluk sembolü
+    }
+    return number.toFixed(2).slice(0, 6);  // En fazla 6 karakter göster
+}
+
+function updateUI() {
+    if (tokens !== cachedTokens) {
+        document.getElementById('tokenDisplay').textContent = formatNumber(tokens);
+        cachedTokens = tokens;
+    }
+
+    document.getElementById('energyDisplay').textContent = `${energy}/${maxEnergy}`;
+    document.getElementById('clicksDisplay').textContent = formatClicks(clicksRemaining);
+    document.getElementById('levelDisplay').textContent = `${level}`;
+
+    updateDailyRewardDisplay();
+    updateGiftCooldownDisplay();
+}
+
+function updateGiftCooldownDisplay() {
+    const now = Date.now();
+    const timeRemaining = Math.max(0, lastGiftTime + boostCooldown - now);
+    const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+
+    const cooldownDisplay = document.getElementById('giftCooldownDisplay');
+    const randomGiftButton = document.getElementById('randomGiftButton');
+    if (cooldownDisplay && randomGiftButton) {
+        if (timeRemaining > 0) {
+            cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
+            randomGiftButton.disabled = true;
+            randomGiftButton.classList.add('disabled');
+        } else {
+            cooldownDisplay.textContent = 'Random Gift available!';
+            randomGiftButton.disabled = false;
+            randomGiftButton.classList.remove('disabled');
+        }
+    }
+}
+
+function animateDino() {
+    if (isClicking) {
+        clickScale -= 0.005;
+        if (clickScale <= 1) {
+            clickScale = 1;
+            isClicking = false;
+        }
+        drawDino();
+        requestAnimationFrame(animateDino);
+    }
+}
+
+function checkLevelUp() {
+    const newLevel = levelRequirements.findIndex(req => tokens < req);
+    if (newLevel > level && newLevel <= 5) {
+        while (level < newLevel) {
+            levelUp();
+        }
+    }
+}
+
+function loadDinoImages() {
+    console.log("Loading dino images...");
+    const loadPromises = [];
+
+    function loadSingleImage(index) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = `dino${index}.png`;
+            console.log(`Loading image: ${img.src}`);
+            img.onload = () => {
+                console.log(`Dino image ${index} loaded successfully`);
+                resolve(img);
+            };
+            img.onerror = (error) => {
+                console.error(`Failed to load dino image ${index}:`, error);
+                reject(error);
+            };
+        });
+    }
+
+    for (let i = 1; i <= 5; i++) {
+        loadPromises.push(loadSingleImage(i));
+    }
+
+    Promise.all(loadPromises)
+        .then(loadedImages => {
+            dinoImages.length = 0; // Clear existing images
+            dinoImages.push(...loadedImages);
+            console.log(`All dino images loaded. Total: ${dinoImages.length}`);
+            updateDinoImage();
+            drawDino();
+        })
+        .catch(error => {
+            console.error(`Error loading dino images:`, error);
+        });
+}
+
+function updateDinoImage() {
+    const dinoIndex = Math.min(level - 1, 4);
+    currentDinoImage = dinoImages[dinoIndex];
+    if (currentDinoImage) {
+        drawDino();
+    } else {
+        console.log(`Dino image not found for index: ${dinoIndex}`);
+    }
+}
+
+function createLevelUpEffect() {
+    const levelUpEffect = document.createElement('div');
+    levelUpEffect.className = 'levelUpEffect';
+    levelUpEffect.style.position = 'absolute';
+    levelUpEffect.style.left = '50%';
+    levelUpEffect.style.top = '50%';
+    levelUpEffect.style.transform = 'translate(-50%, -50%)';
+    levelUpEffect.style.fontSize = '48px';
+    levelUpEffect.style.color = 'gold';
+    levelUpEffect.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
+    levelUpEffect.style.zIndex = '1000';
+    levelUpEffect.textContent = `Level Up! ${level}`;
+    document.body.appendChild(levelUpEffect);
+
+    setTimeout(() => {
+        levelUpEffect.remove();
+    }, 2000);
+}
+
+function toggleMenu() {
+    if (menuModal.style.display === 'none' || menuModal.style.display === '') {
+        menuModal.style.display = 'block';
+        updateMenuContent();
+    } else {
+        menuModal.style.display = 'none';
+    }
+}
+
+function toggleBoosters() {
+    if (boostersModal.style.display === 'none' || boostersModal.style.display === '') {
+        boostersModal.style.display = 'block';
+        updateBoostersModalContent();
+    } else {
+        boostersModal.style.display = 'none';
+    }
+}
+
+function updateBoostersModalContent() {
+    if (!boostersModal) {
+        console.log('Boosters modal not found');
+        return;
+    }
+    boostersModal.innerHTML = `
+        <div class="modal-content">
+            <h3>Boosters</h3>
+            <div id="energyBoostContainer" style="display: flex; flex-direction: column; align-items: center;">
+                <h3>🚀Energy Filler</h3>
+                <button id="energyBoostButton" class="button">Restore Full Energy</button>
+                <div id="energyBoostCooldownDisplay"></div>
+            </div>
+            <div id="autoBotContainer" style="display: flex; flex-direction: column; align-items: center;">
+                <img src="autobot.png" alt="AutoBot" id="autoBotImage" style="width: 100px; height: 100px;">
+                <div id="autoBotInfo">
+                    <h3>AutoBot</h3>
+                    <p>(10,000 tokens)</p>
+                </div>
+                <button id="autoBotButton" class="button">Activate AutoBot</button>
+            </div>
+            <button id="closeBoostersModal" class="close-btn">X</button>
+        </div>
+    `;
+
+    const energyBoostButton = document.getElementById('energyBoostButton');
+    const autoBotButton = document.getElementById('autoBotButton');
+    const closeBoostersModalButton = document.getElementById('closeBoostersModal');
+
+    if (energyBoostButton) {
+        energyBoostButton.addEventListener('click', activateEnergyBoost);
+    }
+    if (autoBotButton) {
+        autoBotButton.addEventListener('click', activateAutoBot);
+    }
+    if (closeBoostersModalButton) {
+        closeBoostersModalButton.addEventListener('click', toggleBoosters);
+    }
+
+    updateEnergyBoostCooldownDisplay();
+}
+
+function activateEnergyBoost() {
+    const now = Date.now();
+    if (now - lastEnergyBoostTime >= boostCooldown) {
+        energy = maxEnergy;
+        lastEnergyBoostTime = now;
+        updateUI();
+        saveUserData();
+        showMessage('Energy fully restored!');
+        updateEnergyBoostCooldownDisplay();
+    } else {
+        showMessage('Energy Boost is not available yet.');
+    }
+    toggleBoosters();
+}
+
+function activateAutoBot() {
+    if (tokens >= 10000 && !autoBotPurchased) {
+        tokens -= 10000;
+        autoBotActive = true;
+        autoBotPurchased = true;
+        autoBotPurchaseTime = Date.now();
+        lastAutoBotCheckTime = Date.now();
+        saveUserData();
+        updateUI();
+        showAutoBotSuccessMessage();
+        document.getElementById('autoBotButton').textContent = 'AutoBot Activated';
+        document.getElementById('autoBotButton').disabled = true;
+        console.log("AutoBot activated");
+        checkAutoBot(); // Hemen kontrol et
+    } else if (autoBotPurchased) {
+        showMessage('AutoBot is already purchased.');
+    } else {
+        showMessage('Not enough tokens to activate AutoBot.');
+    }
+    toggleBoosters();
+}
+
+function showAutoBotSuccessMessage() {
+    autoBotSuccessModal.style.display = 'block';
+    document.getElementById('closeAutoBotSuccessModal').onclick = function () {
+        autoBotSuccessModal.style.display = 'none';
+    };
+}
+
+function updateEnergyBoostCooldownDisplay() {
+    const now = Date.now();
+    const timeRemaining = Math.max(0, lastEnergyBoostTime + boostCooldown - now);
+    const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+
+    const cooldownDisplay = document.getElementById('energyBoostCooldownDisplay');
+    const energyBoostButton = document.getElementById('energyBoostButton');
+    if (cooldownDisplay && energyBoostButton) {
+        if (timeRemaining > 0) {
+            cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
+            energyBoostButton.disabled = true;
+            energyBoostButton.classList.add('disabled');
+        } else {
+            cooldownDisplay.textContent = 'Energy Boost available!';
+            energyBoostButton.disabled = false;
+            energyBoostButton.classList.remove('disabled');
+        }
+    }
+}
+
+function showMessage(message) {
+    const messageModal = document.getElementById('messageModal');
+    const messageModalText = document.getElementById('messageModalText');
+    messageModalText.textContent = message;
+    messageModal.style.display = 'block';
+
+    setTimeout(() => {
+        messageModal.style.display = 'none';
+    }, 5000);
+}
+
+function updateMenuContent() {
+    const now = Date.now();
+    const giftAvailable = now - lastGiftTime >= boostCooldown;
+
+    menuModal.innerHTML = `
+        <div class="modal-content">
+            <h2>Menu</h2>
+            <button id="randomGiftButton" class="button" ${giftAvailable ? '' : 'disabled'}>
+                <img src="gift-box.png" alt="Gift">
+                Random Gift
+            </button>
+            <div id="giftCooldownDisplay"></div>
+            <button id="referralButton" class="button">Invite Friends</button>
+            <p>Your Referrals: ${referralCount}</p>
+            <button id="closeMenuButton" class="button close-btn">X</button>
+        </div>
+    `;
+
+    document.getElementById('randomGiftButton').addEventListener('click', function () {
+        if (giftAvailable) {
+            const rewards = ['Clicks', 'Tokens', 'Double Tokens'];
+            const reward = rewards[Math.floor(Math.random() * rewards.length)];
+            let amount;
+
+            switch (reward) {
+                case 'Clicks':
+                    amount = Math.floor(Math.random() * (1200 - 600 + 1)) + 600;
+                    clicksRemaining += amount;
+                    break;
+                case 'Tokens':
+                    amount = Math.floor(Math.random() * (1000 - 500 + 1)) + 500;
+                    tokens += amount * getLevelMultiplier();
+                    break;
+                case 'Double Tokens':
+                    activateDoubleTokens();
+                    amount = null;
+                    break;
+            }
+
+            updateUI();
+            saveUserData();
+            showRandomGiftResult(reward, amount);
+            lastGiftTime = Date.now();
+            updateGiftCooldownDisplay();
+        }
+    });
+
+    document.getElementById('referralButton').addEventListener('click', showReferralLink);
+    document.getElementById('closeMenuButton').addEventListener('click', toggleMenu);
+    updateGiftCooldownDisplay();
+}
+
+function showReferralLink() {
+    const referralModal = document.getElementById('referralModal');
+    referralModal.style.display = 'block';
+
+    const referralLink = document.getElementById('referralLink');
+    referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
+    console.log("Generated referral link:", referralLink.value);
 
     document.getElementById('copyButton').onclick = function () {
         referralLink.select();
@@ -774,13 +1158,11 @@ function activateDoubleTokens() {
     const originalClicksRemaining = clicksRemaining;
     clicksRemaining = Infinity;
 
-    // Modal gösterimi
     showMessage('Double Tokens activated for 20 seconds! Click as fast as you can!');
     setTimeout(() => {
         document.getElementById('messageModal').style.display = 'none';
     }, 2000);
 
-    // TAP efekti
     const tapInterval = setInterval(() => {
         createTapEffect();
     }, 300);
@@ -1168,21 +1550,32 @@ window.addEventListener('resize', resizeCanvas);
 // Düzenli Veri Kaydetme (her saniye)
 setInterval(saveUserData, 1000);
 
-
 window.addEventListener('DOMContentLoaded', function () {
+    showLoading(); // Sayfa yüklenirken yükleme ekranını göster
     const urlParams = new URLSearchParams(window.location.search);
     const userTelegramId = urlParams.get('id');
     if (userTelegramId) {
         telegramId = userTelegramId;
         console.log("Telegram ID set to:", telegramId);
-        startGame();
+        loadUserData()
+            .then(() => {
+                loadDinoImages();
+                startGame();
+            })
+            .catch(error => {
+                console.error("Error loading user data:", error);
+                hideLoading(); // Hata durumunda yükleme ekranını gizle
+                showMessage("Failed to load user data. Please refresh the page.");
+            });
     } else {
         console.log("No Telegram ID found in URL");
+        hideLoading(); // Telegram ID bulunamadığında yükleme ekranını gizle
         showMessage("No Telegram ID found. Please start the game from the Telegram bot.");
     }
 });
 
 window.addEventListener('beforeunload', function() {
+    clearInterval(saveInterval);
     saveUserData();
 });
 
