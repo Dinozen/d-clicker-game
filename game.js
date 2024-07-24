@@ -7,6 +7,7 @@ let saveInterval;
 let tokens = 0;
 let completedTasks = [];
 let level = 1;
+let updateTimeout;
 let energy = 3;
 let maxEnergy = 3;
 let lastEnergyRefillTime = Date.now();
@@ -98,30 +99,34 @@ async function loadUserData() {
 
 let changedData = {};
 
-async function saveUserData() {
-    if (Object.keys(changedData).length === 0) return; // Sadece değişen verileri kaydet
+async function startGame() {
+    console.log("Starting game");
+    showLoading();
     try {
-        console.log("Saving user data for Telegram ID:", telegramId);
-        const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(changedData),
-        });
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
-        console.log('Data saved:', data);
-        changedData = {}; // Kaydedilen verileri temizle
-    } catch (error) {
-        console.error('Error saving user data:', error);
-        showMessage('Failed to save game progress. Please check your internet connection.');
-    }
-}
+        initializeDOM();
+        await loadUserData();
+        await loadDinoImages();
+        resizeCanvas();
+        setupClickHandler();
+        setupResizeHandler();
+        await preloadImages();
+        await checkDailyLogin();
+        await checkAutoBotOnStartup();
+        updateTaskButtons();
+        updateEnergyRefillRate();
 
-function updateUserData(key, value) {
-    changedData[key] = value;
-    saveUserData();
+        // Enerji kontrolü ve veri kaydetme için interval'ler
+        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
+        setInterval(saveUserData, 30000); // Her 30 saniyede bir verileri kaydet
+
+        requestAnimationFrame(gameLoop);
+        console.log("Game loop started");
+        hideLoading();
+    } catch (error) {
+        console.error("Error starting game:", error);
+        hideLoading();
+        showMessage("Failed to start the game. Please try refreshing the page.");
+    }
 }
 
 // Oyun içindeki tüm değişkenleri güncellemek için kullanılacak fonksiyon
@@ -155,47 +160,47 @@ function gameLoop(currentTime) {
     }
 }
 
-// Düzenli kaydetme işlemini kaldırın
-// setInterval(saveUserData, 1000); // Bu satırı kaldırın veya yorum satırı yapın
-
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
-function startGame() {
-    console.log("Starting game");
-    showLoading(); // Yükleme ekranını göster
-    initializeDOM();
-    loadUserData().then(() => {
-        loadDinoImages();
-        resizeCanvas();
-        setupClickHandler();
-        setupResizeHandler();
-        preloadImages();
-        checkDailyLogin();
-        checkAutoBotOnStartup();
-        updateTaskButtons();
-        updateEnergyRefillRate();
-        
-        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
-        saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
-        
-        requestAnimationFrame(gameLoop);
-        console.log("Game loop started");
-        hideLoading(); // Yükleme tamamlandığında yükleme ekranını gizle
-    }).catch(error => {
-        console.error("Error starting game:", error);
-        hideLoading(); // Hata durumunda da yükleme ekranını gizle
-        showMessage("Failed to start the game. Please try refreshing the page.");
-    });
-}
-
-function showLoading() {
-    document.getElementById('loading-screen').style.display = 'flex';
-  }
-  
-  function hideLoading() {
-    document.getElementById('loading-screen').style.display = 'none';
-  }
+    
+    
+    function showLoading() {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.style.display = 'flex';
+        } else {
+            console.error("Loading screen element not found");
+        }
+    }
+    
+    function hideLoading() {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.style.display = 'none';
+        } else {
+            console.error("Loading screen element not found");
+        }
+    }
+    
+    async function preloadImages() {
+        const images = ['dino1.png', 'dino2.png', 'dino3.png', 'dino4.png', 'dino5.png', 'token.png', 'gift-box.png', 'autobot.png', 'boost.png'];
+        const imagePromises = images.map(src => {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+                img.src = src;
+            });
+        });
+        try {
+            await Promise.all(imagePromises);
+            console.log("All images preloaded successfully");
+        } catch (error) {
+            console.error("Error preloading images:", error);
+            throw error;
+        }
+    }
 
 function initializeDOM() {
     canvas = document.getElementById('gameCanvas');
@@ -1344,5 +1349,16 @@ function preloadImages() {
     images.forEach(src => {
         const img = new Image();
         img.src = src;
-    });
+// ...
+
+function animateDino() {
+    if (isClicking) {
+        clickScale -= 0.005;
+        if (clickScale <= 1) {
+            clickScale = 1;
+            isClicking = false;
+        }
+        drawDino();
+        requestAnimationFrame(animateDino);
+    }
 }
