@@ -31,7 +31,7 @@ let lastPlayerActivityTime = Date.now();
 let autoBotShownThisSession = false;
 
 // Level gereksinimleri
-const levelRequirements = [0, 3000, 8000, 20000, 40000];
+const levelRequirements = [0, 30000, 80000, 200000, 800000];
 const clickLimits = [300, 500, 1000, 1500, 2000];
 
 // DOM elementleri
@@ -87,6 +87,7 @@ async function loadUserData() {
         autoBotTokens = data.autoBotTokens || 0;
         lastAutoBotCheckTime = data.lastAutoBotCheckTime ? new Date(data.lastAutoBotCheckTime) : null;
         lastGiftTime = data.lastGiftTime || 0;
+        lastEnergyBoostTime = parseInt(localStorage.getItem('lastEnergyBoostTime')) || Date.now();
         updateUI();
     } catch (error) {
         console.error('Error loading user data:', error);
@@ -188,11 +189,11 @@ function startGame() {
 
 function showLoading() {
     document.getElementById('loading-screen').style.display = 'flex';
-  }
-  
-  function hideLoading() {
+}
+
+function hideLoading() {
     document.getElementById('loading-screen').style.display = 'none';
-  }
+}
 
 function initializeDOM() {
     canvas = document.getElementById('gameCanvas');
@@ -377,12 +378,12 @@ function handleClick(event) {
             clicksRemaining--;
             updateUI();
             checkLevelUp();
-            saveUserData(); // Yeni eklenen satır
+            saveUserData();
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
             updateUI();
-            saveUserData(); // Yeni eklenen satır
+            saveUserData();
         }
     }
 }
@@ -411,9 +412,9 @@ function formatNumber(number) {
 
 function formatClicks(number) {
     if (number === Infinity) {
-        return '∞';  // Sonsuzluk sembolü
+        return '∞';
     }
-    return number.toFixed(2).slice(0, 6);  // En fazla 6 karakter göster
+    return number.toFixed(2).slice(0, 6);
 }
 
 function updateUI() {
@@ -428,6 +429,15 @@ function updateUI() {
 
     updateDailyRewardDisplay();
     updateGiftCooldownDisplay();
+    updateNextLevelDisplay();
+}
+
+function updateNextLevelDisplay() {
+    const nextLevelTokens = levelRequirements[level] - tokens;
+    const nextLevelDisplay = document.getElementById('nextLevelDisplay');
+    if (nextLevelDisplay) {
+        nextLevelDisplay.textContent = `Next Level: ${formatNumber(nextLevelTokens)} tokens`;
+    }
 }
 
 function updateGiftCooldownDisplay() {
@@ -499,7 +509,7 @@ function loadDinoImages() {
 
     Promise.all(loadPromises)
         .then(loadedImages => {
-            dinoImages.length = 0; // Clear existing images
+            dinoImages.length = 0;
             dinoImages.push(...loadedImages);
             console.log(`All dino images loaded. Total: ${dinoImages.length}`);
             updateDinoImage();
@@ -574,7 +584,8 @@ function updateBoostersModalContent() {
                 <img src="autobot.png" alt="AutoBot" id="autoBotImage" style="width: 100px; height: 100px;">
                 <div id="autoBotInfo">
                     <h3>AutoBot</h3>
-                    <p>(10,000 tokens)</p>
+                    <p>(200,000 tokens)</p>
+                    <p>Works for 4 hours after activation</p>
                 </div>
                 <button id="autoBotButton" class="button">Activate AutoBot</button>
             </div>
@@ -604,6 +615,7 @@ function activateEnergyBoost() {
     if (now - lastEnergyBoostTime >= boostCooldown) {
         energy = maxEnergy;
         lastEnergyBoostTime = now;
+        localStorage.setItem('lastEnergyBoostTime', lastEnergyBoostTime);
         updateUI();
         saveUserData();
         showMessage('Energy fully restored!');
@@ -615,8 +627,8 @@ function activateEnergyBoost() {
 }
 
 function activateAutoBot() {
-    if (tokens >= 10000 && !autoBotPurchased) {
-        tokens -= 10000;
+    if (tokens >= 200000 && !autoBotPurchased) {
+        tokens -= 200000;
         autoBotActive = true;
         autoBotPurchased = true;
         autoBotPurchaseTime = Date.now();
@@ -627,7 +639,7 @@ function activateAutoBot() {
         document.getElementById('autoBotButton').textContent = 'AutoBot Activated';
         document.getElementById('autoBotButton').disabled = true;
         console.log("AutoBot activated");
-        checkAutoBot(); // Hemen kontrol et
+        checkAutoBot();
     } else if (autoBotPurchased) {
         showMessage('AutoBot is already purchased.');
     } else {
@@ -734,7 +746,7 @@ function showReferralLink() {
 
     const referralLink = document.getElementById('referralLink');
     referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
-    console.log("Generated referral link:", referralLink.value); // Debugging için
+    console.log("Generated referral link:", referralLink.value);
 
     document.getElementById('copyButton').onclick = function () {
         referralLink.select();
@@ -760,13 +772,11 @@ function activateDoubleTokens() {
     const originalClicksRemaining = clicksRemaining;
     clicksRemaining = Infinity;
 
-    // Modal gösterimi
     showMessage('Double Tokens activated for 20 seconds! Click as fast as you can!');
     setTimeout(() => {
         document.getElementById('messageModal').style.display = 'none';
     }, 2000);
 
-    // TAP efekti
     const tapInterval = setInterval(() => {
         createTapEffect();
     }, 300);
@@ -934,11 +944,11 @@ function updateEnergyRefillRate() {
 function checkAutoBot() {
     console.log("Checking AutoBot...");
     const currentTime = Date.now();
-    const inactiveTime = (currentTime - lastPlayerActivityTime) / 1000; // saniye cinsinden
+    const inactiveTime = (currentTime - lastPlayerActivityTime) / 1000;
 
-    if (autoBotActive && autoBotPurchased && inactiveTime >= 60) { // Oyuncu en az 1 dakika inaktif olmalı
-        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
-        const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
+    if (autoBotActive && autoBotPurchased && inactiveTime >= 60) {
+        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000;
+        const maxEarningTime = 4 * 60 * 60;
 
         if (timeSinceLastCheck > 0) {
             const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
@@ -970,8 +980,8 @@ function checkAutoBotOnStartup() {
     console.log("Checking AutoBot on startup...");
     if (autoBotPurchased) {
         const currentTime = Date.now();
-        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
-        const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
+        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000;
+        const maxEarningTime = 4 * 60 * 60;
 
         const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
         const tokensPerSecond = level * 0.1;
@@ -1153,7 +1163,6 @@ window.addEventListener('resize', resizeCanvas);
 
 // Düzenli Veri Kaydetme (her saniye)
 setInterval(saveUserData, 1000);
-
 
 window.addEventListener('DOMContentLoaded', function () {
     showLoading(); // Sayfa yüklenirken yükleme ekranını göster
