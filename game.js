@@ -3,6 +3,7 @@ console.log("Game script loaded");
 const BACKEND_URL = 'https://dino-game-backend-913ad8a618a0.herokuapp.com';
 
 // Oyun değişkenleri
+let saveInterval;
 let tokens = 0;
 let completedTasks = [];
 let level = 1;
@@ -49,6 +50,7 @@ let lastTime = 0;
 let resizeTimeout;
 let lastClickIncreaseTime = 0;
 let lastCooldownUpdateTime = 0;
+let cachedTokens = 0;
 
 let lastDrawTime = 0;
 const FRAME_RATE = 30; // Saniyede 30 kare
@@ -59,22 +61,9 @@ const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 console.log("Is mobile device:", isMobile);
 
-let cachedValues = {
-    tokens: 0,
-    energy: 0,
-    maxEnergy: 0,
-    clicksRemaining: 0,
-    level: 0,
-    referralCount: 0,
-    dailyStreak: 0,
-    autoBotActive: false,
-    autoBotTokens: 0,
-    lastGiftTime: 0,
-    lastEnergyBoostTime: 0
-};
 
-let changedData = {};
 
+// Yeni eklenen fonksiyonlar
 async function loadUserData() {
     try {
         console.log("Loading user data for Telegram ID:", telegramId);
@@ -100,26 +89,14 @@ async function loadUserData() {
         autoBotTokens = data.autoBotTokens || 0;
         lastAutoBotCheckTime = data.lastAutoBotCheckTime ? new Date(data.lastAutoBotCheckTime) : null;
         lastGiftTime = data.lastGiftTime || 0;
-        
-        cachedValues = {
-            tokens,
-            energy,
-            maxEnergy,
-            clicksRemaining,
-            level,
-            referralCount,
-            dailyStreak,
-            autoBotActive,
-            autoBotTokens,
-            lastGiftTime,
-            lastEnergyBoostTime
-        };
         updateUI();
     } catch (error) {
         console.error('Error loading user data:', error);
         showMessage('Failed to load user data. Please try refreshing the page.');
     }
 }
+
+let changedData = {};
 
 async function saveUserData() {
     if (Object.keys(changedData).length === 0) return; // Sadece değişen verileri kaydet
@@ -147,6 +124,7 @@ function updateUserData(key, value) {
     saveUserData();
 }
 
+// Oyun içindeki tüm değişkenleri güncellemek için kullanılacak fonksiyon
 function updateGameState() {
     updateUserData('tokens', tokens);
     updateUserData('level', level);
@@ -165,45 +143,27 @@ function updateGameState() {
     updateUserData('lastGiftTime', lastGiftTime);
 }
 
-let lastSaveTime = 0;
-const SAVE_INTERVAL = 5000; // 5 saniyede bir kaydet
-
+// Oyun döngüsünde veya önemli olaylarda çağırın
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
     if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
-        if (currentTime - lastClickIncreaseTime > 1000) {
-            increaseClicks();
-            lastClickIncreaseTime = currentTime;
-        }
-        
-        if (currentTime - lastCooldownUpdateTime > 1000) {
-            updateGiftCooldownDisplay();
-            updateEnergyBoostCooldownDisplay();
-            lastCooldownUpdateTime = currentTime;
-        }
-        
-        if (currentTime - lastAutoCheckTime > AUTO_CHECK_INTERVAL) {
-            checkAutoBot();
-            lastAutoCheckTime = currentTime;
-        }
-
-        animateDino();
+        // Diğer oyun mantığı...
         updateUI();
-        drawDino();
-
-        if (currentTime - lastSaveTime > SAVE_INTERVAL) {
-            updateGameState();
-            lastSaveTime = currentTime;
-        }
-
+        updateGameState(); // Oyun durumunu güncelle ve kaydet
         lastDrawTime = currentTime;
     }
 }
 
+// Düzenli kaydetme işlemini kaldırın
+// setInterval(saveUserData, 1000); // Bu satırı kaldırın veya yorum satırı yapın
+
+function gameLoop(currentTime) {
+    requestAnimationFrame(gameLoop);
+
 function startGame() {
     console.log("Starting game");
-    showLoading();
+    showLoading(); // Yükleme ekranını göster
     initializeDOM();
     loadUserData().then(() => {
         loadDinoImages();
@@ -217,24 +177,25 @@ function startGame() {
         updateEnergyRefillRate();
         
         setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
+        saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
         
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
-        hideLoading();
+        hideLoading(); // Yükleme tamamlandığında yükleme ekranını gizle
     }).catch(error => {
         console.error("Error starting game:", error);
-        hideLoading();
+        hideLoading(); // Hata durumunda da yükleme ekranını gizle
         showMessage("Failed to start the game. Please try refreshing the page.");
     });
 }
 
 function showLoading() {
     document.getElementById('loading-screen').style.display = 'flex';
-}
+  }
   
-function hideLoading() {
+  function hideLoading() {
     document.getElementById('loading-screen').style.display = 'none';
-}
+  }
 
 function initializeDOM() {
     canvas = document.getElementById('gameCanvas');
@@ -415,17 +376,19 @@ function handleClick(event) {
         requestAnimationFrame(animateDino);
 
         if (clicksRemaining > 0) {
-            updateUserData('tokens', tokens + tokenGain);
-            updateUserData('clicksRemaining', clicksRemaining - 1);
+            tokens += tokenGain;
+            clicksRemaining--;
+            updateUserData('tokens', tokens);
+            updateUserData('clicksRemaining', clicksRemaining);
             updateUI();
             checkLevelUp();
         } else if (energy > 0) {
-            updateUserData('energy', energy - 1);
-            updateUserData('clicksRemaining', getMaxClicksForLevel());
+            energy--;
+            clicksRemaining = getMaxClicksForLevel();
+            updateUserData('energy', energy);
+            updateUserData('clicksRemaining', clicksRemaining);
             updateUI();
         }
-    }
-}
 
 function createClickEffect(x, y, amount) {
     const clickEffect = document.createElement('div');
@@ -455,6 +418,20 @@ function formatClicks(number) {
     }
     return number.toFixed(2).slice(0, 6);  // En fazla 6 karakter göster
 }
+
+let cachedValues = {
+    tokens: 0,
+    energy: 0,
+    maxEnergy: 0,
+    clicksRemaining: 0,
+    level: 0,
+    referralCount: 0,
+    dailyStreak: 0,
+    autoBotActive: false,
+    autoBotTokens: 0,
+    lastGiftTime: 0,
+    lastEnergyBoostTime: 0
+};
 
 function updateUI() {
     // Tokens
@@ -575,7 +552,7 @@ function updateAutoBotDisplay() {
             autoBotButton.disabled = true;
         } else {
             autoBotButton.textContent = 'Activate AutoBot';
-            autoBotButton.disabled = tokens < 10000;
+            autoBotButton.disabled = tokens >= 10000;
         }
     }
 }
@@ -588,24 +565,24 @@ function updateAutoBotTokensDisplay() {
 }
 
 function updateTaskButtons() {
-    const followUsButton = document.getElementById('followUsButton');
-    const visitWebsiteButton = document.getElementById('visitWebsiteButton');
+    const followButton = document.querySelector('#tasksModal .task-item:first-child button');
+    const visitButton = document.querySelector('#tasksModal .task-item:last-child button');
 
-    if (followUsButton && visitWebsiteButton) {
+    if (followButton && visitButton) {
         if (completedTasks.includes('followX')) {
-            followUsButton.textContent = 'COMPLETED';
-            followUsButton.disabled = true;
+            followButton.textContent = 'COMPLETED';
+            followButton.disabled = true;
         } else {
-            followUsButton.textContent = 'START';
-            followUsButton.disabled = false;
+            followButton.textContent = 'START';
+            followButton.disabled = false;
         }
 
         if (completedTasks.includes('visitWebsite')) {
-            visitWebsiteButton.textContent = 'COMPLETED';
-            visitWebsiteButton.disabled = true;
+            visitButton.textContent = 'COMPLETED';
+            visitButton.disabled = true;
         } else {
-            visitWebsiteButton.textContent = 'START';
-            visitWebsiteButton.disabled = false;
+            visitButton.textContent = 'START';
+            visitButton.disabled = false;
         }
     }
 }
@@ -760,8 +737,10 @@ function updateBoostersModalContent() {
 function activateEnergyBoost() {
     const now = Date.now();
     if (now - lastEnergyBoostTime >= boostCooldown) {
-        updateUserData('energy', maxEnergy);
-        updateUserData('lastEnergyBoostTime', now);
+        energy = maxEnergy;
+        lastEnergyBoostTime = now;
+        updateUserData('energy', energy);
+        updateUserData('lastEnergyBoostTime', lastEnergyBoostTime);
         updateUI();
         showMessage('Energy fully restored!');
         updateEnergyBoostCooldownDisplay();
@@ -769,15 +748,17 @@ function activateEnergyBoost() {
         showMessage('Energy Boost is not available yet.');
     }
     toggleBoosters();
+}  toggleBoosters();
 }
 
 function activateAutoBot() {
     if (tokens >= 10000 && !autoBotPurchased) {
-        updateUserData('tokens', tokens - 10000);
-        updateUserData('autoBotActive', true);
-        updateUserData('autoBotPurchased', true);
-        updateUserData('autoBotPurchaseTime', Date.now());
-        updateUserData('lastAutoBotCheckTime', Date.now());
+        tokens -= 10000;
+        autoBotActive = true;
+        autoBotPurchased = true;
+        autoBotPurchaseTime = Date.now();
+        lastAutoBotCheckTime = Date.now();
+        saveUserData();
         updateUI();
         showAutoBotSuccessMessage();
         document.getElementById('autoBotButton').textContent = 'AutoBot Activated';
@@ -797,6 +778,28 @@ function showAutoBotSuccessMessage() {
     document.getElementById('closeAutoBotSuccessModal').onclick = function () {
         autoBotSuccessModal.style.display = 'none';
     };
+}
+
+function updateEnergyBoostCooldownDisplay() {
+    const now = Date.now();
+    const timeRemaining = Math.max(0, lastEnergyBoostTime + boostCooldown - now);
+    const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+
+    const cooldownDisplay = document.getElementById('energyBoostCooldownDisplay');
+    const energyBoostButton = document.getElementById('energyBoostButton');
+    if (cooldownDisplay && energyBoostButton) {
+        if (timeRemaining > 0) {
+            cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
+            energyBoostButton.disabled = true;
+            energyBoostButton.classList.add('disabled');
+        } else {
+            cooldownDisplay.textContent = 'Energy Boost available!';
+            energyBoostButton.disabled = false;
+            energyBoostButton.classList.remove('disabled');
+        }
+    }
 }
 
 function showMessage(message) {
@@ -829,30 +832,36 @@ function updateMenuContent() {
     `;
 
     document.getElementById('randomGiftButton').addEventListener('click', function () {
-        if (giftAvailable) {
+        const now = Date.now();
+        if (now - lastGiftTime >= boostCooldown) {
             const rewards = ['Clicks', 'Tokens', 'Double Tokens'];
             const reward = rewards[Math.floor(Math.random() * rewards.length)];
             let amount;
-
+    
             switch (reward) {
                 case 'Clicks':
                     amount = Math.floor(Math.random() * (1200 - 600 + 1)) + 600;
-                    updateUserData('clicksRemaining', clicksRemaining + amount);
+                    clicksRemaining += amount;
+                    updateUserData('clicksRemaining', clicksRemaining);
                     break;
                 case 'Tokens':
                     amount = Math.floor(Math.random() * (1000 - 500 + 1)) + 500;
-                    updateUserData('tokens', tokens + amount * getLevelMultiplier());
+                    tokens += amount * getLevelMultiplier();
+                    updateUserData('tokens', tokens);
                     break;
                 case 'Double Tokens':
                     activateDoubleTokens();
                     amount = null;
                     break;
             }
-
+    
             updateUI();
             showRandomGiftResult(reward, amount);
-            updateUserData('lastGiftTime', Date.now());
+            lastGiftTime = now;
+            updateUserData('lastGiftTime', lastGiftTime);
             updateGiftCooldownDisplay();
+        } else {
+            showMessage('Random Gift is not available yet.');
         }
     });
 
@@ -867,7 +876,7 @@ function showReferralLink() {
 
     const referralLink = document.getElementById('referralLink');
     referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
-    console.log("Generated referral link:", referralLink.value);
+    console.log("Generated referral link:", referralLink.value); // Debugging için
 
     document.getElementById('copyButton').onclick = function () {
         referralLink.select();
@@ -891,20 +900,22 @@ function activateDoubleTokens() {
     const duration = 20000;
     isDoubleTokensActive = true;
     const originalClicksRemaining = clicksRemaining;
-    updateUserData('clicksRemaining', Infinity);
+    clicksRemaining = Infinity;
 
+    // Modal gösterimi
     showMessage('Double Tokens activated for 20 seconds! Click as fast as you can!');
     setTimeout(() => {
         document.getElementById('messageModal').style.display = 'none';
     }, 2000);
 
+    // TAP efekti
     const tapInterval = setInterval(() => {
         createTapEffect();
     }, 300);
 
     setTimeout(() => {
         isDoubleTokensActive = false;
-        updateUserData('clicksRemaining', originalClicksRemaining);
+        clicksRemaining = originalClicksRemaining;
         updateUI();
         clearInterval(tapInterval);
     }, duration);
@@ -925,11 +936,12 @@ function createTapEffect() {
 
 function levelUp() {
     const previousLevel = level;
-    updateUserData('level', level + 1);
-    updateUserData('maxEnergy', level + 2);
+    level++;
+    maxEnergy = level + 2;
     updateDinoImage();
     updateEnergyRefillRate();
     checkLevelUp();
+    saveUserData();
     updateUI();
     createLevelUpEffect();
     showLevelUpModal(previousLevel, level);
@@ -986,18 +998,19 @@ function checkDailyLogin() {
 
     if (!lastLoginDate || new Date(lastLoginDate) < currentDate) {
         if (lastLoginDate && (new Date(lastLoginDate).getTime() + 24 * 60 * 60 * 1000) >= currentDate.getTime()) {
-            updateUserData('dailyStreak', dailyStreak + 1);
+            dailyStreak++;
         } else {
-            updateUserData('dailyStreak', 1);
+            dailyStreak = 1;
         }
         
-        if (dailyStreak > 30) updateUserData('dailyStreak', 1);
-        updateUserData('lastLoginDate', currentDate.toISOString());
+        if (dailyStreak > 30) dailyStreak = 1;
+        lastLoginDate = currentDate.toISOString();
 
         const reward = calculateDailyReward(dailyStreak);
         console.log(`Daily reward calculated: ${reward} tokens, Streak: ${dailyStreak}`);
 
         showLoginStreakModal(reward);
+        saveUserData();
     } else {
         console.log("Same day, no reward.");
     }
@@ -1020,8 +1033,9 @@ function showLoginStreakModal(reward) {
     claimRewardButton.disabled = false;
     claimRewardButton.textContent = 'Claim Reward';
     claimRewardButton.onclick = function() {
-        updateUserData('tokens', tokens + reward);
+        tokens += reward;
         updateUI();
+        saveUserData();
         showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
         loginStreakModal.style.display = 'none';
         this.disabled = true;
@@ -1029,10 +1043,16 @@ function showLoginStreakModal(reward) {
     };
 }
 
+function updateDailyRewardDisplay() {
+    if (dailyRewardDisplay) {
+        dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
+    }
+}
+
 function increaseClicks() {
     const maxClicks = getMaxClicksForLevel();
     if (clicksRemaining < maxClicks) {
-        updateUserData('clicksRemaining', Math.min(clicksRemaining + energyRefillRate, maxClicks));
+        clicksRemaining = Math.min(clicksRemaining + energyRefillRate, maxClicks);
         console.log(`Clicks increased to: ${clicksRemaining.toFixed(2)}/${maxClicks}`);
         updateUI();
     }
@@ -1056,23 +1076,25 @@ function updateEnergyRefillRate() {
 function checkAutoBot() {
     console.log("Checking AutoBot...");
     const currentTime = Date.now();
-    const inactiveTime = (currentTime - lastPlayerActivityTime) / 1000;
+    const inactiveTime = (currentTime - lastPlayerActivityTime) / 1000; // saniye cinsinden
 
-    if (autoBotActive && autoBotPurchased && inactiveTime >= 60) {
-        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000;
-        const maxEarningTime = 4 * 60 * 60;
+    if (autoBotActive && autoBotPurchased && inactiveTime >= 60) { // Oyuncu en az 1 dakika inaktif olmalı
+        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
+        const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
 
         if (timeSinceLastCheck > 0) {
             const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
             const tokensPerSecond = level * 0.1;
             const newTokens = Math.floor(earningTime * tokensPerSecond);
             
-            updateUserData('autoBotTokens', autoBotTokens + newTokens);
-            updateUserData('lastAutoBotCheckTime', currentTime);
+            autoBotTokens += newTokens;
+            lastAutoBotCheckTime = currentTime;
             
             console.log(`AutoBot earned ${newTokens} tokens. Total: ${autoBotTokens}`);
             console.log(`Time since last check: ${timeSinceLastCheck} seconds`);
             console.log(`Earning time: ${earningTime} seconds`);
+            
+            saveUserData();
 
             if (autoBotTokens > 0 && !autoBotShownThisSession) {
                 showAutoBotEarnings();
@@ -1090,18 +1112,19 @@ function checkAutoBotOnStartup() {
     console.log("Checking AutoBot on startup...");
     if (autoBotPurchased) {
         const currentTime = Date.now();
-        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000;
-        const maxEarningTime = 4 * 60 * 60;
+        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
+        const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
 
         const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
         const tokensPerSecond = level * 0.1;
         const newTokens = Math.floor(earningTime * tokensPerSecond);
         
         if (newTokens > 0) {
-            updateUserData('autoBotTokens', autoBotTokens + newTokens);
-            updateUserData('lastAutoBotCheckTime', currentTime);
+            autoBotTokens += newTokens;
+            lastAutoBotCheckTime = currentTime;
             
             console.log(`AutoBot earned ${newTokens} tokens. Total: ${autoBotTokens}`);
+            saveUserData();
             showAutoBotEarnings();
         } else {
             console.log("No new tokens earned by AutoBot.");
@@ -1116,10 +1139,11 @@ function showAutoBotEarnings() {
     autoBotEarningsModal.style.display = 'block';
 
     claimAutoBotTokens.onclick = function () {
-        updateUserData('tokens', tokens + autoBotTokens);
+        tokens += autoBotTokens;
         showMessage(`You claimed ${formatNumber(autoBotTokens)} tokens from AutoBot!`);
-        updateUserData('autoBotTokens', 0);
+        autoBotTokens = 0;
         updateUI();
+        saveUserData();
         autoBotEarningsModal.style.display = 'none';
         console.log("AutoBot tokens claimed");
     };
@@ -1143,6 +1167,27 @@ function showRandomGiftResult(reward, amount) {
 function showTasks() {
     tasksModal.style.display = 'block';
     updateTaskButtons();
+}
+
+function updateTaskButtons() {
+    const followUsButton = document.getElementById('followUsButton');
+    const visitWebsiteButton = document.getElementById('visitWebsiteButton');
+
+    if (completedTasks.includes('followX')) {
+        followUsButton.textContent = 'COMPLETED';
+        followUsButton.disabled = true;
+    } else {
+        followUsButton.textContent = 'START';
+        followUsButton.disabled = false;
+    }
+
+    if (completedTasks.includes('visitWebsite')) {
+        visitWebsiteButton.textContent = 'COMPLETED';
+        visitWebsiteButton.disabled = true;
+    } else {
+        visitWebsiteButton.textContent = 'START';
+        visitWebsiteButton.disabled = false;
+    }
 }
 
 function startTask(taskType) {
@@ -1181,9 +1226,9 @@ function startTask(taskType) {
 function completeTask(taskType) {
     if (!completedTasks.includes(taskType)) {
         completedTasks.push(taskType);
-        updateUserData('tokens', tokens + 1000);
-        updateUserData('completedTasks', completedTasks);
+        tokens += 1000;
         updateUI();
+        saveUserData();
         showMessage('Task completed! You earned 1000 tokens.');
         updateTaskButtons();
     }
@@ -1239,16 +1284,21 @@ function increaseEnergy() {
     const energyToAdd = Math.floor(timePassed / (5 * 60 * 1000)); // Her 5 dakikada 1 enerji
 
     if (energyToAdd > 0) {
-        updateUserData('energy', Math.min(energy + energyToAdd, maxEnergy));
-        updateUserData('lastEnergyRefillTime', now);
+        energy = Math.min(energy + energyToAdd, maxEnergy);
+        lastEnergyRefillTime = now;
+        saveUserData();
         updateUI();
     }
 }
 
 window.addEventListener('resize', resizeCanvas);
 
+// Düzenli Veri Kaydetme (her saniye)
+setInterval(saveUserData, 1000);
+
+
 window.addEventListener('DOMContentLoaded', function () {
-    showLoading();
+    showLoading(); // Sayfa yüklenirken yükleme ekranını göster
     const urlParams = new URLSearchParams(window.location.search);
     const userTelegramId = urlParams.get('id');
     if (userTelegramId) {
@@ -1261,17 +1311,18 @@ window.addEventListener('DOMContentLoaded', function () {
             })
             .catch(error => {
                 console.error("Error loading user data:", error);
-                hideLoading();
+                hideLoading(); // Hata durumunda yükleme ekranını gizle
                 showMessage("Failed to load user data. Please refresh the page.");
             });
     } else {
         console.log("No Telegram ID found in URL");
-        hideLoading();
+        hideLoading(); // Telegram ID bulunamadığında yükleme ekranını gizle
         showMessage("No Telegram ID found. Please start the game from the Telegram bot.");
     }
 });
 
 window.addEventListener('beforeunload', function() {
+    clearInterval(saveInterval);
     saveUserData();
 });
 
