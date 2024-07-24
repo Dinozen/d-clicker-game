@@ -16,7 +16,7 @@ app.use(express.json());
 
 // View engine setup
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, '../../views')); // Ana dizindeki 'views' klasörünü kullan
+app.set('views', path.join(__dirname, '../../views')); // Ana dizindeki 'views' klasörünü kullan // Ana dizindeki 'views' klasörünü kullan
 
 // Logging middleware
 app.use((req, res, next) => {
