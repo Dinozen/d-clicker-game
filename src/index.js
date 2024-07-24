@@ -16,7 +16,7 @@ app.use(express.json());
 
 // View engine setup
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, '../../views')); // Ana dizindeki 'views' klasörünü kullan // Ana dizindeki 'views' klasörünü kullan
+app.set('views', path.join(__dirname, 'views'));
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -29,13 +29,13 @@ const mongoOptions = {
   useUnifiedTopology: true,
   useCreateIndex: true,
   useFindAndModify: false,
-  poolSize: 300,  // Başlangıç havuz boyutu
-  maxPoolSize: 500,  // Maksimum 500 eşzamanlı bağlantı
-  serverSelectionTimeoutMS: 30000,  // 30 saniye
-  socketTimeoutMS: 45000,  // 45 saniye
-  connectTimeoutMS: 30000,  // 30 saniye
+  poolSize: 300,
+  maxPoolSize: 500,
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 30000,
   keepAlive: true,
-  keepAliveInitialDelay: 300000  // 5 dakika
+  keepAliveInitialDelay: 300000
 };
 
 mongoose.connect(process.env.MONGODB_URI, mongoOptions)
@@ -64,7 +64,7 @@ setInterval(function() {
       console.log('MongoDB connection is alive');
     }
   });
-}, 300000); // Her 5 dakikada bir kontrol et
+}, 300000);
 
 // Player Schema
 const PlayerSchema = new mongoose.Schema({
@@ -87,7 +87,6 @@ const PlayerSchema = new mongoose.Schema({
   lastGiftTime: { type: Number, default: 0 }
 });
 
-// İndeksler ekleniyor
 PlayerSchema.index({ telegramId: 1 });
 PlayerSchema.index({ tokens: 1 });
 PlayerSchema.index({ level: 1 });
@@ -176,7 +175,7 @@ app.get('/', (req, res) => {
 app.get('/api/player/:telegramId', async (req, res) => {
   console.log(`Fetching player data for telegramId: ${req.params.telegramId}`);
   try {
-    const player = await Player.findOne({ telegramId: req.params.telegramId }, 'tokens level energy maxEnergy clicksRemaining lastEnergyRefillTime dailyStreak lastLoginDate completedTasks referralCount autoBotActive autoBotPurchased autoBotTokens lastAutoBotCheckTime lastGiftTime');
+    const player = await Player.findOne({ telegramId: req.params.telegramId });
     if (!player) return res.status(404).json({ message: 'Player not found' });
     res.json(player);
   } catch (error) {
@@ -191,7 +190,7 @@ app.post('/api/update/:telegramId', async (req, res) => {
     const player = await Player.findOneAndUpdate(
       { telegramId: req.params.telegramId },
       req.body,
-      { new: true, runValidators: true, upsert: true, lean: true }
+      { new: true, runValidators: true, upsert: true }
     );
     res.json(player);
   } catch (error) {
@@ -209,7 +208,7 @@ app.get('/admin', async (req, res) => {
     console.log(`Player count: ${playerCount}`);
     
     console.log('Fetching recent players...');
-    const players = await Player.find().sort({ _id: -1 }).limit(10).lean();
+    const players = await Player.find().sort({ _id: -1 }).limit(10);
     console.log(`Fetched ${players.length} players`);
     
     console.log('Rendering admin view...');
@@ -240,12 +239,10 @@ app.use((err, req, res, next) => {
 // Error handling for uncaught exceptions and unhandled rejections
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
-  // Burada hata bilgilerini bir loglama servisine gönderebilirsiniz
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Burada hata bilgilerini bir loglama servisine gönderebilirsiniz
 });
 
 // Start server
