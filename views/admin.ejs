@@ -4,15 +4,76 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dinozen Admin Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background: #f4f4f4;
+            margin-bottom: 5px;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .pagination {
+            margin-top: 20px;
+        }
+        .pagination a {
+            padding: 5px 10px;
+            background: #333;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Dinozen Admin Panel</h1>
-    <p>Total Players: <%= playerCount %></p>
-    <h2>Recent Players:</h2>
-    <ul>
-        <% players.forEach(player => { %>
-            <li><%= player.telegramId %> - Tokens: <%= player.tokens %>, Level: <%= player.level %></li>
-        <% }); %>
-    </ul>
+    <div class="container">
+        <h1>Dinozen Admin Panel</h1>
+        <p>Total Players: <%= playerCount %></p>
+        <h2>Recent Players:</h2>
+        <ul>
+            <% players.forEach(player => { %>
+                <li>
+                    TelegramID: <%= player.telegramId %> - 
+                    Tokens: <%= player.tokens %>, 
+                    Level: <%= player.level %>,
+                    Last Login: <%= player.lastLoginDate ? new Date(player.lastLoginDate).toLocaleString() : 'Never' %>
+                </li>
+            <% }); %>
+        </ul>
+        <div class="pagination">
+            <% if (currentPage > 1) { %>
+                <a href="/admin?page=<%= currentPage - 1 %>">Previous</a>
+            <% } %>
+            <% if (players.length === pageSize) { %>
+                <a href="/admin?page=<%= currentPage + 1 %>">Next</a>
+            <% } %>
+        </div>
+    </div>
+    <script>
+        // Basit bir güvenlik önlemi: sayfayı iframe içinde yüklenmeye karşı koruma
+        if (window.self !== window.top) {
+            window.top.location = window.self.location;
+        }
+    </script>
 </body>
 </html>
