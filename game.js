@@ -7,7 +7,6 @@ let saveInterval;
 let tokens = 0;
 let completedTasks = [];
 let level = 1;
-let updateTimeout;
 let energy = 3;
 let maxEnergy = 3;
 let lastEnergyRefillTime = Date.now();
@@ -62,8 +61,6 @@ const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 console.log("Is mobile device:", isMobile);
 
-
-
 // Yeni eklenen fonksiyonlar
 async function loadUserData() {
     try {
@@ -97,110 +94,105 @@ async function loadUserData() {
     }
 }
 
-let changedData = {};
-
-async function startGame() {
-    console.log("Starting game");
-    showLoading();
+async function saveUserData() {
     try {
-        initializeDOM();
-        await loadUserData();
-        await loadDinoImages();
-        resizeCanvas();
-        setupClickHandler();
-        setupResizeHandler();
-        await preloadImages();
-        await checkDailyLogin();
-        await checkAutoBotOnStartup();
-        updateTaskButtons();
-        updateEnergyRefillRate();
-
-        // Enerji kontrolü ve veri kaydetme için interval'ler
-        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
-        setInterval(saveUserData, 30000); // Her 30 saniyede bir verileri kaydet
-
-        requestAnimationFrame(gameLoop);
-        console.log("Game loop started");
-        hideLoading();
+        console.log("Saving user data for Telegram ID:", telegramId);
+        const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegramId,
+                tokens,
+                level,
+                energy,
+                maxEnergy,
+                clicksRemaining,
+                lastEnergyRefillTime,
+                dailyStreak,
+                lastLoginDate,
+                completedTasks,
+                referralCount,
+                autoBotActive,
+                autoBotPurchased,
+                autoBotTokens,
+                lastAutoBotCheckTime,
+                lastGiftTime
+            }),
+        });
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        console.log('Data saved:', data);
     } catch (error) {
-        console.error("Error starting game:", error);
-        hideLoading();
-        showMessage("Failed to start the game. Please try refreshing the page.");
+        console.error('Error saving user data:', error);
+        showMessage('Failed to save game progress. Please check your internet connection.');
     }
 }
 
-// Oyun içindeki tüm değişkenleri güncellemek için kullanılacak fonksiyon
-function updateGameState() {
-    updateUserData('tokens', tokens);
-    updateUserData('level', level);
-    updateUserData('energy', energy);
-    updateUserData('maxEnergy', maxEnergy);
-    updateUserData('clicksRemaining', clicksRemaining);
-    updateUserData('lastEnergyRefillTime', lastEnergyRefillTime);
-    updateUserData('dailyStreak', dailyStreak);
-    updateUserData('lastLoginDate', lastLoginDate);
-    updateUserData('completedTasks', completedTasks);
-    updateUserData('referralCount', referralCount);
-    updateUserData('autoBotActive', autoBotActive);
-    updateUserData('autoBotPurchased', autoBotPurchased);
-    updateUserData('autoBotTokens', autoBotTokens);
-    updateUserData('lastAutoBotCheckTime', lastAutoBotCheckTime);
-    updateUserData('lastGiftTime', lastGiftTime);
-}
-
-// Oyun döngüsünde veya önemli olaylarda çağırın
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
     if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
-        // Diğer oyun mantığı...
+        if (currentTime - lastClickIncreaseTime > 1000) {
+            increaseClicks();
+            lastClickIncreaseTime = currentTime;
+        }
+        
+        if (currentTime - lastCooldownUpdateTime > 1000) {
+            updateGiftCooldownDisplay();
+            updateEnergyBoostCooldownDisplay();
+            lastCooldownUpdateTime = currentTime;
+        }
+        
+        if (currentTime - lastAutoCheckTime > AUTO_CHECK_INTERVAL) {
+            checkAutoBot();
+            lastAutoCheckTime = currentTime;
+        }
+
+        animateDino();
         updateUI();
-        updateGameState(); // Oyun durumunu güncelle ve kaydet
+        drawDino();
+
         lastDrawTime = currentTime;
     }
 }
 
-function gameLoop(currentTime) {
-    requestAnimationFrame(gameLoop);
+function startGame() {
+    console.log("Starting game");
+    showLoading(); // Yükleme ekranını göster
+    initializeDOM();
+    loadUserData().then(() => {
+        loadDinoImages();
+        resizeCanvas();
+        setupClickHandler();
+        setupResizeHandler();
+        preloadImages();
+        checkDailyLogin();
+        checkAutoBotOnStartup();
+        updateTaskButtons();
+        updateEnergyRefillRate();
+        
+        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
+        saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
+        
+        requestAnimationFrame(gameLoop);
+        console.log("Game loop started");
+        hideLoading(); // Yükleme tamamlandığında yükleme ekranını gizle
+    }).catch(error => {
+        console.error("Error starting game:", error);
+        hideLoading(); // Hata durumunda da yükleme ekranını gizle
+        showMessage("Failed to start the game. Please try refreshing the page.");
+    });
+}
 
-    
-    
-    function showLoading() {
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-            loadingScreen.style.display = 'flex';
-        } else {
-            console.error("Loading screen element not found");
-        }
-    }
-    
-    function hideLoading() {
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-            loadingScreen.style.display = 'none';
-        } else {
-            console.error("Loading screen element not found");
-        }
-    }
-    
-    async function preloadImages() {
-        const images = ['dino1.png', 'dino2.png', 'dino3.png', 'dino4.png', 'dino5.png', 'token.png', 'gift-box.png', 'autobot.png', 'boost.png'];
-        const imagePromises = images.map(src => {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
-                img.src = src;
-            });
-        });
-        try {
-            await Promise.all(imagePromises);
-            console.log("All images preloaded successfully");
-        } catch (error) {
-            console.error("Error preloading images:", error);
-            throw error;
-        }
-    }
+function showLoading() {
+    document.getElementById('loading-screen').style.display = 'flex';
+  }
+  
+  function hideLoading() {
+    document.getElementById('loading-screen').style.display = 'none';
+  }
 
 function initializeDOM() {
     canvas = document.getElementById('gameCanvas');
@@ -383,17 +375,17 @@ function handleClick(event) {
         if (clicksRemaining > 0) {
             tokens += tokenGain;
             clicksRemaining--;
-            updateUserData('tokens', tokens);
-            updateUserData('clicksRemaining', clicksRemaining);
             updateUI();
             checkLevelUp();
+            saveUserData(); // Yeni eklenen satır
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
-            updateUserData('energy', energy);
-            updateUserData('clicksRemaining', clicksRemaining);
             updateUI();
+            saveUserData(); // Yeni eklenen satır
         }
+    }
+}
 
 function createClickEffect(x, y, amount) {
     const clickEffect = document.createElement('div');
@@ -424,170 +416,38 @@ function formatClicks(number) {
     return number.toFixed(2).slice(0, 6);  // En fazla 6 karakter göster
 }
 
-let cachedValues = {
-    tokens: 0,
-    energy: 0,
-    maxEnergy: 0,
-    clicksRemaining: 0,
-    level: 0,
-    referralCount: 0,
-    dailyStreak: 0,
-    autoBotActive: false,
-    autoBotTokens: 0,
-    lastGiftTime: 0,
-    lastEnergyBoostTime: 0
-};
-
 function updateUI() {
-    // Tokens
-    if (tokens !== cachedValues.tokens) {
+    if (tokens !== cachedTokens) {
         document.getElementById('tokenDisplay').textContent = formatNumber(tokens);
-        cachedValues.tokens = tokens;
+        cachedTokens = tokens;
     }
 
-    // Energy
-    if (energy !== cachedValues.energy || maxEnergy !== cachedValues.maxEnergy) {
-        document.getElementById('energyDisplay').textContent = `${energy}/${maxEnergy}`;
-        cachedValues.energy = energy;
-        cachedValues.maxEnergy = maxEnergy;
-    }
+    document.getElementById('energyDisplay').textContent = `${energy}/${maxEnergy}`;
+    document.getElementById('clicksDisplay').textContent = formatClicks(clicksRemaining);
+    document.getElementById('levelDisplay').textContent = `${level}`;
 
-    // Clicks Remaining
-    if (clicksRemaining !== cachedValues.clicksRemaining) {
-        document.getElementById('clicksDisplay').textContent = formatClicks(clicksRemaining);
-        cachedValues.clicksRemaining = clicksRemaining;
-    }
-
-    // Level
-    if (level !== cachedValues.level) {
-        document.getElementById('levelDisplay').textContent = `${level}`;
-        cachedValues.level = level;
-    }
-
-    // Referral Count
-    if (referralCount !== cachedValues.referralCount) {
-        document.getElementById('referralCount').textContent = referralCount;
-        cachedValues.referralCount = referralCount;
-    }
-
-    // Daily Streak
-    if (dailyStreak !== cachedValues.dailyStreak) {
-        updateDailyRewardDisplay();
-        cachedValues.dailyStreak = dailyStreak;
-    }
-
-    // Gift Cooldown
-    if (lastGiftTime !== cachedValues.lastGiftTime) {
-        updateGiftCooldownDisplay();
-        cachedValues.lastGiftTime = lastGiftTime;
-    }
-
-    // Energy Boost Cooldown
-    if (lastEnergyBoostTime !== cachedValues.lastEnergyBoostTime) {
-        updateEnergyBoostCooldownDisplay();
-        cachedValues.lastEnergyBoostTime = lastEnergyBoostTime;
-    }
-
-    // AutoBot Status
-    if (autoBotActive !== cachedValues.autoBotActive) {
-        updateAutoBotDisplay();
-        cachedValues.autoBotActive = autoBotActive;
-    }
-
-    // AutoBot Tokens
-    if (autoBotTokens !== cachedValues.autoBotTokens) {
-        updateAutoBotTokensDisplay();
-        cachedValues.autoBotTokens = autoBotTokens;
-    }
-
-    // Update task buttons
-    updateTaskButtons();
-}
-
-function updateDailyRewardDisplay() {
-    const dailyRewardDisplay = document.getElementById('dailyRewardDisplay');
-    if (dailyRewardDisplay) {
-        dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
-    }
+    updateDailyRewardDisplay();
+    updateGiftCooldownDisplay();
 }
 
 function updateGiftCooldownDisplay() {
+    const now = Date.now();
+    const timeRemaining = Math.max(0, lastGiftTime + boostCooldown - now);
+    const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+
     const cooldownDisplay = document.getElementById('giftCooldownDisplay');
-    const randomGiftButton = document.querySelector('#menuModal button:first-of-type');
+    const randomGiftButton = document.getElementById('randomGiftButton');
     if (cooldownDisplay && randomGiftButton) {
-        const now = Date.now();
-        const timeRemaining = Math.max(0, lastGiftTime + boostCooldown - now);
         if (timeRemaining > 0) {
-            const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-            const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
             cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
             randomGiftButton.disabled = true;
+            randomGiftButton.classList.add('disabled');
         } else {
             cooldownDisplay.textContent = 'Random Gift available!';
             randomGiftButton.disabled = false;
-        }
-    }
-}
-
-function updateEnergyBoostCooldownDisplay() {
-    const cooldownDisplay = document.getElementById('energyBoostCooldownDisplay');
-    const energyBoostButton = document.getElementById('energyBoostButton');
-    if (cooldownDisplay && energyBoostButton) {
-        const now = Date.now();
-        const timeRemaining = Math.max(0, lastEnergyBoostTime + boostCooldown - now);
-        if (timeRemaining > 0) {
-            const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-            const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-            cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
-            energyBoostButton.disabled = true;
-        } else {
-            cooldownDisplay.textContent = 'Energy Boost available!';
-            energyBoostButton.disabled = false;
-        }
-    }
-}
-
-function updateAutoBotDisplay() {
-    const autoBotButton = document.querySelector('#autoBotContainer button');
-    if (autoBotButton) {
-        if (autoBotActive) {
-            autoBotButton.textContent = 'AutoBot Active';
-            autoBotButton.disabled = true;
-        } else {
-            autoBotButton.textContent = 'Activate AutoBot';
-            autoBotButton.disabled = tokens >= 10000;
-        }
-    }
-}
-
-function updateAutoBotTokensDisplay() {
-    const autoBotTokensDisplay = document.getElementById('autoBotTokensCollected');
-    if (autoBotTokensDisplay) {
-        autoBotTokensDisplay.textContent = formatNumber(autoBotTokens);
-    }
-}
-
-function updateTaskButtons() {
-    const followButton = document.querySelector('#tasksModal .task-item:first-child button');
-    const visitButton = document.querySelector('#tasksModal .task-item:last-child button');
-
-    if (followButton && visitButton) {
-        if (completedTasks.includes('followX')) {
-            followButton.textContent = 'COMPLETED';
-            followButton.disabled = true;
-        } else {
-            followButton.textContent = 'START';
-            followButton.disabled = false;
-        }
-
-        if (completedTasks.includes('visitWebsite')) {
-            visitButton.textContent = 'COMPLETED';
-            visitButton.disabled = true;
-        } else {
-            visitButton.textContent = 'START';
-            visitButton.disabled = false;
+            randomGiftButton.classList.remove('disabled');
         }
     }
 }
@@ -744,16 +604,14 @@ function activateEnergyBoost() {
     if (now - lastEnergyBoostTime >= boostCooldown) {
         energy = maxEnergy;
         lastEnergyBoostTime = now;
-        updateUserData('energy', energy);
-        updateUserData('lastEnergyBoostTime', lastEnergyBoostTime);
         updateUI();
+        saveUserData();
         showMessage('Energy fully restored!');
         updateEnergyBoostCooldownDisplay();
     } else {
         showMessage('Energy Boost is not available yet.');
     }
     toggleBoosters();
-}  toggleBoosters();
 }
 
 function activateAutoBot() {
@@ -837,36 +695,31 @@ function updateMenuContent() {
     `;
 
     document.getElementById('randomGiftButton').addEventListener('click', function () {
-        const now = Date.now();
-        if (now - lastGiftTime >= boostCooldown) {
+        if (giftAvailable) {
             const rewards = ['Clicks', 'Tokens', 'Double Tokens'];
             const reward = rewards[Math.floor(Math.random() * rewards.length)];
             let amount;
-    
+
             switch (reward) {
                 case 'Clicks':
                     amount = Math.floor(Math.random() * (1200 - 600 + 1)) + 600;
                     clicksRemaining += amount;
-                    updateUserData('clicksRemaining', clicksRemaining);
                     break;
                 case 'Tokens':
                     amount = Math.floor(Math.random() * (1000 - 500 + 1)) + 500;
                     tokens += amount * getLevelMultiplier();
-                    updateUserData('tokens', tokens);
                     break;
                 case 'Double Tokens':
                     activateDoubleTokens();
                     amount = null;
                     break;
             }
-    
+
             updateUI();
+            saveUserData();
             showRandomGiftResult(reward, amount);
-            lastGiftTime = now;
-            updateUserData('lastGiftTime', lastGiftTime);
+            lastGiftTime = Date.now();
             updateGiftCooldownDisplay();
-        } else {
-            showMessage('Random Gift is not available yet.');
         }
     });
 
@@ -1349,16 +1202,5 @@ function preloadImages() {
     images.forEach(src => {
         const img = new Image();
         img.src = src;
-// ...
-
-function animateDino() {
-    if (isClicking) {
-        clickScale -= 0.005;
-        if (clickScale <= 1) {
-            clickScale = 1;
-            isClicking = false;
-        }
-        drawDino();
-        requestAnimationFrame(animateDino);
-    }
+    });
 }
