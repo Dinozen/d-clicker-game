@@ -1,3 +1,4 @@
+// index.js
 process.env.NTBA_FIX_319 = 1;
 require('dotenv').config();
 const express = require('express');
@@ -15,7 +16,7 @@ app.use(express.json());
 
 // View engine setup
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', path.join(__dirname, '../views')); // Ana dizindeki 'views' klasörünü kullan
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -23,14 +24,21 @@ app.use((req, res, next) => {
   next();
 });
 
-mongoose.connect(process.env.MONGODB_URI, {
+const mongoOptions = {
   useNewUrlParser: true,
   useUnifiedTopology: true,
   useCreateIndex: true,
   useFindAndModify: false,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-})
+  poolSize: 300,  // Başlangıç havuz boyutu
+  maxPoolSize: 500,  // Maksimum 500 eşzamanlı bağlantı
+  serverSelectionTimeoutMS: 30000,  // 30 saniye
+  socketTimeoutMS: 45000,  // 45 saniye
+  connectTimeoutMS: 30000,  // 30 saniye
+  keepAlive: true,
+  keepAliveInitialDelay: 300000  // 5 dakika
+};
+
+mongoose.connect(process.env.MONGODB_URI, mongoOptions)
 .then(() => console.log('MongoDB connected successfully'))
 .catch(err => {
   console.error('MongoDB connection error:', err);
@@ -39,19 +47,19 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 mongoose.connection.on('error', (err) => {
   console.error('MongoDB connection error:', err);
-  mongoose.connect(process.env.MONGODB_URI);
+  mongoose.connect(process.env.MONGODB_URI, mongoOptions);
 });
 
 mongoose.connection.on('disconnected', () => {
   console.log('MongoDB disconnected. Attempting to reconnect...');
-  mongoose.connect(process.env.MONGODB_URI);
+  mongoose.connect(process.env.MONGODB_URI, mongoOptions);
 });
 
 setInterval(function() {
   mongoose.connection.db.admin().ping(function(err, result) {
     if (err) {
       console.log('MongoDB connection error:', err);
-      mongoose.connect(process.env.MONGODB_URI);
+      mongoose.connect(process.env.MONGODB_URI, mongoOptions);
     } else {
       console.log('MongoDB connection is alive');
     }
@@ -78,6 +86,11 @@ const PlayerSchema = new mongoose.Schema({
   referredBy: { type: String },
   lastGiftTime: { type: Number, default: 0 }
 });
+
+// İndeksler ekleniyor
+PlayerSchema.index({ telegramId: 1 });
+PlayerSchema.index({ tokens: 1 });
+PlayerSchema.index({ level: 1 });
 
 const Player = mongoose.model('Player', PlayerSchema);
 
@@ -163,7 +176,7 @@ app.get('/', (req, res) => {
 app.get('/api/player/:telegramId', async (req, res) => {
   console.log(`Fetching player data for telegramId: ${req.params.telegramId}`);
   try {
-    const player = await Player.findOne({ telegramId: req.params.telegramId });
+    const player = await Player.findOne({ telegramId: req.params.telegramId }, 'tokens level energy maxEnergy clicksRemaining lastEnergyRefillTime dailyStreak lastLoginDate completedTasks referralCount autoBotActive autoBotPurchased autoBotTokens lastAutoBotCheckTime lastGiftTime');
     if (!player) return res.status(404).json({ message: 'Player not found' });
     res.json(player);
   } catch (error) {
@@ -178,7 +191,7 @@ app.post('/api/update/:telegramId', async (req, res) => {
     const player = await Player.findOneAndUpdate(
       { telegramId: req.params.telegramId },
       req.body,
-      { new: true, runValidators: true, upsert: true }
+      { new: true, runValidators: true, upsert: true, lean: true }
     );
     res.json(player);
   } catch (error) {
@@ -196,7 +209,7 @@ app.get('/admin', async (req, res) => {
     console.log(`Player count: ${playerCount}`);
     
     console.log('Fetching recent players...');
-    const players = await Player.find().sort({ _id: -1 }).limit(10);
+    const players = await Player.find().sort({ _id: -1 }).limit(10).lean();
     console.log(`Fetched ${players.length} players`);
     
     console.log('Rendering admin view...');
