@@ -271,22 +271,54 @@
             text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
         }
         #dailyRewardsButton {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            font-size: 14px;
-            padding: 5px 10px;
-            background-color: black;
-            color: white;
-            border: 2px solid #007bff;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            z-index: 10;
-        }
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    font-size: 14px;
+    padding: 5px 10px;
+    background-color: black;
+    color: white;
+    border: 2px solid #007bff;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    z-index: 10;
+}
         #dailyRewardsButton:hover {
             background-color: #007bff;
         }
+        #levelInfo {
+    position: fixed;
+    top: 50px; /* Daily Rewards butonunun altında */
+    right: 10px;
+    font-size: 14px;
+    z-index: 10;
+    color: white;
+    text-align: right;
+}
+
+#currentLevel {
+    background-color: rgba(255, 0, 0, 0.7);
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    margin-bottom: 5px;
+}
+
+#nextLevel {
+    background-color: rgba(0, 0, 255, 0.7);
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+#nextLevel img {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-right: 3px;
+}
+        
         #giftCooldownDisplay {
             text-align: center;
             margin-top: 10px;
@@ -358,8 +390,6 @@
             50% { opacity: 0.7; transform: scale(1.2); }
             100% { opacity: 0; transform: scale(1.5); }
         }
-    </style>
-    <style>
         #loading-screen {
           position: fixed;
           top: 0;
@@ -398,44 +428,50 @@
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-20px); }
         }
-      </style>
-    </head>
+    </style>
+</head>
 <body>
     <div id="loading-screen">
-      <div class="loading-container">
-        <div class="loading-circle"></div>
-        <div class="loading-circle"></div>
-        <div class="loading-circle"></div>
-        <div class="loading-circle"></div>
-      </div>
+        <div class="loading-container">
+            <div class="loading-circle"></div>
+            <div class="loading-circle"></div>
+            <div class="loading-circle"></div>
+            <div class="loading-circle"></div>
+        </div>
     </div>
-    <img id="backgroundGif" src="background.gif" alt="background gif">
+
+    <img src="background.gif" alt="background" id="backgroundGif">
     <canvas id="gameCanvas"></canvas>
+
     <div id="gameInfo">
-        <div class="counter"><span>Energy:</span><span id="energyDisplay">3/3</span></div>
-        <div class="counter"><span>Clicks:</span><span id="clicksDisplay">300</span></div>
-        <div class="counter"><span>Level:</span><span id="levelDisplay">1</span></div>
-        <div class="counter"><span id="nextLevelDisplay"></span></div>
+        <div class="counter">Energy: <span id="energyDisplay">3/3</span></div>
+        <div class="counter">Clicks: <span id="clicksDisplay">300</span></div>
     </div>
+
+    <button id="dailyRewardsButton" class="button">DAILY REWARDS</button>
+
+    <div id="levelInfo">
+        <div id="currentLevel">Level: <span id="levelDisplay">1</span></div>
+        <div id="nextLevel">Level 2: <img src="token.png" alt="token"> <span id="nextLevelTokens">3000</span></div>
+    </div>
+
     <div id="dinoTokenDisplay">
         <img src="token.png" alt="token">
         <span id="tokenDisplay">0</span>
     </div>
+
     <div id="buttonsContainer">
-        <button id="earnButton" class="button">
-            <img src="earn.png" alt="Earn" class="button-icon">
-            EARN
-        </button>
-        <button id="tasksButton" class="button">
-            <img src="tasks.png" alt="Tasks" class="button-icon">
-            TASKS
-        </button>
-        <button id="boostButton" class="button">
-            <img src="boost.png" alt="Boost" class="button-icon">
-            BOOST
-        </button>
-        <button id="dailyRewardsButton" class="button">DAILY REWARDS</button>
+        <button id="earnButton" class="button"><img src="earn.png" alt="Earn" class="button-icon"> EARN</button>
+        <button id="tasksButton" class="button"><img src="tasks.png" alt="Tasks" class="button-icon"> TASKS</button>
+        <button id="boostButton" class="button"><img src="boost.png" alt="Boost" class="button-icon"> BOOST</button>
     </div>
+
+    <!-- Diğer modal ve içerikler aynı kalacak -->
+
+    <script src="game.js"></script>
+</body>
+</html>
+
     <div id="tasksModal" class="modal">
         <div class="modal-content">
             <h3>Tasks</h3>
@@ -447,36 +483,38 @@
                 <p>2. Visit our official website!</p>
                 <button id="visitWebsiteButton" class="button">START</button>
             </div>
-            <button id="closeTasksModal" class="close-btn">X</button>
+            <button id="closeTasksModal" class="close-btn">&times;</button>
         </div>
     </div>
+
     <div id="rewardTableModal" class="modal">
         <div class="modal-content daily-streak">
-            <button id="closeRewardTableButton" class="close-btn"></button>
             <h3>Daily Streak Rewards</h3>
             <div id="rewardPages">
-                <div class="reward-page" id="rewardPage1"></div>
-                <div class="reward-page" id="rewardPage2" style="display:none;"></div>
+                <div id="rewardPage1" class="reward-page"></div>
+                <div id="rewardPage2" class="reward-page" style="display:none;"></div>
             </div>
             <div class="reward-navigation">
-                <button id="prevRewardPage" class="nav-btn" disabled>◀</button>
-                <button id="nextRewardPage" class="nav-btn">▶</button>
+                <button id="prevRewardPage" class="button">◀</button>
+                <button id="nextRewardPage" class="button">▶</button>
             </div>
+            <button id="closeRewardTableButton" class="close-btn">&times;</button>
         </div>
     </div>
+
     <div id="menuModal" class="modal">
         <div class="modal-content">
             <h2>Menu</h2>
             <button id="randomGiftButton" class="button">
-                <img src="gift-box.png" alt="Gift">
-                Random Gift
+                <img src="gift-box.png" alt="Gift"> Random Gift
             </button>
             <div id="giftCooldownDisplay"></div>
             <button id="referralButton" class="button">Invite Friends</button>
             <p>Your Referrals: <span id="referralCount">0</span></p>
-            <button id="closeMenuButton" class="button close-btn">X</button>
+            <button id="closeMenuButton" class="close-btn">&times;</button>
         </div>
     </div>
+
     <div id="boostersModal" class="modal">
         <div class="modal-content">
             <h3>Boosters</h3>
@@ -494,15 +532,16 @@
                 </div>
                 <button id="autoBotButton" class="button">Activate AutoBot</button>
             </div>
-            <button id="closeBoostersModal" class="close-btn">X</button>
+            <button id="closeBoostersModal" class="close-btn">&times;</button>
         </div>
     </div>
+
     <div id="referralModal" class="modal">
         <div class="modal-content">
             <h3>Your Referral Link</h3>
             <div class="referral-link-container">
                 <input type="text" id="referralLink" readonly>
-                <button id="copyButton">Copy</button>
+                <button id="copyButton" class="button">Copy</button>
             </div>
             <div id="referralRewards">
                 <h4>Referral Rewards:</h4>
@@ -515,40 +554,45 @@
                 <p>500 Referrals: 3M tokens</p>
                 <p>1000 Referrals: 10M tokens</p>
             </div>
-            <button id="closeReferralModal" class="close-btn">X</button>
+            <button id="closeReferralModal" class="close-btn">&times;</button>
         </div>
     </div>
+
     <div id="loginStreakModal" class="modal">
         <div class="modal-content">
             <h3>Daily Login Reward</h3>
             <p id="loginStreakMessage"></p>
             <button id="claimDailyReward" class="button">Claim Reward</button>
-            <button id="closeLoginStreakModal" class="close-btn">X</button>
+            <button id="closeLoginStreakModal" class="close-btn">&times;</button>
         </div>
     </div>
+
     <div id="wheelResultModal" class="modal">
         <div class="modal-content">
             <h3>Wheel Result</h3>
-            <p id="wheelResultMessage"></p>
-            <button id="closeWheelResultModal" class="button">Awesome!</button>
+            <p id="wheelResultMessage">Awesome!</p>
+            <button id="closeWheelResultModal" class="close-btn">&times;</button>
         </div>
     </div>
+
     <div id="autoBotSuccessModal" class="modal">
         <div class="modal-content">
             <h3>AutoBot Purchased</h3>
             <p>You have successfully purchased AutoBot!</p>
-            <button id="closeAutoBotSuccessModal" class="close-btn">X</button>
+            <button id="closeAutoBotSuccessModal" class="close-btn">&times;</button>
         </div>
     </div>
+
     <div id="autoBotEarningsModal" class="modal">
         <div class="modal-content">
             <h3>AutoBot Earnings</h3>
             <img src="autobot.png" alt="AutoBot" id="autoBotEarningsImage" style="width: 100px; height: 100px; margin-bottom: 10px;">
             <p>Tokens Collected: <span id="autoBotTokensCollected">0</span></p>
             <button id="claimAutoBotTokens" class="button">Claim Tokens</button>
-            <button id="closeAutoBotEarningsModal" class="close-btn">X</button>
+            <button id="closeAutoBotEarningsModal" class="close-btn">&times;</button>
         </div>
     </div>
+
     <div id="levelUpModal" class="modal">
         <div class="modal-content">
             <h3>Level Up!</h3>
@@ -559,29 +603,25 @@
                     <th>New</th>
                 </tr>
             </table>
-            <button id="closeLevelUpModal" class="close-btn">X</button>
+            <button id="closeLevelUpModal" class="close-btn">&times;</button>
         </div>
     </div>
+
     <div id="randomGiftResultModal" class="modal">
         <div class="modal-content">
             <h3>Random Gift</h3>
             <p id="randomGiftResultMessage"></p>
-            <button id="closeRandomGiftResultModal" class="close-btn">X</button>
+            <button id="closeRandomGiftResultModal" class="close-btn">&times;</button>
         </div>
     </div>
-    <div id="messageModal" class="modal">
+
+<div id="messageModal" class="modal">
         <div class="modal-content">
             <p id="messageModalText"></p>
             <button id="closeMessageModal" class="button">OK</button>
         </div>
     </div>
+
     <script src="game.js"></script>
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const telegramId = urlParams.get('id');
-        if (!telegramId) {
-            alert('Please start the game from the Telegram bot.');
-        }
-    </script>
 </body>
 </html>
