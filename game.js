@@ -420,12 +420,12 @@ function updateLevelInfo() {
     const nextLevelElement = document.getElementById('nextLevel');
     const nextLevelTokensElement = document.getElementById('nextLevelTokens');
 
-    currentLevelElement.textContent = `Level: ${level}`;
+    currentLevelElement.textContent = `Current Level: ${level}`;
   
     if (level < 5) {
         const nextLevel = level + 1;
         const tokensNeeded = Math.max(0, levelRequirements[nextLevel - 1] - tokens);
-        nextLevelElement.innerHTML = `Level ${nextLevel}: <img src="token.png" alt="token"> <span id="nextLevelTokens">${formatNumber(tokensNeeded)}</span>`;
+        nextLevelElement.innerHTML = `Next Level: <img src="token.png" alt="token"> <span id="nextLevelTokens">${formatNumber(tokensNeeded)}</span>`;
     } else {
         nextLevelElement.innerHTML = 'Max Level Reached!';
     }
@@ -735,7 +735,7 @@ function updateMenuContent() {
             updateUI();
             saveUserData();
             showRandomGiftResult(reward, amount);
-            lastGiftTime = Date.now();
+            lastGiftTime = now;
             updateGiftCooldownDisplay();
         }
     });
@@ -870,20 +870,10 @@ function checkDailyLogin() {
     console.log("Last login date:", lastLoginDate);
 
     if (!lastLoginDate || new Date(lastLoginDate) < currentDate) {
-        if (lastLoginDate && (new Date(lastLoginDate).getTime() + 24 * 60 * 60 * 1000) >= currentDate.getTime()) {
-            dailyStreak++;
-        } else {
-            dailyStreak = 1;
-        }
-        
-        if (dailyStreak > 30) dailyStreak = 1;
-        lastLoginDate = currentDate.toISOString();
-
-        const reward = calculateDailyReward(dailyStreak);
-        console.log(`Daily reward calculated: ${reward} tokens, Streak: ${dailyStreak}`);
+        const reward = calculateDailyReward(dailyStreak + 1);
+        console.log(`Daily reward calculated: ${reward} tokens, Streak: ${dailyStreak + 1}`);
 
         showLoginStreakModal(reward);
-        saveUserData();
     } else {
         console.log("Same day, no reward.");
     }
@@ -895,7 +885,7 @@ function calculateDailyReward(streak) {
         11500, 13000, 14500, 16000, 17500, 19000, 20500, 22000, 23500, 25000,
         27000, 29000, 31000, 33000, 35000, 37000, 39000, 41000, 43000, 45000
     ];
-    return rewardTable[streak - 1] || rewardTable[rewardTable.length - 1];
+    return rewardTable[Math.min(streak - 1, rewardTable.length - 1)];
 }
 
 function showLoginStreakModal(reward) {
@@ -934,33 +924,6 @@ function showLoginStreakModal(reward) {
     };
 }
 
-function checkDailyLogin() {
-    console.log("Checking daily login...");
-    const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
-
-    console.log("Current date:", currentDate);
-    console.log("Last login date:", lastLoginDate);
-
-    if (!lastLoginDate || new Date(lastLoginDate) < currentDate) {
-        const reward = calculateDailyReward(dailyStreak + 1);
-        console.log(`Daily reward calculated: ${reward} tokens, Streak: ${dailyStreak + 1}`);
-
-        showLoginStreakModal(reward);
-    } else {
-        console.log("Same day, no reward.");
-    }
-}
-
-function calculateDailyReward(streak) {
-    const rewardTable = [
-        1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000,
-        11500, 13000, 14500, 16000, 17500, 19000, 20500, 22000, 23500, 25000,
-        27000, 29000, 31000, 33000, 35000, 37000, 39000, 41000, 43000, 45000
-    ];
-    return rewardTable[Math.min(streak - 1, rewardTable.length - 1)];
-}
-
 function updateDailyRewardDisplay() {
     if (dailyRewardDisplay) {
         dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
@@ -984,14 +947,6 @@ function getClickIncreaseRate() {
         case 3: return 2 / 3; // Saniyede 0.67 click
         case 4: return 1;     // Saniyede 1 click
         default: return 2;    // Saniyede 2 click (level 5 ve üstü için)
-    }
-}
-
-function increaseClicks() {
-    const maxClicks = getMaxClicksForLevel();
-    if (clicksRemaining < maxClicks) {
-        clicksRemaining = Math.min(clicksRemaining + getClickIncreaseRate(), maxClicks);
-        updateUI();
     }
 }
 
