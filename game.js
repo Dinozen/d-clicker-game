@@ -1,3 +1,9 @@
+// game.js
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDOM();
+    startGame();
+});
+
 console.log("Game script loaded");
 
 const BACKEND_URL = 'https://dino-game-backend-913ad8a618a0.herokuapp.com';
@@ -217,6 +223,7 @@ function initializeDOM() {
     tasksButton.addEventListener('click', showTasks);
     boostButton.addEventListener('click', toggleBoosters);
     dailyRewardsButton.addEventListener('click', showDailyStreaks);
+    claimRewardButton.addEventListener('click', claimDailyReward);
 
     document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
     document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
@@ -228,6 +235,31 @@ function initializeDOM() {
     document.getElementById('closeTasksModal').addEventListener('click', () => {
         tasksModal.style.display = 'none';
     });
+
+document.getElementById('claimDailyReward').addEventListener('click', async () => {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/claimDailyReward`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ telegramId, reward: calculateDailyReward() })
+        });
+        if (!response.ok) {
+            throw new Error('Failed to claim daily reward');
+        }
+        const data = await response.json();
+        if (data.success) {
+            showMessage('Daily reward claimed successfully!');
+        } else {
+            showMessage('Failed to claim daily reward. Please try again later.');
+        }
+    } catch (error) {
+        console.error('Error claiming daily reward:', error);
+        showMessage('Failed to claim daily reward. Please try again later.');
+    }
+});
+
 
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -354,6 +386,18 @@ function handleTouchMove(event) {
     handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
+// game.js
+let doubleTokensEndTime = 0;
+
+function activateDoubleTokens() {
+    isDoubleTokensActive = true;
+    doubleTokensEndTime = Date.now() + 20000; // 20 saniye
+    setTimeout(() => {
+        isDoubleTokensActive = false;
+    }, 20000);
+}
+
+// game.js
 function handleClick(event) {
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -361,6 +405,11 @@ function handleClick(event) {
 
     if (x >= dinoX && x <= dinoX + dinoWidth &&
         y >= dinoY && y <= dinoY + dinoHeight) {
+        if (clicksRemaining <= 0) {
+            showMessage('No clicks remaining. Please wait for energy refill.');
+            return;
+        }
+
         let tokenGain = 1 * getLevelMultiplier();
         if (isDoubleTokensActive) {
             tokenGain *= 2;
@@ -371,20 +420,15 @@ function handleClick(event) {
         clickScale = 1.1;
         requestAnimationFrame(animateDino);
 
-        if (clicksRemaining > 0) {
-            tokens += tokenGain;
-            clicksRemaining--;
-            updateUI();
-            checkLevelUp();
-            saveUserData();
-        } else if (energy > 0) {
-            energy--;
-            clicksRemaining = getMaxClicksForLevel();
-            updateUI();
-            saveUserData();
-        }
+        tokens += tokenGain;
+        clicksRemaining--;
+        updateUI();
+        checkLevelUp();
+        saveUserData();
     }
 }
+
+
 
 function createClickEffect(x, y, amount) {
     const clickEffect = document.createElement('div');
@@ -398,6 +442,7 @@ function createClickEffect(x, y, amount) {
         clickEffect.remove();
     }, 1000);
 }
+
 
 function formatNumber(number) {
     if (number >= 10000) {
@@ -415,7 +460,11 @@ function formatClicks(number) {
     return number.toFixed(2).slice(0, 6);
 }
 
+// game.js
 function updateLevelInfo() {
+    const currentLevelElement = document.getElementById('levelDisplay');
+    currentLevelElement.textContent = `Your Level: ${level}`;
+    }    
     const currentLevelElement = document.getElementById('currentLevel');
     const nextLevelElement = document.getElementById('nextLevel');
     const nextLevelTokensElement = document.getElementById('nextLevelTokens');
@@ -429,7 +478,7 @@ function updateLevelInfo() {
     } else {
         nextLevelElement.innerHTML = 'Max Level Reached!';
     }
-}
+
 
 function updateUI() {
     if (tokens !== cachedTokens) {
