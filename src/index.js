@@ -115,6 +115,8 @@ app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
+
+// Start and welcome message handler
 bot.onText(/\/start(.*)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const referrerId = match[1].trim();
@@ -149,27 +151,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
         }
       ]]
     };
-app.post('/api/claimDailyReward', async (req, res) => {
-  const { telegramId, reward } = req.body;
-  if (!telegramId || typeof reward !== 'number' || reward < 0) {
-    return res.status(400).json({ message: 'Invalid input' });
-  }
-  try {
-    const player = await Player.findOne({ telegramId });
-    if (!player) {
-      return res.status(404).json({ message: 'Player not found' });
-    }
-    player.tokens += reward;
-    player.dailyStreak += 1;
-    player.lastLoginDate = new Date();
-    await player.save();
-    res.json({ success: true, message: 'Daily reward claimed successfully' });
-  } catch (error) {
-    console.error('Error claiming daily reward:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
-    
+
     bot.sendMessage(chatId, "Click the button below to start farming your $DINOZ fortune! 🦖💰", {
       reply_markup: keyboard
     });
@@ -177,6 +159,52 @@ app.post('/api/claimDailyReward', async (req, res) => {
     console.error('Error in Telegram bot handler:', error);
     bot.sendMessage(chatId, 'Sorry, an error occurred. Please try again later.');
   }
+});
+
+// Günlük ödül alma endpoint'i
+app.post('/api/claimDailyReward', async (req, res) => {
+    const { telegramId, reward } = req.body;
+    if (!telegramId || typeof reward !== 'number' || reward < 0) {
+        return res.status(400).json({ message: 'Invalid input' });
+    }
+    try {
+        const player = await Player.findOne({ telegramId });
+        if (!player) {
+            return res.status(404).json({ message: 'Player not found' });
+        }
+        player.tokens += reward;
+        player.dailyStreak += 1;
+        player.lastLoginDate = new Date();
+        await player.save();
+        res.json({ success: true, message: 'Daily reward claimed successfully' });
+    } catch (error) {
+        console.error('Error claiming daily reward:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+});
+
+// Random gift alma endpoint'i
+app.post('/api/claimRandomGift', async (req, res) => {
+    const { telegramId } = req.body;
+    if (!telegramId) {
+        return res.status(400).json({ message: 'Invalid input' });
+    }
+    try {
+        const player = await Player.findOne({ telegramId });
+        if (!player) {
+            return res.status(404).json({ message: 'Player not found' });
+        }
+        if (Date.now() - player.lastGiftTime < 3 * 60 * 60 * 1000) { // 3 saatlik cooldown
+            return res.status(400).json({ message: 'Gift is on cooldown. Please wait.' });
+        }
+        player.tokens += 100; // Random gift ödülü
+        player.lastGiftTime = Date.now();
+        await player.save();
+        res.json({ success: true, message: 'Random gift claimed successfully' });
+    } catch (error) {
+        console.error('Error claiming random gift:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
 });
 
 // Routes
@@ -209,27 +237,6 @@ app.post('/api/update/:telegramId', async (req, res) => {
     console.error('Error updating player:', error);
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
-});
-
-app.post('/api/claimDailyReward', async (req, res) => {
-    const { telegramId, reward } = req.body;
-    if (!telegramId || typeof reward !== 'number' || reward < 0) {
-        return res.status(400).json({ message: 'Invalid input' });
-    }
-    try {
-        const player = await Player.findOne({ telegramId });
-        if (!player) {
-            return res.status(404).json({ message: 'Player not found' });
-        }
-        player.tokens += reward;
-        player.dailyStreak += 1;
-        player.lastLoginDate = new Date();
-        await player.save();
-        res.json({ success: true, message: 'Daily reward claimed successfully' });
-    } catch (error) {
-        console.error('Error claiming daily reward:', error);
-        res.status(500).json({ message: 'Internal server error', error: error.message });
-    }
 });
 
 // Admin route
