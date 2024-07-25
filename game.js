@@ -66,7 +66,7 @@ async function loadUserData() {
         console.log("Loading user data for Telegram ID:", telegramId);
         const response = await fetch(`${BACKEND_URL}/api/player/${telegramId}`);
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
         console.log("Loaded user data:", data);
@@ -75,7 +75,7 @@ async function loadUserData() {
         level = data.level || 1;
         energy = data.energy || 3;
         maxEnergy = data.maxEnergy || 3;
-        clicksRemaining = data.clicksRemaining || 300;
+        clicksRemaining = data.clicksRemaining || getMaxClicksForLevel();
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime || Date.now());
         dailyStreak = data.dailyStreak || 0;
         lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
@@ -89,7 +89,7 @@ async function loadUserData() {
         updateUI();
     } catch (error) {
         console.error('Error loading user data:', error);
-        showMessage('Failed to load user data. Please try refreshing the page.');
+        showMessage('Failed to load user data. Please try refreshing the page. Error: ' + error.message);
     }
 }
 
@@ -119,7 +119,7 @@ async function saveUserData() {
             }),
         });
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
         console.log('Data saved:', data);
@@ -904,15 +904,60 @@ function showLoginStreakModal(reward) {
     const claimRewardButton = document.getElementById('claimDailyReward');
     claimRewardButton.disabled = false;
     claimRewardButton.textContent = 'Claim Reward';
-    claimRewardButton.onclick = function() {
-        tokens += reward;
-        updateUI();
-        saveUserData();
-        showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
-        loginStreakModal.style.display = 'none';
-        this.disabled = true;
-        this.textContent = 'Claimed';
+    claimRewardButton.onclick = async function() {
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/claimDailyReward`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ telegramId, reward }),
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            tokens += reward;
+            dailyStreak += 1;
+            lastLoginDate = new Date();
+            updateUI();
+            saveUserData();
+            showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
+            loginStreakModal.style.display = 'none';
+            this.disabled = true;
+            this.textContent = 'Claimed';
+        } catch (error) {
+            console.error('Error claiming daily reward:', error);
+            showMessage('Failed to claim daily reward. Please try again later.');
+        }
     };
+}
+
+function checkDailyLogin() {
+    console.log("Checking daily login...");
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+
+    console.log("Current date:", currentDate);
+    console.log("Last login date:", lastLoginDate);
+
+    if (!lastLoginDate || new Date(lastLoginDate) < currentDate) {
+        const reward = calculateDailyReward(dailyStreak + 1);
+        console.log(`Daily reward calculated: ${reward} tokens, Streak: ${dailyStreak + 1}`);
+
+        showLoginStreakModal(reward);
+    } else {
+        console.log("Same day, no reward.");
+    }
+}
+
+function calculateDailyReward(streak) {
+    const rewardTable = [
+        1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000,
+        11500, 13000, 14500, 16000, 17500, 19000, 20500, 22000, 23500, 25000,
+        27000, 29000, 31000, 33000, 35000, 37000, 39000, 41000, 43000, 45000
+    ];
+    return rewardTable[Math.min(streak - 1, rewardTable.length - 1)];
 }
 
 function updateDailyRewardDisplay() {
@@ -939,7 +984,16 @@ function getClickIncreaseRate() {
     }
 }
 
+function increaseClicks() {
+    const maxClicks = getMaxClicksForLevel();
+    if (clicksRemaining < maxClicks) {
+        clicksRemaining = Math.min(clicksRemaining + getClickIncreaseRate(), maxClicks);
+        updateUI();
+    }
+}
+
 function getMaxClicksForLevel() {
+    const clickLimits = [300, 500, 1000, 1500, 2000];
     return clickLimits[level - 1] || clickLimits[clickLimits.length - 1];
 }
 
