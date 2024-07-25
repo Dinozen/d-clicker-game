@@ -1,4 +1,4 @@
-// index.js
+// src/index.js
 process.env.NTBA_FIX_319 = 1;
 require('dotenv').config();
 const express = require('express');
@@ -11,12 +11,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+const corsOptions = {
+  origin: 'https://dinozen.github.io',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
 
 // View engine setup
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', path.join(__dirname, '..', 'views'));
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -29,42 +33,31 @@ const mongoOptions = {
   useUnifiedTopology: true,
   useCreateIndex: true,
   useFindAndModify: false,
-  poolSize: 300,
-  maxPoolSize: 500,
-  serverSelectionTimeoutMS: 30000,
+  serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
-  connectTimeoutMS: 30000,
-  keepAlive: true,
-  keepAliveInitialDelay: 300000
+  family: 4 // IPv4'ü zorla
 };
 
-mongoose.connect(process.env.MONGODB_URI, mongoOptions)
-.then(() => console.log('MongoDB connected successfully'))
-.catch(err => {
-  console.error('MongoDB connection error:', err);
-  process.exit(1);
-});
+const connectWithRetry = () => {
+  mongoose.connect(process.env.MONGODB_URI, mongoOptions)
+    .then(() => console.log('MongoDB connected successfully'))
+    .catch(err => {
+      console.error('MongoDB connection error:', err);
+      console.log('Retrying connection in 5 seconds...');
+      setTimeout(connectWithRetry, 5000);
+    });
+};
+
+connectWithRetry();
 
 mongoose.connection.on('error', (err) => {
   console.error('MongoDB connection error:', err);
-  mongoose.connect(process.env.MONGODB_URI, mongoOptions);
 });
 
 mongoose.connection.on('disconnected', () => {
   console.log('MongoDB disconnected. Attempting to reconnect...');
-  mongoose.connect(process.env.MONGODB_URI, mongoOptions);
+  connectWithRetry();
 });
-
-setInterval(function() {
-  mongoose.connection.db.admin().ping(function(err, result) {
-    if (err) {
-      console.log('MongoDB connection error:', err);
-      mongoose.connect(process.env.MONGODB_URI, mongoOptions);
-    } else {
-      console.log('MongoDB connection is alive');
-    }
-  });
-}, 300000);
 
 // Player Schema
 const PlayerSchema = new mongoose.Schema({
@@ -122,7 +115,6 @@ app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
-
 bot.onText(/\/start(.*)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const referrerId = match[1].trim();
@@ -157,6 +149,26 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
         }
       ]]
     };
+app.post('/api/claimDailyReward', async (req, res) => {
+  const { telegramId, reward } = req.body;
+  if (!telegramId || typeof reward !== 'number' || reward < 0) {
+    return res.status(400).json({ message: 'Invalid input' });
+  }
+  try {
+    const player = await Player.findOne({ telegramId });
+    if (!player) {
+      return res.status(404).json({ message: 'Player not found' });
+    }
+    player.tokens += reward;
+    player.dailyStreak += 1;
+    player.lastLoginDate = new Date();
+    await player.save();
+    res.json({ success: true, message: 'Daily reward claimed successfully' });
+  } catch (error) {
+    console.error('Error claiming daily reward:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+});
     
     bot.sendMessage(chatId, "Click the button below to start farming your $DINOZ fortune! 🦖💰", {
       reply_markup: keyboard
@@ -180,7 +192,7 @@ app.get('/api/player/:telegramId', async (req, res) => {
     res.json(player);
   } catch (error) {
     console.error('Error fetching player:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
 
@@ -195,8 +207,29 @@ app.post('/api/update/:telegramId', async (req, res) => {
     res.json(player);
   } catch (error) {
     console.error('Error updating player:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Internal server error', error: error.message });
   }
+});
+
+app.post('/api/claimDailyReward', async (req, res) => {
+    const { telegramId, reward } = req.body;
+    if (!telegramId || typeof reward !== 'number' || reward < 0) {
+        return res.status(400).json({ message: 'Invalid input' });
+    }
+    try {
+        const player = await Player.findOne({ telegramId });
+        if (!player) {
+            return res.status(404).json({ message: 'Player not found' });
+        }
+        player.tokens += reward;
+        player.dailyStreak += 1;
+        player.lastLoginDate = new Date();
+        await player.save();
+        res.json({ success: true, message: 'Daily reward claimed successfully' });
+    } catch (error) {
+        console.error('Error claiming daily reward:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
 });
 
 // Admin route
@@ -233,16 +266,18 @@ app.get('/api/test', (req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).send('An unexpected error occurred');
+  res.status(500).json({ message: 'An unexpected error occurred', error: err.message });
 });
 
 // Error handling for uncaught exceptions and unhandled rejections
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
+  // Uygulama kapanmadan önce temizlik işlemleri yapılabilir
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Uygulama kapanmadan önce temizlik işlemleri yapılabilir
 });
 
 // Start server
