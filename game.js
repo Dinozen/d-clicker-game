@@ -159,7 +159,7 @@ function gameLoop(currentTime) {
 
 function startGame() {
     console.log("Starting game");
-    showLoading(); // Yükleme ekranını göster
+    showLoading();
     initializeDOM();
     loadUserData().then(() => {
         loadDinoImages();
@@ -177,10 +177,10 @@ function startGame() {
         
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
-        hideLoading(); // Yükleme tamamlandığında yükleme ekranını gizle
+        hideLoading();
     }).catch(error => {
         console.error("Error starting game:", error);
-        hideLoading(); // Hata durumunda da yükleme ekranını gizle
+        hideLoading();
         showMessage("Failed to start the game. Please try refreshing the page.");
     });
 }
@@ -376,12 +376,12 @@ function handleClick(event) {
             clicksRemaining--;
             updateUI();
             checkLevelUp();
-            saveUserData(); // Yeni eklenen satır
+            saveUserData();
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
             updateUI();
-            saveUserData(); // Yeni eklenen satır
+            saveUserData();
         }
     }
 }
@@ -410,10 +410,11 @@ function formatNumber(number) {
 
 function formatClicks(number) {
     if (number === Infinity) {
-        return '∞';  // Sonsuzluk sembolü
+        return '∞';
     }
-    return number.toFixed(2).slice(0, 6);  // En fazla 6 karakter göster
+    return number.toFixed(2).slice(0, 6);
 }
+
 function updateLevelInfo() {
     const currentLevelElement = document.getElementById('currentLevel');
     const nextLevelElement = document.getElementById('nextLevel');
@@ -423,7 +424,7 @@ function updateLevelInfo() {
   
     if (level < 5) {
         const nextLevel = level + 1;
-        const tokensNeeded = Math.max(0, levelRequirements[nextLevel] - tokens);
+        const tokensNeeded = Math.max(0, levelRequirements[nextLevel - 1] - tokens);
         nextLevelElement.innerHTML = `Level ${nextLevel}: <img src="token.png" alt="token"> <span id="nextLevelTokens">${formatNumber(tokensNeeded)}</span>`;
     } else {
         nextLevelElement.innerHTML = 'Max Level Reached!';
@@ -514,7 +515,7 @@ function loadDinoImages() {
 
     Promise.all(loadPromises)
         .then(loadedImages => {
-            dinoImages.length = 0; // Clear existing images
+            dinoImages.length = 0;
             dinoImages.push(...loadedImages);
             console.log(`All dino images loaded. Total: ${dinoImages.length}`);
             updateDinoImage();
@@ -589,7 +590,7 @@ function updateBoostersModalContent() {
                 <img src="autobot.png" alt="AutoBot" id="autoBotImage" style="width: 100px; height: 100px;">
                 <div id="autoBotInfo">
                     <h3>AutoBot</h3>
-                    <p>(10,000 tokens)</p>
+                    <p>(200,000 tokens)</p>
                 </div>
                 <button id="autoBotButton" class="button">Activate AutoBot</button>
             </div>
@@ -642,7 +643,7 @@ function activateAutoBot() {
         document.getElementById('autoBotButton').textContent = 'AutoBot Activated';
         document.getElementById('autoBotButton').disabled = true;
         console.log("AutoBot activated");
-        checkAutoBot(); // Hemen kontrol et
+        checkAutoBot();
     } else if (autoBotPurchased) {
         showMessage('AutoBot is already purchased.');
     } else {
@@ -669,7 +670,7 @@ function updateEnergyBoostCooldownDisplay() {
     const cooldownDisplay = document.getElementById('energyBoostCooldownDisplay');
     const energyBoostButton = document.getElementById('energyBoostButton');
     if (cooldownDisplay && energyBoostButton) {
-        if (timeRemaining >= 0) {
+        if (timeRemaining > 0) {
             cooldownDisplay.textContent = `Available in ${hours}h ${minutes}m ${seconds}s`;
             energyBoostButton.disabled = true;
             energyBoostButton.classList.add('disabled');
@@ -681,10 +682,10 @@ function updateEnergyBoostCooldownDisplay() {
     }
 }
 
-function showMessage(...args) {
+function showMessage(message) {
     const messageModal = document.getElementById('messageModal');
     const messageModalText = document.getElementById('messageModalText');
-    messageModalText.textContent = args.join(' ');
+    messageModalText.textContent = message;
     messageModal.style.display = 'block';
 
     setTimeout(() => {
@@ -773,10 +774,9 @@ function getLevelMultiplier() {
 function activateDoubleTokens() {
     const duration = 20000;
     isDoubleTokensActive = true;
-    const originalClicksRemaining = clicksRemaining;
-    clicksRemaining = Infinity;
+    const originalClicksRemaining = clicksRemaining = Infinity;
 
-    showMessage('Double Tokens activated for 20 seconds! Click as fast as you can!');
+showMessage('Double Tokens activated for 20 seconds! Click as fast as you can!');
     setTimeout(() => {
         document.getElementById('messageModal').style.display = 'none';
     }, 2000);
@@ -924,9 +924,18 @@ function updateDailyRewardDisplay() {
 function increaseClicks() {
     const maxClicks = getMaxClicksForLevel();
     if (clicksRemaining < maxClicks) {
-        clicksRemaining = Math.min(clicksRemaining + energyRefillRate, maxClicks);
-        console.log(`Clicks increased to: ${clicksRemaining.toFixed(2)}/${maxClicks}`);
+        clicksRemaining = Math.min(clicksRemaining + getClickIncreaseRate(), maxClicks);
         updateUI();
+    }
+}
+
+function getClickIncreaseRate() {
+    switch (level) {
+        case 1: return 1 / 3; // Saniyede 0.33 click
+        case 2: return 1 / 2; // Saniyede 0.5 click
+        case 3: return 2 / 3; // Saniyede 0.67 click
+        case 4: return 1;     // Saniyede 1 click
+        default: return 2;    // Saniyede 2 click (level 5 ve üstü için)
     }
 }
 
