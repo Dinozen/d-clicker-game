@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 const corsOptions = {
-    origin: '*', // Geliştirme için. Prodüksiyonda spesifik bir origin kullanın.
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 };
@@ -204,7 +204,6 @@ app.post('/api/update/:telegramId', async (req, res) => {
   }
 });
 
-// Yeni eklenen Daily Reward Claim rotası
 app.post('/api/claimDailyReward', async (req, res) => {
     const { telegramId, reward } = req.body;
     try {
