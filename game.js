@@ -970,7 +970,9 @@ function updateDailyRewardDisplay() {
 function increaseClicks() {
     const maxClicks = getMaxClicksForLevel();
     if (clicksRemaining < maxClicks) {
-        clicksRemaining = Math.min(clicksRemaining + getClickIncreaseRate(), maxClicks);
+        const increase = getClickIncreaseRate();
+        clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
+        console.log(`Clicks increased by ${increase}. New value: ${clicksRemaining}`);
         updateUI();
     }
 }
