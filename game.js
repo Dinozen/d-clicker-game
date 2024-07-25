@@ -774,9 +774,10 @@ function getLevelMultiplier() {
 function activateDoubleTokens() {
     const duration = 20000;
     isDoubleTokensActive = true;
-    const originalClicksRemaining = clicksRemaining = Infinity;
+    const originalClicksRemaining = clicksRemaining;
+    clicksRemaining = Infinity;
 
-showMessage('Double Tokens activated for 20 seconds! Click as fast as you can!');
+    showMessage('Double Tokens activated for 20 seconds! Click as fast as you can!');
     setTimeout(() => {
         document.getElementById('messageModal').style.display = 'none';
     }, 2000);
