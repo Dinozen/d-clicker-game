@@ -18,6 +18,10 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Body parser middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
@@ -225,13 +229,18 @@ app.get('/api/player/:telegramId', async (req, res) => {
 });
 
 app.post('/api/update/:telegramId', async (req, res) => {
-  console.log(`Updating player data for telegramId: ${req.params.telegramId}`, req.body);
+  console.log(`Updating player data for telegramId: ${req.params.telegramId}`);
+  console.log('Request body:', JSON.stringify(req.body));
   try {
+    if (!req.body || Object.keys(req.body).length === 0) {
+      throw new Error('Request body is empty');
+    }
     const player = await Player.findOneAndUpdate(
       { telegramId: req.params.telegramId },
       req.body,
       { new: true, runValidators: true, upsert: true }
     );
+    console.log('Updated player:', player);
     res.json(player);
   } catch (error) {
     console.error('Error updating player:', error);
