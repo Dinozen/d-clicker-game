@@ -14,7 +14,8 @@ const PORT = process.env.PORT || 3000;
 const corsOptions = {
   origin: 'https://dinozen.github.io',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 };
 app.use(cors(corsOptions));
 
@@ -39,7 +40,7 @@ const mongoOptions = {
   useFindAndModify: false,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
-  family: 4 // IPv4'ü zorla
+  family: 4
 };
 
 const connectWithRetry = () => {
@@ -240,11 +241,11 @@ app.post('/api/update/:telegramId', async (req, res) => {
       req.body,
       { new: true, runValidators: true, upsert: true }
     );
-    console.log('Updated player:', player);
+    console.log('Updated player:', JSON.stringify(player));
     res.json(player);
   } catch (error) {
     console.error('Error updating player:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    res.status(500).json({ message: 'Internal server error', error: error.message, stack: error.stack });
   }
 });
 
@@ -288,12 +289,10 @@ app.use((err, req, res, next) => {
 // Error handling for uncaught exceptions and unhandled rejections
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
-  // Uygulama kapanmadan önce temizlik işlemleri yapılabilir
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Uygulama kapanmadan önce temizlik işlemleri yapılabilir
 });
 
 // Start server
