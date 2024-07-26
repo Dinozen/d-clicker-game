@@ -213,56 +213,82 @@ function initializeDOM() {
     autoBotTokensCollected = document.getElementById('autoBotTokensCollected');
     claimAutoBotTokens = document.getElementById('claimAutoBotTokens');
 
-    earnButton.addEventListener('click', toggleMenu);
-    tasksButton.addEventListener('click', showTasks);
-    boostButton.addEventListener('click', toggleBoosters);
-    dailyRewardsButton.addEventListener('click', showDailyStreaks);
-
-    document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
-    document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
-    document.getElementById('closeRewardTableButton').addEventListener('click', () => {
-        rewardTableModal.style.display = 'none';
-    });
-    document.getElementById('followUsButton').addEventListener('click', () => startTask('followX'));
-    document.getElementById('visitWebsiteButton').addEventListener('click', () => startTask('visitWebsite'));
-    document.getElementById('closeTasksModal').addEventListener('click', () => {
-        tasksModal.style.display = 'none';
-    });
+    if (earnButton) {
+        earnButton.addEventListener('click', toggleMenu);
+    }
+    if (tasksButton) {
+        tasksButton.addEventListener('click', showTasks);
+    }
+    if (boostButton) {
+        boostButton.addEventListener('click', toggleBoosters);
+    }
+    if (dailyRewardsButton) {
+        dailyRewardsButton.addEventListener('click', showDailyStreaks);
+    }
+    if (document.getElementById('nextRewardPage')) {
+        document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
+    }
+    if (document.getElementById('prevRewardPage')) {
+        document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
+    }
+    if (document.getElementById('closeRewardTableButton')) {
+        document.getElementById('closeRewardTableButton').addEventListener('click', () => {
+            rewardTableModal.style.display = 'none';
+        });
+    }
+    if (document.getElementById('followUsButton')) {
+        document.getElementById('followUsButton').addEventListener('click', () => startTask('followX'));
+    }
+    if (document.getElementById('visitWebsiteButton')) {
+        document.getElementById('visitWebsiteButton').addEventListener('click', () => startTask('visitWebsite'));
+    }
+    if (document.getElementById('closeTasksModal')) {
+        document.getElementById('closeTasksModal').addEventListener('click', () => {
+            tasksModal.style.display = 'none';
+        });
+    }
 
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 
-    document.getElementById('closeBoostersModal').addEventListener('click', () => {
-        boostersModal.style.display = 'none';
-    });
+    if (document.getElementById('closeBoostersModal')) {
+        document.getElementById('closeBoostersModal').addEventListener('click', () => {
+            boostersModal.style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeAutoBotSuccessModal')) {
+        document.getElementById('closeAutoBotSuccessModal').addEventListener('click', () => {
+            autoBotSuccessModal.style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeAutoBotEarningsModal')) {
+        document.getElementById('closeAutoBotEarningsModal').addEventListener('click', () => {
+            autoBotEarningsModal.style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeMessageModal')) {
+        document.getElementById('closeMessageModal').addEventListener('click', () => {
+            document.getElementById('messageModal').style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeLevelUpModal')) {
+        document.getElementById('closeLevelUpModal').addEventListener('click', () => {
+            document.getElementById('levelUpModal').style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeLoginStreakModal')) {
+        document.getElementById('closeLoginStreakModal').addEventListener('click', () => {
+            loginStreakModal.style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeRandomGiftResultModal')) {
+        document.getElementById('closeRandomGiftResultModal').addEventListener('click', () => {
+            document.getElementById('randomGiftResultModal').style.display = 'none';
+        });
+    }
 
-    document.getElementById('closeAutoBotSuccessModal').addEventListener('click', () => {
-        autoBotSuccessModal.style.display = 'none';
-    });
-
-    document.getElementById('closeAutoBotEarningsModal').addEventListener('click', () => {
-        autoBotEarningsModal.style.display = 'none';
-    });
-
-    document.getElementById('closeMessageModal').addEventListener('click', () => {
-        document.getElementById('messageModal').style.display = 'none';
-    });
-
-    document.getElementById('closeLevelUpModal').addEventListener('click', () => {
-        document.getElementById('levelUpModal').style.display = 'none';
-    });
-
-    document.getElementById('closeLoginStreakModal').addEventListener('click', () => {
-        loginStreakModal.style.display = 'none';
-    });
-
-    document.getElementById('closeRandomGiftResultModal').addEventListener('click', () => {
-        document.getElementById('randomGiftResultModal').style.display = 'none';
-    });
-
-    // Oyuncu aktivitelerini izleme
     document.addEventListener('click', () => {
         lastPlayerActivityTime = Date.now();
     });
@@ -420,26 +446,46 @@ function updateLevelInfo() {
     const nextLevelElement = document.getElementById('nextLevel');
     const nextLevelTokensElement = document.getElementById('nextLevelTokens');
 
-    currentLevelElement.textContent = `Current Level: ${level}`;
+    if (currentLevelElement) {
+        currentLevelElement.textContent = `Current Level: ${level}`;
+    }
   
     if (level < 5) {
         const nextLevel = level + 1;
         const tokensNeeded = Math.max(0, levelRequirements[nextLevel - 1] - tokens);
-        nextLevelElement.innerHTML = `Next Level: <img src="token.png" alt="token"> <span id="nextLevelTokens">${formatNumber(tokensNeeded)}</span>`;
+        if (nextLevelElement) {
+            nextLevelElement.innerHTML = `Next Level: <img src="token.png" alt="token"> <span id="nextLevelTokens">${formatNumber(tokensNeeded)}</span>`;
+        }
     } else {
-        nextLevelElement.innerHTML = 'Max Level Reached!';
+        if (nextLevelElement) {
+            nextLevelElement.innerHTML = 'Max Level Reached!';
+        }
     }
 }
 
 function updateUI() {
     if (tokens !== cachedTokens) {
-        document.getElementById('tokenDisplay').textContent = formatNumber(tokens);
+        const tokenDisplay = document.getElementById('tokenDisplay');
+        if (tokenDisplay) {
+            tokenDisplay.textContent = formatNumber(tokens);
+        }
         cachedTokens = tokens;
     }
 
-    document.getElementById('energyDisplay').textContent = `${energy}/${maxEnergy}`;
-    document.getElementById('clicksDisplay').textContent = formatClicks(clicksRemaining);
-    document.getElementById('levelDisplay').textContent = `${level}`;
+    const energyDisplay = document.getElementById('energyDisplay');
+    if (energyDisplay) {
+        energyDisplay.textContent = `${energy}/${maxEnergy}`;
+    }
+
+    const clicksDisplay = document.getElementById('clicksDisplay');
+    if (clicksDisplay) {
+        clicksDisplay.textContent = formatClicks(clicksRemaining);
+    }
+
+    const levelDisplay = document.getElementById('levelDisplay');
+    if (levelDisplay) {
+        levelDisplay.textContent = `${level}`;
+    }
 
     updateDailyRewardDisplay();
     updateGiftCooldownDisplay();
@@ -640,8 +686,11 @@ function activateAutoBot() {
         saveUserData();
         updateUI();
         showAutoBotSuccessMessage();
-        document.getElementById('autoBotButton').textContent = 'AutoBot Activated';
-        document.getElementById('autoBotButton').disabled = true;
+        const autoBotButton = document.getElementById('autoBotButton');
+        if (autoBotButton) {
+            autoBotButton.textContent = 'AutoBot Activated';
+            autoBotButton.disabled = true;
+        }
         console.log("AutoBot activated");
         checkAutoBot();
     } else if (autoBotPurchased) {
@@ -653,10 +702,9 @@ function activateAutoBot() {
 }
 
 function showAutoBotSuccessMessage() {
-    autoBotSuccessModal.style.display = 'block';
-    document.getElementById('closeAutoBotSuccessModal').onclick = function () {
-        autoBotSuccessModal.style.display = 'none';
-    };
+    if (autoBotSuccessModal) {
+        autoBotSuccessModal.style.display = 'block';
+    }
 }
 
 function updateEnergyBoostCooldownDisplay() {
@@ -685,86 +733,111 @@ function updateEnergyBoostCooldownDisplay() {
 function showMessage(message) {
     const messageModal = document.getElementById('messageModal');
     const messageModalText = document.getElementById('messageModalText');
-    messageModalText.textContent = message;
-    messageModal.style.display = 'block';
-
-    setTimeout(() => {
-        messageModal.style.display = 'none';
-    }, 5000);
+    if (messageModalText) {
+        messageModalText.textContent = message;
+    }
+    if (messageModal) {
+        messageModal.style.display = 'block';
+    }
 }
 
 function updateMenuContent() {
     const now = Date.now();
     const giftAvailable = now - lastGiftTime >= boostCooldown;
 
-    menuModal.innerHTML = `
-        <div class="modal-content">
-            <h2>Menu</h2>
-            <button id="randomGiftButton" class="button" ${giftAvailable ? '' : 'disabled'}>
-                <img src="gift-box.png" alt="Gift">
-                Random Gift
-            </button>
-            <div id="giftCooldownDisplay"></div>
-            <button id="referralButton" class="button">Invite Friends</button>
-            <p>Your Referrals: ${referralCount}</p>
-            <button id="closeMenuButton" class="button close-btn">X</button>
-        </div>
-    `;
+    if (menuModal) {
+        menuModal.innerHTML = `
+            <div class="modal-content">
+                <h2>Menu</h2>
+                <button id="randomGiftButton" class="button" ${giftAvailable ? '' : 'disabled'}>
+                    <img src="gift-box.png" alt="Gift">
+                    Random Gift
+                </button>
+                <div id="giftCooldownDisplay"></div>
+                <button id="referralButton" class="button">Invite Friends</button>
+                <p>Your Referrals: ${referralCount}</p>
+                <button id="closeMenuButton" class="button close-btn">X</button>
+            </div>
+        `;
+    }
 
-    document.getElementById('randomGiftButton').addEventListener('click', function () {
-        if (giftAvailable) {
-            const rewards = ['Clicks', 'Tokens', 'Double Tokens'];
-            const reward = rewards[Math.floor(Math.random() * rewards.length)];
-            let amount;
+    const randomGiftButton = document.getElementById('randomGiftButton');
+    if (randomGiftButton) {
+        randomGiftButton.addEventListener('click', function () {
+            if (giftAvailable) {
+                const rewards = ['Clicks', 'Tokens', 'Double Tokens'];
+                const reward = rewards[Math.floor(Math.random() * rewards.length)];
+                let amount;
 
-            switch (reward) {
-                case 'Clicks':
-                    amount = Math.floor(Math.random() * (1200 - 600 + 1)) + 600;
-                    clicksRemaining += amount;
-                    break;
-                case 'Tokens':
-                    amount = Math.floor(Math.random() * (1000 - 500 + 1)) + 500;
-                    tokens += amount * getLevelMultiplier();
-                    break;
-                case 'Double Tokens':
-                    activateDoubleTokens();
-                    amount = null;
-                    break;
+                switch (reward) {
+                    case 'Clicks':
+                        amount = Math.floor(Math.random() * (1200 - 600 + 1)) + 600;
+                        clicksRemaining += amount;
+                        break;
+                    case 'Tokens':
+                        amount = Math.floor(Math.random() * (1000 - 500 + 1)) + 500;
+                        tokens += amount * getLevelMultiplier();
+                        break;
+                    case 'Double Tokens':
+                        activateDoubleTokens();
+                        amount = null;
+                        break;
+                }
+
+                updateUI();
+                saveUserData();
+                showRandomGiftResult(reward, amount);
+                lastGiftTime = now;
+                updateGiftCooldownDisplay();
             }
+        });
+    }
 
-            updateUI();
-            saveUserData();
-            showRandomGiftResult(reward, amount);
-            lastGiftTime = now;
-            updateGiftCooldownDisplay();
-        }
-    });
+    const referralButton = document.getElementById('referralButton');
+    if (referralButton) {
+        referralButton.addEventListener('click', showReferralLink);
+    }
 
-    document.getElementById('referralButton').addEventListener('click', showReferralLink);
-    document.getElementById('closeMenuButton').addEventListener('click', toggleMenu);
+    const closeMenuButton = document.getElementById('closeMenuButton');
+    if (closeMenuButton) {
+        closeMenuButton.addEventListener('click', toggleMenu);
+    }
+
     updateGiftCooldownDisplay();
 }
 
 function showReferralLink() {
     const referralModal = document.getElementById('referralModal');
-    referralModal.style.display = 'block';
+    if (referralModal) {
+        referralModal.style.display = 'block';
+    }
 
     const referralLink = document.getElementById('referralLink');
-    referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
-    console.log("Generated referral link:", referralLink.value);
+    if (referralLink) {
+        referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
+        console.log("Generated referral link:", referralLink.value);
+    }
 
-    document.getElementById('copyButton').onclick = function () {
-        referralLink.select();
-        document.execCommand('copy');
-        this.textContent = 'Copied!';
-        setTimeout(() => {
-            this.textContent = 'Copy Link';
-        }, 2000);
-    };
+    const copyButton = document.getElementById('copyButton');
+    if (copyButton) {
+        copyButton.onclick = function () {
+            if (referralLink) {
+                referralLink.select();
+                document.execCommand('copy');
+                this.textContent = 'Copied!';
+                setTimeout(() => {
+                    this.textContent = 'Copy Link';
+                }, 2000);
+            }
+        };
+    }
 
-    document.getElementById('closeReferralModal').onclick = function () {
-        referralModal.style.display = 'none';
-    };
+    const closeReferralModal = document.getElementById('closeReferralModal');
+    if (closeReferralModal) {
+        closeReferralModal.onclick = function () {
+            referralModal.style.display = 'none';
+        };
+    }
 }
 
 function getLevelMultiplier() {
@@ -831,34 +904,41 @@ function showLevelUpModal(previousLevel, newLevel) {
     const levelUpModal = document.getElementById('levelUpModal');
     const levelUpTable = document.getElementById('levelUpTable');
 
-    levelUpTable.innerHTML = `
-        <tr>
-            <th>Stat</th>
-            <th>Previous</th>
-            <th>New</th>
-        </tr>
-        <tr>
-            <td>Clicks</td>
-            <td>${previousClicks}</td>
-            <td>${newClicks}</td>
-        </tr>
-        <tr>
-            <td>Energy</td>
-            <td>${previousEnergy}</td>
-            <td>${newEnergy}</td>
-        </tr>
-        <tr>
-            <td>Energy Refill Rate</td>
-            <td>${previousRefillRate.toFixed(2)}/s</td>
-            <td>${newRefillRate.toFixed(2)}/s</td>
-        </tr>
-    `;
+    if (levelUpTable) {
+        levelUpTable.innerHTML = `
+            <tr>
+                <th>Stat</th>
+                <th>Previous</th>
+                <th>New</th>
+            </tr>
+            <tr>
+                <td>Clicks</td>
+                <td>${previousClicks}</td>
+                <td>${newClicks}</td>
+            </tr>
+            <tr>
+                <td>Energy</td>
+                <td>${previousEnergy}</td>
+                <td>${newEnergy}</td>
+            </tr>
+            <tr>
+                <td>Energy Refill Rate</td>
+                <td>${previousRefillRate.toFixed(2)}/s</td>
+                <td>${newRefillRate.toFixed(2)}/s</td>
+            </tr>
+        `;
+    }
 
-    levelUpModal.style.display = 'block';
+    if (levelUpModal) {
+        levelUpModal.style.display = 'block';
+    }
 
-    document.getElementById('closeLevelUpModal').onclick = function () {
-        levelUpModal.style.display = 'none';
-    };
+    const closeLevelUpModal = document.getElementById('closeLevelUpModal');
+    if (closeLevelUpModal) {
+        closeLevelUpModal.onclick = function () {
+            levelUpModal.style.display = 'none';
+        };
+    }
 }
 
 function checkDailyLogin() {
@@ -889,39 +969,45 @@ function calculateDailyReward(streak) {
 }
 
 function showLoginStreakModal(reward) {
-    loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Streak: ${dailyStreak} days`;
-    loginStreakModal.style.display = 'block';
+    if (loginStreakMessage) {
+        loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Streak: ${dailyStreak} days`;
+    }
+    if (loginStreakModal) {
+        loginStreakModal.style.display = 'block';
+    }
     
     const claimRewardButton = document.getElementById('claimDailyReward');
-    claimRewardButton.disabled = false;
-    claimRewardButton.textContent = 'Claim Reward';
-    claimRewardButton.onclick = async function() {
-        try {
-            const response = await fetch(`${BACKEND_URL}/api/claimDailyReward`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ telegramId, reward }),
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+    if (claimRewardButton) {
+        claimRewardButton.disabled = false;
+        claimRewardButton.textContent = 'Claim Reward';
+        claimRewardButton.onclick = async function() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/claimDailyReward`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ telegramId, reward }),
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                tokens += reward;
+                dailyStreak += 1;
+                lastLoginDate = new Date();
+                updateUI();
+                saveUserData();
+                showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
+                loginStreakModal.style.display = 'none';
+                this.disabled = true;
+                this.textContent = 'Claimed';
+            } catch (error) {
+                console.error('Error claiming daily reward:', error);
+                showMessage('Failed to claim daily reward. Please try again later.');
             }
-            const result = await response.json();
-            tokens += reward;
-            dailyStreak += 1;
-            lastLoginDate = new Date();
-            updateUI();
-            saveUserData();
-            showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
-            loginStreakModal.style.display = 'none';
-            this.disabled = true;
-            this.textContent = 'Claimed';
-        } catch (error) {
-            console.error('Error claiming daily reward:', error);
-            showMessage('Failed to claim daily reward. Please try again later.');
-        }
-    };
+        };
+    }
 }
 
 function updateDailyRewardDisplay() {
@@ -1028,37 +1114,58 @@ function checkAutoBotOnStartup() {
 }
 
 function showAutoBotEarnings() {
-    autoBotTokensCollected.textContent = formatNumber(autoBotTokens);
-    autoBotEarningsModal.style.display = 'block';
+    if (autoBotTokensCollected) {
+        autoBotTokensCollected.textContent = formatNumber(autoBotTokens);
+    }
+    if (autoBotEarningsModal) {
+        autoBotEarningsModal.style.display = 'block';
+    }
 
-    claimAutoBotTokens.onclick = function () {
-        tokens += autoBotTokens;
-        showMessage(`You claimed ${formatNumber(autoBotTokens)} tokens from AutoBot!`);
-        autoBotTokens = 0;
-        updateUI();
-        saveUserData();
-        autoBotEarningsModal.style.display = 'none';
-        console.log("AutoBot tokens claimed");
-    };
+    if (claimAutoBotTokens) {
+        claimAutoBotTokens.onclick = function () {
+            tokens += autoBotTokens;
+            showMessage(`You claimed ${formatNumber(autoBotTokens)} tokens from AutoBot!`);
+            autoBotTokens = 0;
+            updateUI();
+            saveUserData();
+            if (autoBotEarningsModal) {
+                autoBotEarningsModal.style.display = 'none';
+            }
+        };
+    }
 
-    document.getElementById('closeAutoBotEarningsModal').onclick = function () {
-        autoBotEarningsModal.style.display = 'none';
-    };
+    const closeAutoBotEarningsModal = document.getElementById('closeAutoBotEarningsModal');
+    if (closeAutoBotEarningsModal) {
+        closeAutoBotEarningsModal.onclick = function () {
+            if (autoBotEarningsModal) {
+                autoBotEarningsModal.style.display = 'none';
+            }
+        };
+    }
 }
 
 function showRandomGiftResult(reward, amount) {
     const randomGiftModal = document.getElementById('randomGiftResultModal');
     const randomGiftResultMessage = document.getElementById('randomGiftResultMessage');
-    randomGiftResultMessage.textContent = `You won: ${reward} ${amount ? `(${formatNumber(amount)})` : ''}`;
-    randomGiftModal.style.display = 'block';
+    if (randomGiftResultMessage) {
+        randomGiftResultMessage.textContent = `You won: ${reward} ${amount ? `(${formatNumber(amount)})` : ''}`;
+    }
+    if (randomGiftModal) {
+        randomGiftModal.style.display = 'block';
+    }
 
-    document.getElementById('closeRandomGiftResultModal').onclick = function () {
-        randomGiftModal.style.display = 'none';
-    };
+    const closeRandomGiftResultModal = document.getElementById('closeRandomGiftResultModal');
+    if (closeRandomGiftResultModal) {
+        closeRandomGiftResultModal.onclick = function () {
+            randomGiftModal.style.display = 'none';
+        };
+    }
 }
 
 function showTasks() {
-    tasksModal.style.display = 'block';
+    if (tasksModal) {
+        tasksModal.style.display = 'block';
+    }
     updateTaskButtons();
 }
 
@@ -1066,20 +1173,24 @@ function updateTaskButtons() {
     const followUsButton = document.getElementById('followUsButton');
     const visitWebsiteButton = document.getElementById('visitWebsiteButton');
 
-    if (completedTasks.includes('followX')) {
-        followUsButton.textContent = 'COMPLETED';
-        followUsButton.disabled = true;
-    } else {
-        followUsButton.textContent = 'START';
-        followUsButton.disabled = false;
+    if (followUsButton) {
+        if (completedTasks.includes('followX')) {
+            followUsButton.textContent = 'COMPLETED';
+            followUsButton.disabled = true;
+        } else {
+            followUsButton.textContent = 'START';
+            followUsButton.disabled = false;
+        }
     }
 
-    if (completedTasks.includes('visitWebsite')) {
-        visitWebsiteButton.textContent = 'COMPLETED';
-        visitWebsiteButton.disabled = true;
-    } else {
-        visitWebsiteButton.textContent = 'START';
-        visitWebsiteButton.disabled = false;
+    if (visitWebsiteButton) {
+        if (completedTasks.includes('visitWebsite')) {
+            visitWebsiteButton.textContent = 'COMPLETED';
+            visitWebsiteButton.disabled = true;
+        } else {
+            visitWebsiteButton.textContent = 'START';
+            visitWebsiteButton.disabled = false;
+        }
     }
 }
 
@@ -1101,16 +1212,20 @@ function startTask(taskType) {
 
     const taskWindow = window.open(url, '_blank');
     const button = document.getElementById(buttonId);
-    button.textContent = 'CHECKING...';
-    button.disabled = true;
+    if (button) {
+        button.textContent = 'CHECKING...';
+        button.disabled = true;
+    }
 
     setTimeout(() => {
         if (taskWindow && !taskWindow.closed) {
             completeTask(taskType);
             taskWindow.close();
         } else {
-            button.textContent = 'START';
-            button.disabled = false;
+            if (button) {
+                button.textContent = 'START';
+                button.disabled = false;
+            }
             showMessage('Please keep the task window open for at least 5 seconds to complete the task.');
         }
     }, 5000);
@@ -1129,15 +1244,21 @@ function completeTask(taskType) {
 
 function showDailyStreaks() {
     populateRewardPages();
-    rewardTableModal.style.display = 'block';
+    if (rewardTableModal) {
+        rewardTableModal.style.display = 'block';
+    }
 }
 
 function populateRewardPages() {
     const page1 = document.getElementById('rewardPage1');
     const page2 = document.getElementById('rewardPage2');
 
-    page1.innerHTML = rewardData.slice(0, 15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
-    page2.innerHTML = rewardData.slice(15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
+    if (page1) {
+        page1.innerHTML = rewardData.slice(0, 15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
+    }
+    if (page2) {
+        page2.innerHTML = rewardData.slice(15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
+    }
 }
 
 function createRewardItem(day, tokens, isClaimable) {
@@ -1156,18 +1277,20 @@ function toggleRewardPage() {
     const prevBtn = document.getElementById('prevRewardPage');
     const nextBtn = document.getElementById('nextRewardPage');
 
-    if (currentPage === 1) {
-        page1.style.display = 'none';
-        page2.style.display = 'block';
-        prevBtn.disabled = false;
-        nextBtn.disabled = true;
-        currentPage = 2;
-    } else {
-        page1.style.display = 'block';
-        page2.style.display = 'none';
-        prevBtn.disabled = true;
-        nextBtn.disabled = false;
-        currentPage = 1;
+    if (page1 && page2 && prevBtn && nextBtn) {
+        if (currentPage === 1) {
+            page1.style.display = 'none';
+            page2.style.display = 'block';
+            prevBtn.disabled = false;
+            nextBtn.disabled = true;
+            currentPage = 2;
+        } else {
+            page1.style.display = 'block';
+            page2.style.display = 'none';
+            prevBtn.disabled = true;
+            nextBtn.disabled = false;
+            currentPage = 1;
+        }
     }
 }
 
