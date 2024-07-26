@@ -123,6 +123,9 @@ async function saveUserData() {
         }
         const data = await response.json();
         console.log('Data saved:', data);
+        localStorage.setItem('energy', energy.toString());
+localStorage.setItem('clicksRemaining', clicksRemaining.toString());
+localStorage.setItem('lastEnergyRefillTime', lastEnergyRefillTime.getTime().toString());
     } catch (error) {
         console.error('Error saving user data:', error);
         showMessage('Failed to save game progress. Please check your internet connection.');
@@ -1023,6 +1026,7 @@ function increaseClicks() {
         clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
         console.log(`Clicks increased by ${increase}. New value: ${clicksRemaining}`);
         updateUI();
+        saveUserData(); // Her artışta veriyi kaydedin
     }
 }
 
@@ -1299,7 +1303,7 @@ function increaseEnergy() {
     const timePassed = now - lastEnergyRefillTime;
     const energyToAdd = Math.floor(timePassed / (5 * 60 * 1000)); // Her 5 dakikada 1 enerji
 
-    if (energyToAdd > 0) {
+    if (energyToAdd > 0 && energy < maxEnergy) {
         energy = Math.min(energy + energyToAdd, maxEnergy);
         lastEnergyRefillTime = now;
         saveUserData();
@@ -1319,6 +1323,15 @@ window.addEventListener('DOMContentLoaded', function () {
     if (userTelegramId) {
         telegramId = userTelegramId;
         console.log("Telegram ID set to:", telegramId);
+        // Sayfa yüklendiğinde son kaydedilen enerji ve tıklama değerlerini yükle
+        const savedEnergy = localStorage.getItem('energy');
+        const savedClicks = localStorage.getItem('clicksRemaining');
+        const savedLastEnergyRefillTime = localStorage.getItem('lastEnergyRefillTime');
+
+        if (savedEnergy) energy = parseInt(savedEnergy);
+        if (savedClicks) clicksRemaining = parseFloat(savedClicks);
+        if (savedLastEnergyRefillTime) lastEnergyRefillTime = new Date(parseInt(savedLastEnergyRefillTime));
+
         loadUserData()
             .then(() => {
                 loadDinoImages();
