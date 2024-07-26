@@ -217,7 +217,6 @@ function initializeDOM() {
     tasksButton.addEventListener('click', showTasks);
     boostButton.addEventListener('click', toggleBoosters);
     dailyRewardsButton.addEventListener('click', showDailyStreaks);
-    claimRewardButton.addEventListener('click', claimDailyReward);
 
     document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
     document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
@@ -381,11 +380,8 @@ function handleClick(event) {
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
-            tokens += tokenGain;
             updateUI();
             saveUserData();
-        } else {
-            showMessage('No clicks remaining and no energy left. Please wait for energy refill.');
         }
     }
 }
@@ -404,28 +400,28 @@ function createClickEffect(x, y, amount) {
 }
 
 function formatNumber(number) {
-    if (number >= 1000000) {
-        return (number / 1000000).toFixed(1) + 'M';
-    } else if (number >= 1000) {
+    if (number >= 10000) {
         return (number / 1000).toFixed(1) + 'k';
+    } else if (number >= 1000) {
+        return number.toFixed(0);
     }
-    return number.toString();
+    return number.toFixed(0);
 }
 
 function formatClicks(number) {
     if (number === Infinity) {
         return '∞';
     }
-    return number.toFixed(2);
+    return number.toFixed(2).slice(0, 6);
 }
 
 function updateLevelInfo() {
-    const currentLevelElement = document.getElementById('levelDisplay');
-    currentLevelElement.textContent = `${level}`;
-
+    const currentLevelElement = document.getElementById('currentLevel');
     const nextLevelElement = document.getElementById('nextLevel');
     const nextLevelTokensElement = document.getElementById('nextLevelTokens');
 
+    currentLevelElement.textContent = `Current Level: ${level}`;
+  
     if (level < 5) {
         const nextLevel = level + 1;
         const tokensNeeded = Math.max(0, levelRequirements[nextLevel - 1] - tokens);
@@ -1112,7 +1108,7 @@ function startTask(taskType) {
         if (taskWindow && !taskWindow.closed) {
             completeTask(taskType);
             taskWindow.close();
-} else {
+        } else {
             button.textContent = 'START';
             button.disabled = false;
             showMessage('Please keep the task window open for at least 5 seconds to complete the task.');
@@ -1132,65 +1128,23 @@ function completeTask(taskType) {
 }
 
 function showDailyStreaks() {
-    console.log("Showing daily streaks...");
-    const rewardTableModal = document.getElementById('rewardTableModal');
-    if (!rewardTableModal) {
-        console.error("Reward table modal not found");
-        return;
-    }
     populateRewardPages();
-    updateStreakInfo();
     rewardTableModal.style.display = 'block';
 }
 
 function populateRewardPages() {
-    console.log("Populating reward pages...");
     const page1 = document.getElementById('rewardPage1');
     const page2 = document.getElementById('rewardPage2');
-    if (!page1 || !page2) {
-        console.error("Reward pages not found");
-        return;
-    }
+
     page1.innerHTML = rewardData.slice(0, 15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
     page2.innerHTML = rewardData.slice(15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
 }
 
 function createRewardItem(day, tokens, isClaimable) {
-    const status = day < dailyStreak ? 'claimed' : (day === dailyStreak ? 'current' : 'future');
     return `
-        <div class="reward-item ${status}" data-day="${day}">
-            <div class="reward-day">Day ${day}</div>
-            <div class="reward-tokens">
-                <img src="token.png" alt="token" style="width: 20px; height: 20px;">
-                ${formatNumber(tokens)}
-            </div>
-            <div class="reward-status">${getStatusText(status)}</div>
+        <div class="reward-item ${isClaimable ? 'claimable' : ''}" data-day="${day}">
+            <span>Day ${day}: <img src="token.png" alt="token" style="width: 16px; height: 16px;"> ${tokens} tokens</span>
         </div>
-    `;
-}
-
-function getStatusText(status) {
-    switch(status) {
-        case 'claimed': return '✅ Claimed';
-        case 'current': return '🎁 Claim Now!';
-        case 'future': return '🔒 Coming Soon';
-    }
-}
-
-function updateStreakInfo() {
-    const streakInfoElement = document.getElementById('streakInfo');
-    if (!streakInfoElement) {
-        console.error("Streak info element not found");
-        return;
-    }
-    
-    const nextRewardDay = dailyStreak + 1;
-    const nextReward = rewardData.find(r => r.day === nextRewardDay);
-    
-    streakInfoElement.innerHTML = `
-        <h3>Your Daily Streak: ${dailyStreak} days</h3>
-        <p>Next Reward: Day ${nextRewardDay} - ${formatNumber(nextReward.tokens)} tokens</p>
-        <p>Keep logging in daily to increase your streak and earn more rewards!</p>
     `;
 }
 
@@ -1233,7 +1187,7 @@ function increaseEnergy() {
 window.addEventListener('resize', resizeCanvas);
 
 // Düzenli Veri Kaydetme (her saniye)
-setInterval(saveUserData, 1000);
+setInterval(saveUserData, 5000);
 
 window.addEventListener('DOMContentLoaded', function () {
     showLoading(); // Sayfa yüklenirken yükleme ekranını göster
