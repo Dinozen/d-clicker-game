@@ -1,9 +1,3 @@
-// game.js
-document.addEventListener('DOMContentLoaded', function() {
-    initializeDOM();
-    startGame();
-});
-
 console.log("Game script loaded");
 
 const BACKEND_URL = 'https://dino-game-backend-913ad8a618a0.herokuapp.com';
@@ -236,31 +230,6 @@ function initializeDOM() {
         tasksModal.style.display = 'none';
     });
 
-document.getElementById('claimDailyReward').addEventListener('click', async () => {
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/claimDailyReward`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ telegramId, reward: calculateDailyReward() })
-        });
-        if (!response.ok) {
-            throw new Error('Failed to claim daily reward');
-        }
-        const data = await response.json();
-        if (data.success) {
-            showMessage('Daily reward claimed successfully!');
-        } else {
-            showMessage('Failed to claim daily reward. Please try again later.');
-        }
-    } catch (error) {
-        console.error('Error claiming daily reward:', error);
-        showMessage('Failed to claim daily reward. Please try again later.');
-    }
-});
-
-
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -386,18 +355,6 @@ function handleTouchMove(event) {
     handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
-// game.js
-let doubleTokensEndTime = 0;
-
-function activateDoubleTokens() {
-    isDoubleTokensActive = true;
-    doubleTokensEndTime = Date.now() + 20000; // 20 saniye
-    setTimeout(() => {
-        isDoubleTokensActive = false;
-    }, 20000);
-}
-
-// game.js
 function handleClick(event) {
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -405,11 +362,6 @@ function handleClick(event) {
 
     if (x >= dinoX && x <= dinoX + dinoWidth &&
         y >= dinoY && y <= dinoY + dinoHeight) {
-        if (clicksRemaining <= 0) {
-            showMessage('No clicks remaining. Please wait for energy refill.');
-            return;
-        }
-
         let tokenGain = 1 * getLevelMultiplier();
         if (isDoubleTokensActive) {
             tokenGain *= 2;
@@ -420,15 +372,23 @@ function handleClick(event) {
         clickScale = 1.1;
         requestAnimationFrame(animateDino);
 
-        tokens += tokenGain;
-        clicksRemaining--;
-        updateUI();
-        checkLevelUp();
-        saveUserData();
+        if (clicksRemaining > 0) {
+            tokens += tokenGain;
+            clicksRemaining--;
+            updateUI();
+            checkLevelUp();
+            saveUserData();
+        } else if (energy > 0) {
+            energy--;
+            clicksRemaining = getMaxClicksForLevel();
+            tokens += tokenGain;
+            updateUI();
+            saveUserData();
+        } else {
+            showMessage('No clicks remaining and no energy left. Please wait for energy refill.');
+        }
     }
 }
-
-
 
 function createClickEffect(x, y, amount) {
     const clickEffect = document.createElement('div');
@@ -443,34 +403,29 @@ function createClickEffect(x, y, amount) {
     }, 1000);
 }
 
-
 function formatNumber(number) {
-    if (number >= 10000) {
-        return (number / 1000).toFixed(1) + 'k';
+    if (number >= 1000000) {
+        return (number / 1000000).toFixed(1) + 'M';
     } else if (number >= 1000) {
-        return number.toFixed(0);
+        return (number / 1000).toFixed(1) + 'k';
     }
-    return number.toFixed(0);
+    return number.toString();
 }
 
 function formatClicks(number) {
     if (number === Infinity) {
         return '∞';
     }
-    return number.toFixed(2).slice(0, 6);
+    return number.toFixed(2);
 }
 
-// game.js
 function updateLevelInfo() {
     const currentLevelElement = document.getElementById('levelDisplay');
-    currentLevelElement.textContent = `Your Level: ${level}`;
-    }    
-    const currentLevelElement = document.getElementById('currentLevel');
+    currentLevelElement.textContent = `${level}`;
+
     const nextLevelElement = document.getElementById('nextLevel');
     const nextLevelTokensElement = document.getElementById('nextLevelTokens');
 
-    currentLevelElement.textContent = `Current Level: ${level}`;
-  
     if (level < 5) {
         const nextLevel = level + 1;
         const tokensNeeded = Math.max(0, levelRequirements[nextLevel - 1] - tokens);
@@ -478,7 +433,7 @@ function updateLevelInfo() {
     } else {
         nextLevelElement.innerHTML = 'Max Level Reached!';
     }
-
+}
 
 function updateUI() {
     if (tokens !== cachedTokens) {
@@ -1157,7 +1112,7 @@ function startTask(taskType) {
         if (taskWindow && !taskWindow.closed) {
             completeTask(taskType);
             taskWindow.close();
-        } else {
+} else {
             button.textContent = 'START';
             button.disabled = false;
             showMessage('Please keep the task window open for at least 5 seconds to complete the task.');
@@ -1177,23 +1132,65 @@ function completeTask(taskType) {
 }
 
 function showDailyStreaks() {
+    console.log("Showing daily streaks...");
+    const rewardTableModal = document.getElementById('rewardTableModal');
+    if (!rewardTableModal) {
+        console.error("Reward table modal not found");
+        return;
+    }
     populateRewardPages();
+    updateStreakInfo();
     rewardTableModal.style.display = 'block';
 }
 
 function populateRewardPages() {
+    console.log("Populating reward pages...");
     const page1 = document.getElementById('rewardPage1');
     const page2 = document.getElementById('rewardPage2');
-
+    if (!page1 || !page2) {
+        console.error("Reward pages not found");
+        return;
+    }
     page1.innerHTML = rewardData.slice(0, 15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
     page2.innerHTML = rewardData.slice(15).map(r => createRewardItem(r.day, r.tokens, r.day <= dailyStreak)).join('');
 }
 
 function createRewardItem(day, tokens, isClaimable) {
+    const status = day < dailyStreak ? 'claimed' : (day === dailyStreak ? 'current' : 'future');
     return `
-        <div class="reward-item ${isClaimable ? 'claimable' : ''}" data-day="${day}">
-            <span>Day ${day}: <img src="token.png" alt="token" style="width: 16px; height: 16px;"> ${tokens} tokens</span>
+        <div class="reward-item ${status}" data-day="${day}">
+            <div class="reward-day">Day ${day}</div>
+            <div class="reward-tokens">
+                <img src="token.png" alt="token" style="width: 20px; height: 20px;">
+                ${formatNumber(tokens)}
+            </div>
+            <div class="reward-status">${getStatusText(status)}</div>
         </div>
+    `;
+}
+
+function getStatusText(status) {
+    switch(status) {
+        case 'claimed': return '✅ Claimed';
+        case 'current': return '🎁 Claim Now!';
+        case 'future': return '🔒 Coming Soon';
+    }
+}
+
+function updateStreakInfo() {
+    const streakInfoElement = document.getElementById('streakInfo');
+    if (!streakInfoElement) {
+        console.error("Streak info element not found");
+        return;
+    }
+    
+    const nextRewardDay = dailyStreak + 1;
+    const nextReward = rewardData.find(r => r.day === nextRewardDay);
+    
+    streakInfoElement.innerHTML = `
+        <h3>Your Daily Streak: ${dailyStreak} days</h3>
+        <p>Next Reward: Day ${nextRewardDay} - ${formatNumber(nextReward.tokens)} tokens</p>
+        <p>Keep logging in daily to increase your streak and earn more rewards!</p>
     `;
 }
 
