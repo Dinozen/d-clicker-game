@@ -1005,7 +1005,8 @@ function showLoginStreakModal(reward) {
                     body: JSON.stringify({ telegramId, reward }),
                 });
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to claim daily reward');
                 }
                 const result = await response.json();
                 if (result.success) {
@@ -1019,11 +1020,11 @@ function showLoginStreakModal(reward) {
                     this.disabled = true;
                     this.textContent = 'Claimed';
                 } else {
-                    showMessage(result.message || 'Failed to claim daily reward. Please try again later.');
+                    throw new Error(result.message || 'Failed to claim daily reward');
                 }
             } catch (error) {
                 console.error('Error claiming daily reward:', error);
-                showMessage('Failed to claim daily reward. Please try again later.');
+                showMessage('Failed to claim daily reward. ' + error.message);
             }
         };
     }
