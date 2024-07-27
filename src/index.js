@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const TelegramBot = require('node-telegram-bot-api');
 const path = require('path');
+const compression = require('compression');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,9 @@ const corsOptions = {
   credentials: true
 };
 app.use(cors(corsOptions));
+
+// Compression middleware
+app.use(compression());
 
 // Body parser middleware
 app.use(express.json());
@@ -38,9 +42,12 @@ const mongoOptions = {
   useUnifiedTopology: true,
   useCreateIndex: true,
   useFindAndModify: false,
+  poolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
-  family: 4
+  family: 4,
+  keepAlive: true,
+  keepAliveInitialDelay: 300000
 };
 
 const connectWithRetry = () => {
@@ -170,21 +177,27 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
 app.post('/api/claimDailyReward', async (req, res) => {
     const { telegramId, reward } = req.body;
     if (!telegramId || typeof reward !== 'number' || reward < 0) {
-        return res.status(400).json({ message: 'Invalid input' });
+        return res.status(400).json({ success: false, message: 'Invalid input' });
     }
     try {
         const player = await Player.findOne({ telegramId });
         if (!player) {
-            return res.status(404).json({ message: 'Player not found' });
+            return res.status(404).json({ success: false, message: 'Player not found' });
         }
-        player.tokens += reward;
-        player.dailyStreak += 1;
-        player.lastLoginDate = new Date();
-        await player.save();
-        res.json({ success: true, message: 'Daily reward claimed successfully' });
+        const currentDate = new Date();
+        currentDate.setHours(0, 0, 0, 0);
+        if (!player.lastLoginDate || new Date(player.lastLoginDate) < currentDate) {
+            player.tokens += reward;
+            player.dailyStreak += 1;
+            player.lastLoginDate = currentDate;
+            await player.save();
+            res.json({ success: true, message: 'Daily reward claimed successfully' });
+        } else {
+            res.status(400).json({ success: false, message: 'Daily reward already claimed' });
+        }
     } catch (error) {
         console.error('Error claiming daily reward:', error);
-        res.status(500).json({ message: 'Internal server error', error: error.message });
+        res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
     }
 });
 
@@ -192,15 +205,15 @@ app.post('/api/claimDailyReward', async (req, res) => {
 app.post('/api/claimRandomGift', async (req, res) => {
     const { telegramId } = req.body;
     if (!telegramId) {
-        return res.status(400).json({ message: 'Invalid input' });
+        return res.status(400).json({ success: false, message: 'Invalid input' });
     }
     try {
         const player = await Player.findOne({ telegramId });
         if (!player) {
-            return res.status(404).json({ message: 'Player not found' });
+            return res.status(404).json({ success: false, message: 'Player not found' });
         }
         if (Date.now() - player.lastGiftTime < 3 * 60 * 60 * 1000) { // 3 saatlik cooldown
-            return res.status(400).json({ message: 'Gift is on cooldown. Please wait.' });
+            return res.status(400).json({ success: false, message: 'Gift is on cooldown. Please wait.' });
         }
         player.tokens += 100; // Random gift ödülü
         player.lastGiftTime = Date.now();
@@ -208,7 +221,7 @@ app.post('/api/claimRandomGift', async (req, res) => {
         res.json({ success: true, message: 'Random gift claimed successfully' });
     } catch (error) {
         console.error('Error claiming random gift:', error);
-        res.status(500).json({ message: 'Internal server error', error: error.message });
+        res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
     }
 });
 
@@ -221,32 +234,37 @@ app.get('/api/player/:telegramId', async (req, res) => {
   console.log(`Fetching player data for telegramId: ${req.params.telegramId}`);
   try {
     const player = await Player.findOne({ telegramId: req.params.telegramId });
-    if (!player) return res.status(404).json({ message: 'Player not found' });
+    if (!player) return res.status(404).json({ success: false, message: 'Player not found' });
     res.json(player);
   } catch (error) {
     console.error('Error fetching player:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   }
 });
 
 app.post('/api/update/:telegramId', async (req, res) => {
-  console.log(`Updating player data for telegramId: ${req.params.telegramId}`);
-  console.log('Request body:', JSON.stringify(req.body));
-  try {
-    if (!req.body || Object.keys(req.body).length === 0) {
-      throw new Error('Request body is empty');
+    console.log(`Updating player data for telegramId: ${req.params.telegramId}`);
+    try {
+        if (!req.body || Object.keys(req.body).length === 0) {
+            throw new Error('Request body is empty');
+        }
+        const updates = {};
+        for (const [key, value] of Object.entries(req.body)) {
+            if (value !== undefined) {
+                updates[key] = value;
+            }
+        }
+        const player = await Player.findOneAndUpdate(
+            { telegramId: req.params.telegramId },
+            { $set: updates },
+            { new: true, runValidators: true, upsert: true }
+        );
+        console.log('Updated player:', JSON.stringify(player));
+        res.json({ success: true, player });
+    } catch (error) {
+        console.error('Error updating player:', error);
+        res.status(500).json({ success: false, message: 'Internal server error', error: error.message, stack: error.stack });
     }
-    const player = await Player.findOneAndUpdate(
-      { telegramId: req.params.telegramId },
-      req.body,
-      { new: true, runValidators: true, upsert: true }
-    );
-    console.log('Updated player:', JSON.stringify(player));
-    res.json(player);
-  } catch (error) {
-    console.error('Error updating player:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message, stack: error.stack });
-  }
 });
 
 // Admin route
@@ -266,7 +284,7 @@ app.get('/admin', async (req, res) => {
     console.log('Admin view rendered successfully');
   } catch (error) {
     console.error('Error in admin route:', error);
-    res.status(500).json({ error: error.message, stack: error.stack });
+    res.status(500).json({ success: false, error: error.message, stack: error.stack });
   }
 });
 
@@ -277,13 +295,13 @@ app.get('/ping', (req, res) => {
 
 // Test endpoint
 app.get('/api/test', (req, res) => {
-  res.json({ message: "API is working" });
+  res.json({ success: true, message: "API is working" });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ message: 'An unexpected error occurred', error: err.message });
+  res.status(500).json({ success: false, message: 'An unexpected error occurred', error: err.message });
 });
 
 // Error handling for uncaught exceptions and unhandled rejections
