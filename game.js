@@ -95,6 +95,7 @@ async function loadUserData() {
         localData = { ...data };
         updateUI();
     } catch (error) {
+        console.error('Error loading user data:', error);
         showMessage('Failed to load user data. Please try refreshing the page. Error: ' + error.message);
     }
 }
@@ -103,20 +104,38 @@ async function saveUserData() {
     if (!isDirty) return;
     
     try {
-        const compressedData = compressData(localData);
+        const dataToSave = {
+            telegramId,
+            tokens,
+            level,
+            energy,
+            maxEnergy,
+            clicksRemaining,
+            lastEnergyRefillTime,
+            dailyStreak,
+            lastLoginDate,
+            completedTasks,
+            referralCount,
+            autoBotActive,
+            autoBotPurchased,
+            autoBotTokens,
+            lastAutoBotCheckTime,
+            lastGiftTime
+        };
+
         const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Content-Encoding': 'gzip'
             },
-            body: JSON.stringify(compressedData),
+            body: JSON.stringify(dataToSave),
         });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         isDirty = false;
     } catch (error) {
+        console.error('Error saving user data:', error);
         showMessage('Failed to save game progress. Please check your internet connection.');
     }
 }
@@ -989,16 +1008,21 @@ function showLoginStreakModal(reward) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const result = await response.json();
-                tokens += reward;
-                dailyStreak += 1;
-                lastLoginDate = new Date();
-                updateLocalData();
-                updateUI();
-                showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
-                loginStreakModal.style.display = 'none';
-                this.disabled = true;
-                this.textContent = 'Claimed';
+                if (result.success) {
+                    tokens += reward;
+                    dailyStreak += 1;
+                    lastLoginDate = new Date();
+                    updateLocalData();
+                    updateUI();
+                    showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
+                    loginStreakModal.style.display = 'none';
+                    this.disabled = true;
+                    this.textContent = 'Claimed';
+                } else {
+                    showMessage(result.message || 'Failed to claim daily reward. Please try again later.');
+                }
             } catch (error) {
+                console.error('Error claiming daily reward:', error);
                 showMessage('Failed to claim daily reward. Please try again later.');
             }
         };
