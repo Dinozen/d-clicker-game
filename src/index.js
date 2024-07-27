@@ -200,34 +200,34 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
 app.post('/api/claimDailyReward', async (req, res) => {
   const { telegramId } = req.body;
   if (!telegramId) {
-    return res.status(400).json({ success: false, message: 'Invalid input' });
+      return res.status(400).json({ success: false, message: 'Invalid input' });
   }
   try {
-    let player = await Player.findOne({ telegramId });
-    if (!player) {
-      return res.status(404).json({ success: false, message: 'Player not found' });
-    }
-    
-    player = calculateEnergy(player);
-    
-    const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
-    if (!player.lastLoginDate || new Date(player.lastLoginDate) < currentDate) {
-      const newStreak = player.lastLoginDate && 
-                        (currentDate - new Date(player.lastLoginDate)) <= 86400000 * 2 
-                        ? player.dailyStreak + 1 : 1;
-      const reward = calculateDailyReward(newStreak);
-      player.tokens += reward;
-      player.dailyStreak = newStreak;
-      player.lastLoginDate = currentDate;
-      await player.save();
-      res.json({ success: true, message: 'Daily reward claimed successfully', reward, newStreak });
-    } else {
-      res.status(400).json({ success: false, message: 'Daily reward already claimed' });
-    }
+      let player = await Player.findOne({ telegramId });
+      if (!player) {
+          return res.status(404).json({ success: false, message: 'Player not found' });
+      }
+      
+      player = calculateEnergy(player);
+      
+      const currentDate = new Date();
+      currentDate.setHours(0, 0, 0, 0);
+      if (!player.lastLoginDate || new Date(player.lastLoginDate) < currentDate) {
+          const newStreak = player.lastLoginDate && 
+                            (currentDate - new Date(player.lastLoginDate)) <= 86400000 * 2 
+                            ? player.dailyStreak + 1 : 1;
+          const reward = calculateDailyReward(newStreak);
+          player.tokens += reward;
+          player.dailyStreak = newStreak;
+          player.lastLoginDate = currentDate;
+          await player.save();
+          res.json({ success: true, message: 'Daily reward claimed successfully', reward, newStreak });
+      } else {
+          res.status(400).json({ success: false, message: 'Daily reward already claimed' });
+      }
   } catch (error) {
-    console.error('Error claiming daily reward:', error);
-    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+      console.error('Error claiming daily reward:', error);
+      res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   }
 });
 
