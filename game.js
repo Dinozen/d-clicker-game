@@ -1,6 +1,9 @@
+console.log("Game script loaded");
+
 const BACKEND_URL = 'https://dino-game-backend-913ad8a618a0.herokuapp.com';
 
 // Oyun değişkenleri
+let saveInterval;
 let tokens = 0;
 let completedTasks = [];
 let level = 1;
@@ -56,135 +59,75 @@ let lastAutoCheckTime = 0;
 const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-// Veri yönetimi
-let lastSyncTime = 0;
-const SYNC_INTERVAL = 60000; // 60 saniye
-let localData = {};
-
-function saveGameData() {
-    localStorage.setItem('gameData', JSON.stringify(localData));
-}
+console.log("Is mobile device:", isMobile);
 
 async function loadUserData() {
     try {
+        console.log("Loading user data for Telegram ID:", telegramId);
         const response = await fetch(`${BACKEND_URL}/api/player/${telegramId}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const serverData = await response.json();
-
-        if (serverData) {
-            // Sunucudan gelen verileri localStorage'a kaydet
-            localStorage.setItem('gameData', JSON.stringify(serverData));
-
-            // Verileri uygulama durumuna yükle
-            function mergeData(serverData) {
-                const mergedData = {
-                    ...localData,
-                    ...serverData,
-                    tokens: Math.max(localData.tokens || 0, serverData.tokens || 0),
-                    clicksRemaining: Math.max(localData.clicksRemaining || 0, serverData.clicksRemaining || 0),
-                    autoBotTokens: serverData.autoBotTokens || 0,
-                    autoBotActive: serverData.autoBotActive || false,
-                    autoBotPurchased: serverData.autoBotPurchased || false,
-                    lastAutoBotCheckTime: serverData.lastAutoBotCheckTime || null
-                };
-
-                Object.assign(window, mergedData);
-                localData = mergedData;
-                handleAutoBotUpdate(mergedData);
-                saveGameData();
-            }
-
-            // mergeData fonksiyonunu serverData ile çağır
-            mergeData(serverData);
-        }
+        const data = await response.json();
+        console.log("Loaded user data:", data);
+        // Oyuncu verilerini güncelle
+        tokens = data.tokens || 0;
+        level = data.level || 1;
+        energy = data.energy || 3;
+        maxEnergy = data.maxEnergy || 3;
+        clicksRemaining = data.clicksRemaining || getMaxClicksForLevel();
+        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime || Date.now());
+        dailyStreak = data.dailyStreak || 0;
+        lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
+        completedTasks = data.completedTasks || [];
+        referralCount = data.referralCount || 0;
+        autoBotActive = data.autoBotActive || false;
+        autoBotPurchased = data.autoBotPurchased || false;
+        autoBotTokens = data.autoBotTokens || 0;
+        lastAutoBotCheckTime = data.lastAutoBotCheckTime ? new Date(data.lastAutoBotCheckTime) : null;
+        lastGiftTime = data.lastGiftTime || 0;
+        updateUI();
     } catch (error) {
         console.error('Error loading user data:', error);
+        showMessage('Failed to load user data. Please try refreshing the page. Error: ' + error.message);
     }
 }
 
-
-async function syncWithServer() {
-    const currentTime = Date.now();
-    if (currentTime - lastSyncTime < SYNC_INTERVAL) return;
-
+async function saveUserData() {
     try {
+        console.log("Saving user data for Telegram ID:", telegramId);
         const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(localData),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegramId,
+                tokens,
+                level,
+                energy,
+                maxEnergy,
+                clicksRemaining,
+                lastEnergyRefillTime,
+                dailyStreak,
+                lastLoginDate,
+                completedTasks,
+                referralCount,
+                autoBotActive,
+                autoBotPurchased,
+                autoBotTokens,
+                lastAutoBotCheckTime,
+                lastGiftTime
+            }),
         });
-
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        const serverData = await response.json();
-        if (serverData.success) {
-            mergeData(serverData.player);
-            saveGameData();
-            lastSyncTime = currentTime;
-        } else {
-            console.error('Error from server:', serverData.message);
-        }
+        const data = await response.json();
+        console.log('Data saved:', data);
     } catch (error) {
-        console.error('Error syncing with server:', error);
+        console.error('Error saving user data:', error);
+        showMessage('Failed to save game progress. Please check your internet connection.');
     }
 }
-
-
-function handleAutoBotUpdate(serverData) {
-    if (serverData.autoBotTokens > autoBotTokens) {
-        const newTokens = serverData.autoBotTokens - autoBotTokens;
-        autoBotTokens = serverData.autoBotTokens;
-
-        if (newTokens > 0 && !autoBotShownThisSession) {
-            showAutoBotEarnings(newTokens);
-            autoBotShownThisSession = true;
-        }
-    }
-
-    autoBotActive = serverData.autoBotActive;
-    autoBotPurchased = serverData.autoBotPurchased;
-    lastAutoBotCheckTime = new Date(serverData.lastAutoBotCheckTime);
-
-    updateUI();
-}
-
-
-function startGame() {
-    showLoading();
-    initializeDOM();
-    const savedData = localStorage.getItem('gameData');
-    if (savedData) {
-        mergeData(JSON.parse(savedData));
-        updateUI();
-    }
-    loadUserData().then(() => {
-        loadDinoImages();
-        resizeCanvas();
-        setupClickHandler();
-        setupResizeHandler();
-        preloadImages();
-        checkDailyLogin();
-        checkAutoBotOnStartup();
-        updateTaskButtons();
-        updateEnergyRefillRate();
-
-        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
-
-        requestAnimationFrame(gameLoop);
-        hideLoading();
-    }).catch(error => {
-        hideLoading();
-        showMessage("Failed to start the game. Please refresh the page.");
-    });
-}
-
 
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
@@ -201,14 +144,45 @@ function gameLoop(currentTime) {
             lastCooldownUpdateTime = currentTime;
         }
         
-        syncWithServer();
-        
+        if (currentTime - lastAutoCheckTime > AUTO_CHECK_INTERVAL) {
+            checkAutoBot();
+            lastAutoCheckTime = currentTime;
+        }
+
         animateDino();
         updateUI();
         drawDino();
 
         lastDrawTime = currentTime;
     }
+}
+
+function startGame() {
+    console.log("Starting game");
+    showLoading();
+    initializeDOM();
+    loadUserData().then(() => {
+        loadDinoImages();
+        resizeCanvas();
+        setupClickHandler();
+        setupResizeHandler();
+        preloadImages();
+        checkDailyLogin();
+        checkAutoBotOnStartup();
+        updateTaskButtons();
+        updateEnergyRefillRate();
+        
+        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
+        saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
+        
+        requestAnimationFrame(gameLoop);
+        console.log("Game loop started");
+        hideLoading();
+    }).catch(error => {
+        console.error("Error starting game:", error);
+        hideLoading();
+        showMessage("Failed to start the game. Please try refreshing the page.");
+    });
 }
 
 function showLoading() {
@@ -239,52 +213,93 @@ function initializeDOM() {
     autoBotTokensCollected = document.getElementById('autoBotTokensCollected');
     claimAutoBotTokens = document.getElementById('claimAutoBotTokens');
 
-    if (earnButton) earnButton.addEventListener('click', toggleMenu);
-    if (tasksButton) tasksButton.addEventListener('click', showTasks);
-    if (boostButton) boostButton.addEventListener('click', toggleBoosters);
-    if (dailyRewardsButton) dailyRewardsButton.addEventListener('click', showDailyStreaks);
-
-    setupModalCloseListeners();
-    setupTaskButtons();
+    if (earnButton) {
+        earnButton.addEventListener('click', toggleMenu);
+    }
+    if (tasksButton) {
+        tasksButton.addEventListener('click', showTasks);
+    }
+    if (boostButton) {
+        boostButton.addEventListener('click', toggleBoosters);
+    }
+    if (dailyRewardsButton) {
+        dailyRewardsButton.addEventListener('click', showDailyStreaks);
+    }
+    if (document.getElementById('nextRewardPage')) {
+        document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
+    }
+    if (document.getElementById('prevRewardPage')) {
+        document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
+    }
+    if (document.getElementById('closeRewardTableButton')) {
+        document.getElementById('closeRewardTableButton').addEventListener('click', () => {
+            rewardTableModal.style.display = 'none';
+        });
+    }
+    if (document.getElementById('followUsButton')) {
+        document.getElementById('followUsButton').addEventListener('click', () => startTask('followX'));
+    }
+    if (document.getElementById('visitWebsiteButton')) {
+        document.getElementById('visitWebsiteButton').addEventListener('click', () => startTask('visitWebsite'));
+    }
+    if (document.getElementById('closeTasksModal')) {
+        document.getElementById('closeTasksModal').addEventListener('click', () => {
+            tasksModal.style.display = 'none';
+        });
+    }
 
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 
-    document.addEventListener('click', updateLastActivityTime);
-    document.addEventListener('keydown', updateLastActivityTime);
-    document.addEventListener('mousemove', updateLastActivityTime);
-}
+    if (document.getElementById('closeBoostersModal')) {
+        document.getElementById('closeBoostersModal').addEventListener('click', () => {
+            boostersModal.style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeAutoBotSuccessModal')) {
+        document.getElementById('closeAutoBotSuccessModal').addEventListener('click', () => {
+            autoBotSuccessModal.style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeAutoBotEarningsModal')) {
+        document.getElementById('closeAutoBotEarningsModal').addEventListener('click', () => {
+            autoBotEarningsModal.style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeMessageModal')) {
+        document.getElementById('closeMessageModal').addEventListener('click', () => {
+            document.getElementById('messageModal').style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeLevelUpModal')) {
+        document.getElementById('closeLevelUpModal').addEventListener('click', () => {
+            document.getElementById('levelUpModal').style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeLoginStreakModal')) {
+        document.getElementById('closeLoginStreakModal').addEventListener('click', () => {
+            loginStreakModal.style.display = 'none';
+        });
+    }
+    if (document.getElementById('closeRandomGiftResultModal')) {
+        document.getElementById('closeRandomGiftResultModal').addEventListener('click', () => {
+            document.getElementById('randomGiftResultModal').style.display = 'none';
+        });
+    }
 
-function setupModalCloseListeners() {
-    const modals = ['rewardTable', 'tasks', 'boosters', 'autoBotSuccess', 'autoBotEarnings', 'message', 'levelUp', 'loginStreak', 'randomGiftResult'];
-    modals.forEach(modal => {
-        const closeButton = document.getElementById(`close${modal.charAt(0).toUpperCase() + modal.slice(1)}Modal`);
-        if (closeButton) {
-            closeButton.addEventListener('click', () => {
-                document.getElementById(`${modal}Modal`).style.display = 'none';
-            });
-        }
+    document.addEventListener('click', () => {
+        lastPlayerActivityTime = Date.now();
     });
-}
 
-function setupTaskButtons() {
-    const tasks = [
-        { id: 'followUs', type: 'followX', url: 'https://x.com/dinozenofficial' },
-        { id: 'visitWebsite', type: 'visitWebsite', url: 'https://www.dinozen.online/' }
-    ];
-
-    tasks.forEach(task => {
-        const button = document.getElementById(`${task.id}Button`);
-        if (button) {
-            button.addEventListener('click', () => startTask(task.type, task.url));
-        }
+    document.addEventListener('keydown', () => {
+        lastPlayerActivityTime = Date.now();
     });
-}
 
-function updateLastActivityTime() {
-    lastPlayerActivityTime = Date.now();
+    document.addEventListener('mousemove', () => {
+        lastPlayerActivityTime = Date.now();
+    });
 }
 
 function setupResizeHandler() {
@@ -348,25 +363,21 @@ function setupClickHandler() {
     canvas.addEventListener('click', handleClick);
 }
 
-let touchStartTime;
-
 function handleTouchStart(event) {
     event.preventDefault();
-    touchStartTime = Date.now();
     const touch = event.touches[0];
     handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleTouchEnd(event) {
     event.preventDefault();
-    const touchEndTime = Date.now();
-    if (touchEndTime - touchStartTime < 200) {
-        isClicking = false;
-    }
+    isClicking = false;
 }
 
 function handleTouchMove(event) {
     event.preventDefault();
+    const touch = event.touches[0];
+    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleClick(event) {
@@ -374,7 +385,8 @@ function handleClick(event) {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    if (x >= dinoX && x <= dinoX + dinoWidth && y >= dinoY && y <= dinoY + dinoHeight) {
+    if (x >= dinoX && x <= dinoX + dinoWidth &&
+        y >= dinoY && y <= dinoY + dinoHeight) {
         let tokenGain = 1 * getLevelMultiplier();
         if (isDoubleTokensActive) {
             tokenGain *= 2;
@@ -388,14 +400,14 @@ function handleClick(event) {
         if (clicksRemaining > 0) {
             tokens += tokenGain;
             clicksRemaining--;
-            updateLocalData({ tokens, clicksRemaining });
             updateUI();
             checkLevelUp();
+            saveUserData();
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
-            updateLocalData({ energy, clicksRemaining });
             updateUI();
+            saveUserData();
         }
     }
 }
@@ -432,6 +444,7 @@ function formatClicks(number) {
 function updateLevelInfo() {
     const currentLevelElement = document.getElementById('currentLevel');
     const nextLevelElement = document.getElementById('nextLevel');
+    const nextLevelTokensElement = document.getElementById('nextLevelTokens');
 
     if (currentLevelElement) {
         currentLevelElement.textContent = `Current Level: ${level}`;
@@ -523,14 +536,22 @@ function checkLevelUp() {
 }
 
 function loadDinoImages() {
+    console.log("Loading dino images...");
     const loadPromises = [];
 
     function loadSingleImage(index) {
         return new Promise((resolve, reject) => {
             const img = new Image();
             img.src = `dino${index}.png`;
-            img.onload = () => resolve(img);
-            img.onerror = (error) => reject(error);
+            console.log(`Loading image: ${img.src}`);
+            img.onload = () => {
+                console.log(`Dino image ${index} loaded successfully`);
+                resolve(img);
+            };
+            img.onerror = (error) => {
+                console.error(`Failed to load dino image ${index}:`, error);
+                reject(error);
+            };
         });
     }
 
@@ -542,11 +563,12 @@ function loadDinoImages() {
         .then(loadedImages => {
             dinoImages.length = 0;
             dinoImages.push(...loadedImages);
+            console.log(`All dino images loaded. Total: ${dinoImages.length}`);
             updateDinoImage();
             drawDino();
         })
         .catch(error => {
-            showMessage('Failed to load dino images. Please refresh the page.');
+            console.error(`Error loading dino images:`, error);
         });
 }
 
@@ -555,6 +577,8 @@ function updateDinoImage() {
     currentDinoImage = dinoImages[dinoIndex];
     if (currentDinoImage) {
         drawDino();
+    } else {
+        console.log(`Dino image not found for index: ${dinoIndex}`);
     }
 }
 
@@ -596,8 +620,10 @@ function toggleBoosters() {
 }
 
 function updateBoostersModalContent() {
-    if (!boostersModal) return;
-    
+    if (!boostersModal) {
+        console.log('Boosters modal not found');
+        return;
+    }
     boostersModal.innerHTML = `
         <div class="modal-content">
             <h3>Boosters</h3>
@@ -622,9 +648,15 @@ function updateBoostersModalContent() {
     const autoBotButton = document.getElementById('autoBotButton');
     const closeBoostersModalButton = document.getElementById('closeBoostersModal');
 
-    if (energyBoostButton) energyBoostButton.addEventListener('click', activateEnergyBoost);
-    if (autoBotButton) autoBotButton.addEventListener('click', activateAutoBot);
-    if (closeBoostersModalButton) closeBoostersModalButton.addEventListener('click', toggleBoosters);
+    if (energyBoostButton) {
+        energyBoostButton.addEventListener('click', activateEnergyBoost);
+    }
+    if (autoBotButton) {
+        autoBotButton.addEventListener('click', activateAutoBot);
+    }
+    if (closeBoostersModalButton) {
+        closeBoostersModalButton.addEventListener('click', toggleBoosters);
+    }
 
     updateEnergyBoostCooldownDisplay();
 }
@@ -634,8 +666,8 @@ function activateEnergyBoost() {
     if (now - lastEnergyBoostTime >= boostCooldown) {
         energy = maxEnergy;
         lastEnergyBoostTime = now;
-        updateLocalData({ energy, lastEnergyBoostTime });
         updateUI();
+        saveUserData();
         showMessage('Energy fully restored!');
         updateEnergyBoostCooldownDisplay();
     } else {
@@ -651,7 +683,7 @@ function activateAutoBot() {
         autoBotPurchased = true;
         autoBotPurchaseTime = Date.now();
         lastAutoBotCheckTime = Date.now();
-        updateLocalData({ tokens, autoBotActive, autoBotPurchased, autoBotPurchaseTime, lastAutoBotCheckTime });
+        saveUserData();
         updateUI();
         showAutoBotSuccessMessage();
         const autoBotButton = document.getElementById('autoBotButton');
@@ -659,6 +691,8 @@ function activateAutoBot() {
             autoBotButton.textContent = 'AutoBot Activated';
             autoBotButton.disabled = true;
         }
+        console.log("AutoBot activated");
+        checkAutoBot();
     } else if (autoBotPurchased) {
         showMessage('AutoBot is already purchased.');
     } else {
@@ -750,8 +784,8 @@ function updateMenuContent() {
                         break;
                 }
 
-                updateLocalData({ clicksRemaining, tokens, lastGiftTime: now });
                 updateUI();
+                saveUserData();
                 showRandomGiftResult(reward, amount);
                 lastGiftTime = now;
                 updateGiftCooldownDisplay();
@@ -781,6 +815,7 @@ function showReferralLink() {
     const referralLink = document.getElementById('referralLink');
     if (referralLink) {
         referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
+        console.log("Generated referral link:", referralLink.value);
     }
 
     const copyButton = document.getElementById('copyButton');
@@ -827,7 +862,6 @@ function activateDoubleTokens() {
     setTimeout(() => {
         isDoubleTokensActive = false;
         clicksRemaining = originalClicksRemaining;
-        updateLocalData({ isDoubleTokensActive, clicksRemaining });
         updateUI();
         clearInterval(tapInterval);
     }, duration);
@@ -853,7 +887,7 @@ function levelUp() {
     updateDinoImage();
     updateEnergyRefillRate();
     checkLevelUp();
-    updateLocalData({ level, maxEnergy });
+    saveUserData();
     updateUI();
     createLevelUpEffect();
     showLevelUpModal(previousLevel, level);
@@ -908,14 +942,20 @@ function showLevelUpModal(previousLevel, newLevel) {
 }
 
 function checkDailyLogin() {
+    console.log("Checking daily login...");
     const currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
 
+    console.log("Current date:", currentDate);
+    console.log("Last login date:", lastLoginDate);
+
     if (!lastLoginDate || new Date(lastLoginDate) < currentDate) {
-        const nextStreak = lastLoginDate && (currentDate - new Date(lastLoginDate)) <= 86400000 * 2 
-            ? dailyStreak + 1 : 1;
-        const reward = calculateDailyReward(nextStreak);
-        showLoginStreakModal(reward, nextStreak);
+        const reward = calculateDailyReward(dailyStreak + 1);
+        console.log(`Daily reward calculated: ${reward} tokens, Streak: ${dailyStreak + 1}`);
+
+        showLoginStreakModal(reward);
+    } else {
+        console.log("Same day, no reward.");
     }
 }
 
@@ -928,9 +968,9 @@ function calculateDailyReward(streak) {
     return rewardTable[Math.min(streak - 1, rewardTable.length - 1)];
 }
 
-function showLoginStreakModal(reward, nextStreak) {
+function showLoginStreakModal(reward) {
     if (loginStreakMessage) {
-        loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Next streak: ${nextStreak} days`;
+        loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Streak: ${dailyStreak} days`;
     }
     if (loginStreakModal) {
         loginStreakModal.style.display = 'block';
@@ -947,33 +987,28 @@ function showLoginStreakModal(reward, nextStreak) {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ telegramId }), // Bu satırın doğru olduğunu kontrol edin
+                    body: JSON.stringify({ telegramId, reward }),
                 });
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const result = await response.json();
-                if (result.success) {
-                    tokens += result.reward;
-                    dailyStreak = result.newStreak;
-                    lastLoginDate = new Date();
-                    updateLocalData({ tokens, dailyStreak, lastLoginDate });
-                    updateUI();
-                    showMessage(`You claimed your daily reward of ${formatNumber(result.reward)} tokens! Current streak: ${dailyStreak} days`);
-                    loginStreakModal.style.display = 'none';
-                    this.disabled = true;
-                    this.textContent = 'Claimed';
-                } else {
-                    throw new Error(result.message || 'Failed to claim daily reward');
-                }
+                tokens += reward;
+                dailyStreak += 1;
+                lastLoginDate = new Date();
+                updateUI();
+                saveUserData();
+                showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
+                loginStreakModal.style.display = 'none';
+                this.disabled = true;
+                this.textContent = 'Claimed';
             } catch (error) {
                 console.error('Error claiming daily reward:', error);
-                showMessage('Failed to claim daily reward. ' + error.message);
+                showMessage('Failed to claim daily reward. Please try again later.');
             }
         };
     }
 }
-
 
 function updateDailyRewardDisplay() {
     if (dailyRewardDisplay) {
@@ -986,7 +1021,7 @@ function increaseClicks() {
     if (clicksRemaining < maxClicks) {
         const increase = getClickIncreaseRate();
         clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
-        updateLocalData({ clicksRemaining });
+        console.log(`Clicks increased by ${increase}. New value: ${clicksRemaining}`);
         updateUI();
     }
 }
@@ -1014,19 +1049,50 @@ function updateEnergyRefillRate() {
         case 4: energyRefillRate = 1; break;
         default: energyRefillRate = 2;
     }
+    console.log(`Energy refill rate updated: ${energyRefillRate.toFixed(2)}/s`);
+}
+
+function checkAutoBot() {
+    console.log("Checking AutoBot...");
+    const currentTime = Date.now();
+    const inactiveTime = (currentTime - lastPlayerActivityTime) / 1000; // saniye cinsinden
+
+    if (autoBotActive && autoBotPurchased && inactiveTime >= 60) { // Oyuncu en az 1 dakika inaktif olmalı
+        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
+        const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
+
+        if (timeSinceLastCheck > 0) {
+            const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
+            const tokensPerSecond = level * 0.1;
+            const newTokens = Math.floor(earningTime * tokensPerSecond);
+            
+            autoBotTokens += newTokens;
+            lastAutoBotCheckTime = currentTime;
+            
+            console.log(`AutoBot earned ${newTokens} tokens. Total: ${autoBotTokens}`);
+            console.log(`Time since last check: ${timeSinceLastCheck} seconds`);
+            console.log(`Earning time: ${earningTime} seconds`);
+            
+            saveUserData();
+
+            if (autoBotTokens > 0 && !autoBotShownThisSession) {
+                showAutoBotEarnings();
+                autoBotShownThisSession = true;
+            }
+        } else {
+            console.log("No time has passed since last check.");
+        }
+    } else {
+        console.log("AutoBot is not active, not purchased, or player is active.");
+    }
 }
 
 function checkAutoBotOnStartup() {
+    console.log("Checking AutoBot on startup...");
     if (autoBotPurchased) {
         const currentTime = Date.now();
-
-        // lastAutoBotCheckTime'in undefined olup olmadığını kontrol et
-        if (!lastAutoBotCheckTime) {
-            lastAutoBotCheckTime = currentTime;
-        }
-
         const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
-        const maxEarningTime = 12 * 60 * 60; // 12 saat saniye cinsinden
+        const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
 
         const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
         const tokensPerSecond = level * 0.1;
@@ -1035,17 +1101,21 @@ function checkAutoBotOnStartup() {
         if (newTokens > 0) {
             autoBotTokens += newTokens;
             lastAutoBotCheckTime = currentTime;
-
-            updateLocalData({ autoBotTokens, lastAutoBotCheckTime });
-            showAutoBotEarnings(newTokens);
+            
+            console.log(`AutoBot earned ${newTokens} tokens. Total: ${autoBotTokens}`);
+            saveUserData();
+            showAutoBotEarnings();
+        } else {
+            console.log("No new tokens earned by AutoBot.");
         }
+    } else {
+        console.log("AutoBot is not purchased.");
     }
 }
 
-
-function showAutoBotEarnings(newTokens) {
+function showAutoBotEarnings() {
     if (autoBotTokensCollected) {
-        autoBotTokensCollected.textContent = formatNumber(newTokens);
+        autoBotTokensCollected.textContent = formatNumber(autoBotTokens);
     }
     if (autoBotEarningsModal) {
         autoBotEarningsModal.style.display = 'block';
@@ -1053,11 +1123,11 @@ function showAutoBotEarnings(newTokens) {
 
     if (claimAutoBotTokens) {
         claimAutoBotTokens.onclick = function () {
-            tokens += newTokens;
-            showMessage(`You claimed ${formatNumber(newTokens)} tokens from AutoBot!`);
+            tokens += autoBotTokens;
+            showMessage(`You claimed ${formatNumber(autoBotTokens)} tokens from AutoBot!`);
             autoBotTokens = 0;
-            updateLocalData({ tokens, autoBotTokens });
             updateUI();
+            saveUserData();
             if (autoBotEarningsModal) {
                 autoBotEarningsModal.style.display = 'none';
             }
@@ -1165,8 +1235,8 @@ function completeTask(taskType) {
     if (!completedTasks.includes(taskType)) {
         completedTasks.push(taskType);
         tokens += 1000;
-        updateLocalData({ completedTasks, tokens });
         updateUI();
+        saveUserData();
         showMessage('Task completed! You earned 1000 tokens.');
         updateTaskButtons();
     }
@@ -1232,36 +1302,36 @@ function increaseEnergy() {
     if (energyToAdd > 0) {
         energy = Math.min(energy + energyToAdd, maxEnergy);
         lastEnergyRefillTime = now;
-        updateLocalData({ energy, lastEnergyRefillTime });
+        saveUserData();
         updateUI();
     }
 }
 
-function updateLocalData(updates) {
-    Object.assign(localData, updates);
-    saveGameData();
-    updateUI();
-}
-
 window.addEventListener('resize', resizeCanvas);
 
+// Düzenli Veri Kaydetme (her saniye)
+setInterval(saveUserData, 5000);
+
 window.addEventListener('DOMContentLoaded', function () {
-    showLoading();
+    showLoading(); // Sayfa yüklenirken yükleme ekranını göster
     const urlParams = new URLSearchParams(window.location.search);
     const userTelegramId = urlParams.get('id');
     if (userTelegramId) {
         telegramId = userTelegramId;
+        console.log("Telegram ID set to:", telegramId);
         loadUserData()
             .then(() => {
                 loadDinoImages();
                 startGame();
             })
             .catch(error => {
-                hideLoading();
+                console.error("Error loading user data:", error);
+                hideLoading(); // Hata durumunda yükleme ekranını gizle
                 showMessage("Failed to load user data. Please refresh the page.");
             });
     } else {
-        hideLoading();
+        console.log("No Telegram ID found in URL");
+        hideLoading(); // Telegram ID bulunamadığında yükleme ekranını gizle
         showMessage("No Telegram ID found. Please start the game from the Telegram bot.");
     }
 });
@@ -1275,7 +1345,8 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 window.addEventListener('beforeunload', function() {
-    syncWithServer();
+    clearInterval(saveInterval);
+    saveUserData();
 });
 
 const rewardData = [
@@ -1298,6 +1369,3 @@ function preloadImages() {
         img.src = src;
     });
 }
-
-// Oyunu başlat
-startGame();
