@@ -62,6 +62,10 @@ let lastSyncTime = 0;
 const SYNC_INTERVAL = 60000; // 60 saniye
 let localData = {};
 
+function saveGameData() {
+    localStorage.setItem('gameData', JSON.stringify(localData));
+}
+
 async function loadUserData() {
     try {
         const response = await fetch(`${BACKEND_URL}/api/player/${telegramId}`);
@@ -70,11 +74,22 @@ async function loadUserData() {
         }
         const serverData = await response.json();
         
+        // Sunucudan gelen verileri localStorage'a kaydet
+        localStorage.setItem('gameData', JSON.stringify(serverData));
+        
+        // Verileri uygulama durumuna yükle
         mergeData(serverData);
         updateUI();
     } catch (error) {
         console.error('Error loading user data:', error);
-        showMessage('Failed to load user data. Using local data.');
+        // Hata durumunda localStorage'dan verileri yükle
+        const savedData = localStorage.getItem('gameData');
+        if (savedData) {
+            mergeData(JSON.parse(savedData));
+            updateUI();
+        } else {
+            showMessage('Failed to load user data. Please refresh the page.');
+        }
     }
 }
 
@@ -93,6 +108,7 @@ function mergeData(serverData) {
     Object.assign(window, mergedData);
     localData = mergedData;
     handleAutoBotUpdate(mergedData);
+    saveGameData();
 }
 
 async function syncWithServer() {
@@ -113,6 +129,7 @@ async function syncWithServer() {
         const serverData = await response.json();
         
         mergeData(serverData.player);
+        saveGameData();
         
         lastSyncTime = currentTime;
     } catch (error) {
@@ -141,6 +158,11 @@ function handleAutoBotUpdate(serverData) {
 function startGame() {
     showLoading();
     initializeDOM();
+    const savedData = localStorage.getItem('gameData');
+    if (savedData) {
+        mergeData(JSON.parse(savedData));
+        updateUI();
+    }
     loadUserData().then(() => {
         loadDinoImages();
         resizeCanvas();
@@ -364,15 +386,13 @@ function handleClick(event) {
         if (clicksRemaining > 0) {
             tokens += tokenGain;
             clicksRemaining--;
-            localData.tokens = tokens;
-            localData.clicksRemaining = clicksRemaining;
+            updateLocalData({ tokens, clicksRemaining });
             updateUI();
             checkLevelUp();
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
-            localData.energy = energy;
-            localData.clicksRemaining = clicksRemaining;
+            updateLocalData({ energy, clicksRemaining });
             updateUI();
         }
     }
@@ -612,8 +632,7 @@ function activateEnergyBoost() {
     if (now - lastEnergyBoostTime >= boostCooldown) {
         energy = maxEnergy;
         lastEnergyBoostTime = now;
-        localData.energy = energy;
-        localData.lastEnergyBoostTime = lastEnergyBoostTime;
+        updateLocalData({ energy, lastEnergyBoostTime });
         updateUI();
         showMessage('Energy fully restored!');
         updateEnergyBoostCooldownDisplay();
@@ -630,11 +649,7 @@ function activateAutoBot() {
         autoBotPurchased = true;
         autoBotPurchaseTime = Date.now();
         lastAutoBotCheckTime = Date.now();
-        localData.tokens = tokens;
-        localData.autoBotActive = autoBotActive;
-        localData.autoBotPurchased = autoBotPurchased;
-        localData.autoBotPurchaseTime = autoBotPurchaseTime;
-        localData.lastAutoBotCheckTime = lastAutoBotCheckTime;
+        updateLocalData({ tokens, autoBotActive, autoBotPurchased, autoBotPurchaseTime, lastAutoBotCheckTime });
         updateUI();
         showAutoBotSuccessMessage();
         const autoBotButton = document.getElementById('autoBotButton');
@@ -733,9 +748,7 @@ function updateMenuContent() {
                         break;
                 }
 
-                localData.clicksRemaining = clicksRemaining;
-                localData.tokens = tokens;
-                localData.lastGiftTime = now;
+                updateLocalData({ clicksRemaining, tokens, lastGiftTime: now });
                 updateUI();
                 showRandomGiftResult(reward, amount);
                 lastGiftTime = now;
@@ -812,7 +825,7 @@ function activateDoubleTokens() {
     setTimeout(() => {
         isDoubleTokensActive = false;
         clicksRemaining = originalClicksRemaining;
-        localData.clicksRemaining = clicksRemaining;
+        updateLocalData({ isDoubleTokensActive, clicksRemaining });
         updateUI();
         clearInterval(tapInterval);
     }, duration);
@@ -838,8 +851,7 @@ function levelUp() {
     updateDinoImage();
     updateEnergyRefillRate();
     checkLevelUp();
-    localData.level = level;
-    localData.maxEnergy = maxEnergy;
+    updateLocalData({ level, maxEnergy });
     updateUI();
     createLevelUpEffect();
     showLevelUpModal(previousLevel, level);
@@ -943,9 +955,7 @@ function showLoginStreakModal(reward, nextStreak) {
                     tokens += result.reward;
                     dailyStreak = result.newStreak;
                     lastLoginDate = new Date();
-                    localData.tokens = tokens;
-                    localData.dailyStreak = dailyStreak;
-                    localData.lastLoginDate = lastLoginDate;
+                    updateLocalData({ tokens, dailyStreak, lastLoginDate });
                     updateUI();
                     showMessage(`You claimed your daily reward of ${formatNumber(result.reward)} tokens! Current streak: ${dailyStreak} days`);
                     loginStreakModal.style.display = 'none';
@@ -973,7 +983,7 @@ function increaseClicks() {
     if (clicksRemaining < maxClicks) {
         const increase = getClickIncreaseRate();
         clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
-        localData.clicksRemaining = clicksRemaining;
+        updateLocalData({ clicksRemaining });
         updateUI();
     }
 }
@@ -1017,8 +1027,7 @@ function checkAutoBotOnStartup() {
             autoBotTokens += newTokens;
             lastAutoBotCheckTime = currentTime;
             
-            localData.autoBotTokens = autoBotTokens;
-            localData.lastAutoBotCheckTime = lastAutoBotCheckTime;
+            updateLocalData({ autoBotTokens, lastAutoBotCheckTime });
             showAutoBotEarnings(newTokens);
         }
     }
@@ -1037,8 +1046,7 @@ function showAutoBotEarnings(newTokens) {
             tokens += newTokens;
             showMessage(`You claimed ${formatNumber(newTokens)} tokens from AutoBot!`);
             autoBotTokens = 0;
-            localData.tokens = tokens;
-            localData.autoBotTokens = autoBotTokens;
+            updateLocalData({ tokens, autoBotTokens });
             updateUI();
             if (autoBotEarningsModal) {
                 autoBotEarningsModal.style.display = 'none';
@@ -1147,8 +1155,7 @@ function completeTask(taskType) {
     if (!completedTasks.includes(taskType)) {
         completedTasks.push(taskType);
         tokens += 1000;
-        localData.completedTasks = completedTasks;
-        localData.tokens = tokens;
+        updateLocalData({ completedTasks, tokens });
         updateUI();
         showMessage('Task completed! You earned 1000 tokens.');
         updateTaskButtons();
@@ -1215,10 +1222,15 @@ function increaseEnergy() {
     if (energyToAdd > 0) {
         energy = Math.min(energy + energyToAdd, maxEnergy);
         lastEnergyRefillTime = now;
-        localData.energy = energy;
-        localData.lastEnergyRefillTime = lastEnergyRefillTime;
+        updateLocalData({ energy, lastEnergyRefillTime });
         updateUI();
     }
+}
+
+function updateLocalData(updates) {
+    Object.assign(localData, updates);
+    saveGameData();
+    updateUI();
 }
 
 window.addEventListener('resize', resizeCanvas);
