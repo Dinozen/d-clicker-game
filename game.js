@@ -60,6 +60,7 @@ const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/
 // Veri kaydetme optimizasyonu
 let lastSaveTime = Date.now();
 let isDirty = false;
+let localData = {};
 
 async function loadUserData() {
     try {
@@ -91,6 +92,7 @@ async function loadUserData() {
         lastAutoBotCheckTime = data.lastAutoBotCheckTime ? new Date(data.lastAutoBotCheckTime) : null;
         lastGiftTime = data.lastGiftTime || 0;
         
+        localData = { ...data };
         updateUI();
     } catch (error) {
         showMessage('Failed to load user data. Please try refreshing the page. Error: ' + error.message);
@@ -101,27 +103,14 @@ async function saveUserData() {
     if (!isDirty) return;
     
     try {
+        const compressedData = compressData(localData);
         const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                telegramId,
-                tokens,
-                level,
-                energy,
-                maxEnergy,
-                clicksRemaining,
-                lastEnergyRefillTime,
-                dailyStreak,
-                lastLoginDate,
-                completedTasks,
-                referralCount,
-                autoBotActive,
-                autoBotPurchased,
-                autoBotTokens,
-                lastAutoBotCheckTime,
-                lastGiftTime
-            }),
+            headers: { 
+                'Content-Type': 'application/json',
+                'Content-Encoding': 'gzip'
+            },
+            body: JSON.stringify(compressedData),
         });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -130,6 +119,38 @@ async function saveUserData() {
     } catch (error) {
         showMessage('Failed to save game progress. Please check your internet connection.');
     }
+}
+
+function compressData(data) {
+    const compressedData = {};
+    for (const key in data) {
+        if (data[key] !== localData[key]) {
+            compressedData[key] = data[key];
+        }
+    }
+    return compressedData;
+}
+
+function updateLocalData() {
+    localData = {
+        telegramId,
+        tokens,
+        level,
+        energy,
+        maxEnergy,
+        clicksRemaining,
+        lastEnergyRefillTime,
+        dailyStreak,
+        lastLoginDate,
+        completedTasks,
+        referralCount,
+        autoBotActive,
+        autoBotPurchased,
+        autoBotTokens,
+        lastAutoBotCheckTime,
+        lastGiftTime
+    };
+    isDirty = true;
 }
 
 function checkAndSaveData() {
@@ -400,13 +421,13 @@ function handleClick(event) {
         if (clicksRemaining > 0) {
             tokens += tokenGain;
             clicksRemaining--;
-            isDirty = true;
+            updateLocalData();
             updateUI();
             checkLevelUp();
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
-            isDirty = true;
+            updateLocalData();
             updateUI();
         }
     }
@@ -646,7 +667,7 @@ function activateEnergyBoost() {
     if (now - lastEnergyBoostTime >= boostCooldown) {
         energy = maxEnergy;
         lastEnergyBoostTime = now;
-        isDirty = true;
+        updateLocalData();
         updateUI();
         showMessage('Energy fully restored!');
         updateEnergyBoostCooldownDisplay();
@@ -663,7 +684,7 @@ function activateAutoBot() {
         autoBotPurchased = true;
         autoBotPurchaseTime = Date.now();
         lastAutoBotCheckTime = Date.now();
-        isDirty = true;
+        updateLocalData();
         updateUI();
         showAutoBotSuccessMessage();
         const autoBotButton = document.getElementById('autoBotButton');
@@ -763,7 +784,7 @@ function updateMenuContent() {
                         break;
                 }
 
-                isDirty = true;
+                updateLocalData();
                 updateUI();
                 showRandomGiftResult(reward, amount);
                 lastGiftTime = now;
@@ -840,7 +861,7 @@ function activateDoubleTokens() {
     setTimeout(() => {
         isDoubleTokensActive = false;
         clicksRemaining = originalClicksRemaining;
-        isDirty = true;
+        updateLocalData();
         updateUI();
         clearInterval(tapInterval);
     }, duration);
@@ -866,7 +887,7 @@ function levelUp() {
     updateDinoImage();
     updateEnergyRefillRate();
     checkLevelUp();
-    isDirty = true;
+    updateLocalData();
     updateUI();
     createLevelUpEffect();
     showLevelUpModal(previousLevel, level);
@@ -925,6 +946,10 @@ function checkDailyLogin() {
     currentDate.setHours(0, 0, 0, 0);
 
     if (!lastLoginDate || new Date(lastLoginDate) < currentDate) {
+        if (lastLoginDate && (currentDate - new Date(lastLoginDate)) > 86400000) {
+            // Eğer son girişten bu yana 24 saatten fazla geçtiyse streak'i sıfırla
+            dailyStreak = 0;
+        }
         const reward = calculateDailyReward(dailyStreak + 1);
         showLoginStreakModal(reward);
     }
@@ -967,7 +992,7 @@ function showLoginStreakModal(reward) {
                 tokens += reward;
                 dailyStreak += 1;
                 lastLoginDate = new Date();
-                isDirty = true;
+                updateLocalData();
                 updateUI();
                 showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
                 loginStreakModal.style.display = 'none';
@@ -991,7 +1016,7 @@ function increaseClicks() {
     if (clicksRemaining < maxClicks) {
         const increase = getClickIncreaseRate();
         clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
-        isDirty = true;
+        updateLocalData();
         updateUI();
     }
 }
@@ -1027,7 +1052,7 @@ function checkAutoBot() {
 
     if (autoBotActive && autoBotPurchased && inactiveTime >= 60) { // Oyuncu en az 1 dakika inaktif olmalı
         const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
-        const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
+        const maxEarningTime = 12 * 60 * 60; // 12 saat saniye cinsinden
 
         if (timeSinceLastCheck > 0) {
             const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
@@ -1037,7 +1062,7 @@ function checkAutoBot() {
             autoBotTokens += newTokens;
             lastAutoBotCheckTime = currentTime;
             
-            isDirty = true;
+            updateLocalData();
 
             if (autoBotTokens > 0 && !autoBotShownThisSession) {
                 showAutoBotEarnings();
@@ -1051,7 +1076,7 @@ function checkAutoBotOnStartup() {
     if (autoBotPurchased) {
         const currentTime = Date.now();
         const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
-        const maxEarningTime = 4 * 60 * 60; // 4 saat saniye cinsinden
+        const maxEarningTime = 12 * 60 * 60; // 12 saat saniye cinsinden
 
         const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
         const tokensPerSecond = level * 0.1;
@@ -1061,7 +1086,7 @@ function checkAutoBotOnStartup() {
             autoBotTokens += newTokens;
             lastAutoBotCheckTime = currentTime;
             
-            isDirty = true;
+            updateLocalData();
             showAutoBotEarnings();
         }
     }
@@ -1080,7 +1105,7 @@ function showAutoBotEarnings() {
             tokens += autoBotTokens;
             showMessage(`You claimed ${formatNumber(autoBotTokens)} tokens from AutoBot!`);
             autoBotTokens = 0;
-            isDirty = true;
+            updateLocalData();
             updateUI();
             if (autoBotEarningsModal) {
                 autoBotEarningsModal.style.display = 'none';
@@ -1189,7 +1214,7 @@ function completeTask(taskType) {
     if (!completedTasks.includes(taskType)) {
         completedTasks.push(taskType);
         tokens += 1000;
-        isDirty = true;
+        updateLocalData();
         updateUI();
         showMessage('Task completed! You earned 1000 tokens.');
         updateTaskButtons();
@@ -1256,7 +1281,7 @@ function increaseEnergy() {
     if (energyToAdd > 0) {
         energy = Math.min(energy + energyToAdd, maxEnergy);
         lastEnergyRefillTime = now;
-        isDirty = true;
+        updateLocalData();
         updateUI();
     }
 }
