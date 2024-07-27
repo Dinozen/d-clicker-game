@@ -57,9 +57,9 @@ const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-// Veri kaydetme optimizasyonu
-let lastSaveTime = Date.now();
-let isDirty = false;
+// Veri yönetimi
+let lastSyncTime = 0;
+const SYNC_INTERVAL = 60000; // 60 saniye
 let localData = {};
 
 async function loadUserData() {
@@ -68,146 +68,74 @@ async function loadUserData() {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const data = await response.json();
+        const serverData = await response.json();
         
-        // Enerji hesaplaması
-        const now = Date.now();
-        const timePassed = (now - new Date(data.lastEnergyRefillTime)) / (5 * 60 * 1000); // 5 dakikada bir enerji
-        const energyToAdd = Math.floor(timePassed);
-        energy = Math.min(data.energy + energyToAdd, data.maxEnergy);
-        
-        // Diğer verileri güncelle
-        tokens = data.tokens || 0;
-        level = data.level || 1;
-        maxEnergy = data.maxEnergy || 3;
-        clicksRemaining = data.clicksRemaining || getMaxClicksForLevel();
-        lastEnergyRefillTime = new Date(data.lastEnergyRefillTime || Date.now());
-        dailyStreak = data.dailyStreak || 0;
-        lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
-        completedTasks = data.completedTasks || [];
-        referralCount = data.referralCount || 0;
-        autoBotActive = data.autoBotActive || false;
-        autoBotPurchased = data.autoBotPurchased || false;
-        autoBotTokens = data.autoBotTokens || 0;
-        lastAutoBotCheckTime = data.lastAutoBotCheckTime ? new Date(data.lastAutoBotCheckTime) : null;
-        lastGiftTime = data.lastGiftTime || 0;
-        
-        localData = { ...data };
+        mergeData(serverData);
         updateUI();
     } catch (error) {
         console.error('Error loading user data:', error);
-        showMessage('Failed to load user data. Please try refreshing the page. Error: ' + error.message);
+        showMessage('Failed to load user data. Using local data.');
     }
 }
 
-async function saveUserData() {
-    if (!isDirty) return;
-    
-    try {
-        const dataToSave = {
-            telegramId,
-            tokens,
-            level,
-            energy,
-            maxEnergy,
-            clicksRemaining,
-            lastEnergyRefillTime,
-            dailyStreak,
-            lastLoginDate,
-            completedTasks,
-            referralCount,
-            autoBotActive,
-            autoBotPurchased,
-            autoBotTokens,
-            lastAutoBotCheckTime,
-            lastGiftTime
-        };
+function mergeData(serverData) {
+    const mergedData = {
+        ...localData,
+        ...serverData,
+        tokens: Math.max(localData.tokens || 0, serverData.tokens || 0),
+        clicksRemaining: Math.max(localData.clicksRemaining || 0, serverData.clicksRemaining || 0),
+        autoBotTokens: serverData.autoBotTokens || 0,
+        autoBotActive: serverData.autoBotActive || false,
+        autoBotPurchased: serverData.autoBotPurchased || false,
+        lastAutoBotCheckTime: serverData.lastAutoBotCheckTime || null
+    };
 
+    Object.assign(window, mergedData);
+    localData = mergedData;
+    handleAutoBotUpdate(mergedData);
+}
+
+async function syncWithServer() {
+    const currentTime = Date.now();
+    if (currentTime - lastSyncTime < SYNC_INTERVAL) return;
+
+    try {
         const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(dataToSave),
+            body: JSON.stringify(localData),
         });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        isDirty = false;
+        const serverData = await response.json();
+        
+        mergeData(serverData.player);
+        
+        lastSyncTime = currentTime;
     } catch (error) {
-        console.error('Error saving user data:', error);
-        showMessage('Failed to save game progress. Please check your internet connection.');
+        console.error('Error syncing with server:', error);
     }
 }
 
-function compressData(data) {
-    const compressedData = {};
-    for (const key in data) {
-        if (data[key] !== localData[key]) {
-            compressedData[key] = data[key];
-        }
-    }
-    return compressedData;
-}
-
-function updateLocalData() {
-    localData = {
-        telegramId,
-        tokens,
-        level,
-        energy,
-        maxEnergy,
-        clicksRemaining,
-        lastEnergyRefillTime,
-        dailyStreak,
-        lastLoginDate,
-        completedTasks,
-        referralCount,
-        autoBotActive,
-        autoBotPurchased,
-        autoBotTokens,
-        lastAutoBotCheckTime,
-        lastGiftTime
-    };
-    isDirty = true;
-}
-
-function checkAndSaveData() {
-    const now = Date.now();
-    if (isDirty && now - lastSaveTime > 30000) { // 30 saniye
-        saveUserData();
-        lastSaveTime = now;
-    }
-}
-
-function gameLoop(currentTime) {
-    requestAnimationFrame(gameLoop);
-
-    if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
-        if (currentTime - lastClickIncreaseTime > 1000) {
-            increaseClicks();
-            lastClickIncreaseTime = currentTime;
-        }
+function handleAutoBotUpdate(serverData) {
+    if (serverData.autoBotTokens > autoBotTokens) {
+        const newTokens = serverData.autoBotTokens - autoBotTokens;
+        autoBotTokens = serverData.autoBotTokens;
         
-        if (currentTime - lastCooldownUpdateTime > 1000) {
-            updateGiftCooldownDisplay();
-            updateEnergyBoostCooldownDisplay();
-            lastCooldownUpdateTime = currentTime;
+        if (newTokens > 0 && !autoBotShownThisSession) {
+            showAutoBotEarnings(newTokens);
+            autoBotShownThisSession = true;
         }
-        
-        if (currentTime - lastAutoCheckTime > AUTO_CHECK_INTERVAL) {
-            checkAutoBot();
-            lastAutoCheckTime = currentTime;
-        }
-
-        animateDino();
-        updateUI();
-        drawDino();
-
-        lastDrawTime = currentTime;
     }
     
-    checkAndSaveData();
+    autoBotActive = serverData.autoBotActive;
+    autoBotPurchased = serverData.autoBotPurchased;
+    lastAutoBotCheckTime = new Date(serverData.lastAutoBotCheckTime);
+    
+    updateUI();
 }
 
 function startGame() {
@@ -232,6 +160,31 @@ function startGame() {
         hideLoading();
         showMessage("Failed to start the game. Please refresh the page.");
     });
+}
+
+function gameLoop(currentTime) {
+    requestAnimationFrame(gameLoop);
+
+    if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
+        if (currentTime - lastClickIncreaseTime > 1000) {
+            increaseClicks();
+            lastClickIncreaseTime = currentTime;
+        }
+        
+        if (currentTime - lastCooldownUpdateTime > 1000) {
+            updateGiftCooldownDisplay();
+            updateEnergyBoostCooldownDisplay();
+            lastCooldownUpdateTime = currentTime;
+        }
+        
+        syncWithServer();
+        
+        animateDino();
+        updateUI();
+        drawDino();
+
+        lastDrawTime = currentTime;
+    }
 }
 
 function showLoading() {
@@ -267,63 +220,8 @@ function initializeDOM() {
     if (boostButton) boostButton.addEventListener('click', toggleBoosters);
     if (dailyRewardsButton) dailyRewardsButton.addEventListener('click', showDailyStreaks);
 
-    if (document.getElementById('nextRewardPage')) {
-        document.getElementById('nextRewardPage').addEventListener('click', toggleRewardPage);
-    }
-    if (document.getElementById('prevRewardPage')) {
-        document.getElementById('prevRewardPage').addEventListener('click', toggleRewardPage);
-    }
-    if (document.getElementById('closeRewardTableButton')) {
-        document.getElementById('closeRewardTableButton').addEventListener('click', () => {
-            rewardTableModal.style.display = 'none';
-        });
-    }
-    if (document.getElementById('followUsButton')) {
-        document.getElementById('followUsButton').addEventListener('click', () => startTask('followX'));
-    }
-    if (document.getElementById('visitWebsiteButton')) {
-        document.getElementById('visitWebsiteButton').addEventListener('click', () => startTask('visitWebsite'));
-    }
-    if (document.getElementById('closeTasksModal')) {
-        document.getElementById('closeTasksModal').addEventListener('click', () => {
-            tasksModal.style.display = 'none';
-        });
-    }
-    if (document.getElementById('closeBoostersModal')) {
-        document.getElementById('closeBoostersModal').addEventListener('click', () => {
-            boostersModal.style.display = 'none';
-        });
-    }
-    if (document.getElementById('closeAutoBotSuccessModal')) {
-        document.getElementById('closeAutoBotSuccessModal').addEventListener('click', () => {
-            autoBotSuccessModal.style.display = 'none';
-        });
-    }
-    if (document.getElementById('closeAutoBotEarningsModal')) {
-        document.getElementById('closeAutoBotEarningsModal').addEventListener('click', () => {
-            autoBotEarningsModal.style.display = 'none';
-        });
-    }
-    if (document.getElementById('closeMessageModal')) {
-        document.getElementById('closeMessageModal').addEventListener('click', () => {
-            document.getElementById('messageModal').style.display = 'none';
-        });
-    }
-    if (document.getElementById('closeLevelUpModal')) {
-        document.getElementById('closeLevelUpModal').addEventListener('click', () => {
-            document.getElementById('levelUpModal').style.display = 'none';
-        });
-    }
-    if (document.getElementById('closeLoginStreakModal')) {
-        document.getElementById('closeLoginStreakModal').addEventListener('click', () => {
-            loginStreakModal.style.display = 'none';
-        });
-    }
-    if (document.getElementById('closeRandomGiftResultModal')) {
-        document.getElementById('closeRandomGiftResultModal').addEventListener('click', () => {
-            document.getElementById('randomGiftResultModal').style.display = 'none';
-        });
-    }
+    setupModalCloseListeners();
+    setupTaskButtons();
 
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -333,6 +231,32 @@ function initializeDOM() {
     document.addEventListener('click', updateLastActivityTime);
     document.addEventListener('keydown', updateLastActivityTime);
     document.addEventListener('mousemove', updateLastActivityTime);
+}
+
+function setupModalCloseListeners() {
+    const modals = ['rewardTable', 'tasks', 'boosters', 'autoBotSuccess', 'autoBotEarnings', 'message', 'levelUp', 'loginStreak', 'randomGiftResult'];
+    modals.forEach(modal => {
+        const closeButton = document.getElementById(`close${modal.charAt(0).toUpperCase() + modal.slice(1)}Modal`);
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                document.getElementById(`${modal}Modal`).style.display = 'none';
+            });
+        }
+    });
+}
+
+function setupTaskButtons() {
+    const tasks = [
+        { id: 'followUs', type: 'followX', url: 'https://x.com/dinozenofficial' },
+        { id: 'visitWebsite', type: 'visitWebsite', url: 'https://www.dinozen.online/' }
+    ];
+
+    tasks.forEach(task => {
+        const button = document.getElementById(`${task.id}Button`);
+        if (button) {
+            button.addEventListener('click', () => startTask(task.type, task.url));
+        }
+    });
 }
 
 function updateLastActivityTime() {
@@ -412,7 +336,7 @@ function handleTouchStart(event) {
 function handleTouchEnd(event) {
     event.preventDefault();
     const touchEndTime = Date.now();
-    if (touchEndTime - touchStartTime < 200) { // 200 ms'den kısa dokunuşları kabul et
+    if (touchEndTime - touchStartTime < 200) {
         isClicking = false;
     }
 }
@@ -440,13 +364,15 @@ function handleClick(event) {
         if (clicksRemaining > 0) {
             tokens += tokenGain;
             clicksRemaining--;
-            updateLocalData();
+            localData.tokens = tokens;
+            localData.clicksRemaining = clicksRemaining;
             updateUI();
             checkLevelUp();
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
-            updateLocalData();
+            localData.energy = energy;
+            localData.clicksRemaining = clicksRemaining;
             updateUI();
         }
     }
@@ -686,7 +612,8 @@ function activateEnergyBoost() {
     if (now - lastEnergyBoostTime >= boostCooldown) {
         energy = maxEnergy;
         lastEnergyBoostTime = now;
-        updateLocalData();
+        localData.energy = energy;
+        localData.lastEnergyBoostTime = lastEnergyBoostTime;
         updateUI();
         showMessage('Energy fully restored!');
         updateEnergyBoostCooldownDisplay();
@@ -703,7 +630,11 @@ function activateAutoBot() {
         autoBotPurchased = true;
         autoBotPurchaseTime = Date.now();
         lastAutoBotCheckTime = Date.now();
-        updateLocalData();
+        localData.tokens = tokens;
+        localData.autoBotActive = autoBotActive;
+        localData.autoBotPurchased = autoBotPurchased;
+        localData.autoBotPurchaseTime = autoBotPurchaseTime;
+        localData.lastAutoBotCheckTime = lastAutoBotCheckTime;
         updateUI();
         showAutoBotSuccessMessage();
         const autoBotButton = document.getElementById('autoBotButton');
@@ -711,7 +642,6 @@ function activateAutoBot() {
             autoBotButton.textContent = 'AutoBot Activated';
             autoBotButton.disabled = true;
         }
-        checkAutoBot();
     } else if (autoBotPurchased) {
         showMessage('AutoBot is already purchased.');
     } else {
@@ -803,7 +733,9 @@ function updateMenuContent() {
                         break;
                 }
 
-                updateLocalData();
+                localData.clicksRemaining = clicksRemaining;
+                localData.tokens = tokens;
+                localData.lastGiftTime = now;
                 updateUI();
                 showRandomGiftResult(reward, amount);
                 lastGiftTime = now;
@@ -880,7 +812,7 @@ function activateDoubleTokens() {
     setTimeout(() => {
         isDoubleTokensActive = false;
         clicksRemaining = originalClicksRemaining;
-        updateLocalData();
+        localData.clicksRemaining = clicksRemaining;
         updateUI();
         clearInterval(tapInterval);
     }, duration);
@@ -906,7 +838,8 @@ function levelUp() {
     updateDinoImage();
     updateEnergyRefillRate();
     checkLevelUp();
-    updateLocalData();
+    localData.level = level;
+    localData.maxEnergy = maxEnergy;
     updateUI();
     createLevelUpEffect();
     showLevelUpModal(previousLevel, level);
@@ -965,12 +898,10 @@ function checkDailyLogin() {
     currentDate.setHours(0, 0, 0, 0);
 
     if (!lastLoginDate || new Date(lastLoginDate) < currentDate) {
-        if (lastLoginDate && (currentDate - new Date(lastLoginDate)) > 86400000) {
-            // Eğer son girişten bu yana 24 saatten fazla geçtiyse streak'i sıfırla
-            dailyStreak = 0;
-        }
-        const reward = calculateDailyReward(dailyStreak + 1);
-        showLoginStreakModal(reward);
+        const nextStreak = lastLoginDate && (currentDate - new Date(lastLoginDate)) <= 86400000 * 2 
+            ? dailyStreak + 1 : 1;
+        const reward = calculateDailyReward(nextStreak);
+        showLoginStreakModal(reward, nextStreak);
     }
 }
 
@@ -983,9 +914,9 @@ function calculateDailyReward(streak) {
     return rewardTable[Math.min(streak - 1, rewardTable.length - 1)];
 }
 
-function showLoginStreakModal(reward) {
+function showLoginStreakModal(reward, nextStreak) {
     if (loginStreakMessage) {
-        loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Streak: ${dailyStreak} days`;
+        loginStreakMessage.textContent = `Daily login reward: ${formatNumber(reward)} tokens! Next streak: ${nextStreak} days`;
     }
     if (loginStreakModal) {
         loginStreakModal.style.display = 'block';
@@ -1002,20 +933,21 @@ function showLoginStreakModal(reward) {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ telegramId, reward }),
+                    body: JSON.stringify({ telegramId }),
                 });
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to claim daily reward');
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const result = await response.json();
                 if (result.success) {
-                    tokens += reward;
-                    dailyStreak += 1;
+                    tokens += result.reward;
+                    dailyStreak = result.newStreak;
                     lastLoginDate = new Date();
-                    updateLocalData();
+                    localData.tokens = tokens;
+                    localData.dailyStreak = dailyStreak;
+                    localData.lastLoginDate = lastLoginDate;
                     updateUI();
-                    showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
+                    showMessage(`You claimed your daily reward of ${formatNumber(result.reward)} tokens! Current streak: ${dailyStreak} days`);
                     loginStreakModal.style.display = 'none';
                     this.disabled = true;
                     this.textContent = 'Claimed';
@@ -1041,7 +973,7 @@ function increaseClicks() {
     if (clicksRemaining < maxClicks) {
         const increase = getClickIncreaseRate();
         clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
-        updateLocalData();
+        localData.clicksRemaining = clicksRemaining;
         updateUI();
     }
 }
@@ -1071,32 +1003,6 @@ function updateEnergyRefillRate() {
     }
 }
 
-function checkAutoBot() {
-    const currentTime = Date.now();
-    const inactiveTime = (currentTime - lastPlayerActivityTime) / 1000; // saniye cinsinden
-
-    if (autoBotActive && autoBotPurchased && inactiveTime >= 60) { // Oyuncu en az 1 dakika inaktif olmalı
-        const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
-        const maxEarningTime = 12 * 60 * 60; // 12 saat saniye cinsinden
-
-        if (timeSinceLastCheck > 0) {
-            const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
-            const tokensPerSecond = level * 0.1;
-            const newTokens = Math.floor(earningTime * tokensPerSecond);
-            
-            autoBotTokens += newTokens;
-            lastAutoBotCheckTime = currentTime;
-            
-            updateLocalData();
-
-            if (autoBotTokens > 0 && !autoBotShownThisSession) {
-                showAutoBotEarnings();
-                autoBotShownThisSession = true;
-            }
-        }
-    }
-}
-
 function checkAutoBotOnStartup() {
     if (autoBotPurchased) {
         const currentTime = Date.now();
@@ -1111,15 +1017,16 @@ function checkAutoBotOnStartup() {
             autoBotTokens += newTokens;
             lastAutoBotCheckTime = currentTime;
             
-            updateLocalData();
-            showAutoBotEarnings();
+            localData.autoBotTokens = autoBotTokens;
+            localData.lastAutoBotCheckTime = lastAutoBotCheckTime;
+            showAutoBotEarnings(newTokens);
         }
     }
 }
 
-function showAutoBotEarnings() {
+function showAutoBotEarnings(newTokens) {
     if (autoBotTokensCollected) {
-        autoBotTokensCollected.textContent = formatNumber(autoBotTokens);
+        autoBotTokensCollected.textContent = formatNumber(newTokens);
     }
     if (autoBotEarningsModal) {
         autoBotEarningsModal.style.display = 'block';
@@ -1127,10 +1034,11 @@ function showAutoBotEarnings() {
 
     if (claimAutoBotTokens) {
         claimAutoBotTokens.onclick = function () {
-            tokens += autoBotTokens;
-            showMessage(`You claimed ${formatNumber(autoBotTokens)} tokens from AutoBot!`);
+            tokens += newTokens;
+            showMessage(`You claimed ${formatNumber(newTokens)} tokens from AutoBot!`);
             autoBotTokens = 0;
-            updateLocalData();
+            localData.tokens = tokens;
+            localData.autoBotTokens = autoBotTokens;
             updateUI();
             if (autoBotEarningsModal) {
                 autoBotEarningsModal.style.display = 'none';
@@ -1239,7 +1147,8 @@ function completeTask(taskType) {
     if (!completedTasks.includes(taskType)) {
         completedTasks.push(taskType);
         tokens += 1000;
-        updateLocalData();
+        localData.completedTasks = completedTasks;
+        localData.tokens = tokens;
         updateUI();
         showMessage('Task completed! You earned 1000 tokens.');
         updateTaskButtons();
@@ -1306,7 +1215,8 @@ function increaseEnergy() {
     if (energyToAdd > 0) {
         energy = Math.min(energy + energyToAdd, maxEnergy);
         lastEnergyRefillTime = now;
-        updateLocalData();
+        localData.energy = energy;
+        localData.lastEnergyRefillTime = lastEnergyRefillTime;
         updateUI();
     }
 }
@@ -1343,9 +1253,7 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 window.addEventListener('beforeunload', function() {
-    if (isDirty) {
-        saveUserData();
-    }
+    syncWithServer();
 });
 
 const rewardData = [
