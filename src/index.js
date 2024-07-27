@@ -1,3 +1,4 @@
+// src/index.js
 process.env.NTBA_FIX_319 = 1;
 require('dotenv').config();
 const express = require('express');
@@ -5,7 +6,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const TelegramBot = require('node-telegram-bot-api');
 const path = require('path');
-const compression = require('compression');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,7 +18,8 @@ const corsOptions = {
   credentials: true
 };
 app.use(cors(corsOptions));
-app.use(compression());
+
+// Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -37,12 +38,9 @@ const mongoOptions = {
   useUnifiedTopology: true,
   useCreateIndex: true,
   useFindAndModify: false,
-  poolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
-  family: 4,
-  keepAlive: true,
-  keepAliveInitialDelay: 300000
+  family: 4
 };
 
 const connectWithRetry = () => {
@@ -93,7 +91,7 @@ PlayerSchema.index({ level: 1 });
 
 const Player = mongoose.model('Player', PlayerSchema);
 
-// Helper functions
+// Referral reward function
 function calculateReferralReward(referralCount) {
   if (referralCount >= 1000) return 10000000;
   if (referralCount >= 500) return 3000000;
@@ -105,53 +103,25 @@ function calculateReferralReward(referralCount) {
   return 3000;
 }
 
-function calculateEnergy(player) {
-  const now = Date.now();
-  const timePassed = (now - player.lastEnergyRefillTime.getTime()) / (5 * 60 * 1000); // 5 dakikada bir enerji
-  const energyToAdd = Math.floor(timePassed);
-  player.energy = Math.min(player.energy + energyToAdd, player.maxEnergy);
-  player.lastEnergyRefillTime = new Date(now - (timePassed % 1) * 5 * 60 * 1000);
-  return player;
-}
-
-function calculateDailyReward(streak) {
-  const rewardTable = [
-    1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000,
-    11500, 13000, 14500, 16000, 17500, 19000, 20500, 22000, 23500, 25000,
-    27000, 29000, 31000, 33000, 35000, 37000, 39000, 41000, 43000, 45000
-  ];
-  return rewardTable[Math.min(streak - 1, rewardTable.length - 1)];
-}
-
-function checkAutoBot(player) {
-  const now = Date.now();
-  const timeSinceLastCheck = (now - player.lastAutoBotCheckTime.getTime()) / 1000; // saniye cinsinden
-  const maxEarningTime = 12 * 60 * 60; // 12 saat saniye cinsinden
-  
-  if (player.autoBotActive && player.autoBotPurchased && timeSinceLastCheck > 0) {
-    const earningTime = Math.min(timeSinceLastCheck, maxEarningTime);
-    const tokensPerSecond = player.level * 0.1;
-    const newTokens = Math.floor(earningTime * tokensPerSecond);
-    
-    player.autoBotTokens += newTokens;
-    player.lastAutoBotCheckTime = new Date(now);
-  }
-  
-  return player;
-}
-
 // Telegram Bot
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { webHook: true });
 
+// Set the webhook
 bot.setWebHook(`${process.env.HEROKU_URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-  .then(() => console.log('Webhook set successfully'))
-  .catch((error) => console.error('Failed to set webhook:', error));
+  .then(() => {
+    console.log('Webhook set successfully');
+  })
+  .catch((error) => {
+    console.error('Failed to set webhook:', error);
+  });
 
+// Webhook route
 app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
 
+// Start and welcome message handler
 bot.onText(/\/start(.*)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const referrerId = match[1].trim();
@@ -196,110 +166,90 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   }
 });
 
-// API Routes
+// Günlük ödül alma endpoint'i
 app.post('/api/claimDailyReward', async (req, res) => {
-  const { telegramId } = req.body;
-  if (!telegramId) {
-      return res.status(400).json({ success: false, message: 'Invalid input' });
-  }
-  try {
-      let player = await Player.findOne({ telegramId });
-      if (!player) {
-          return res.status(404).json({ success: false, message: 'Player not found' });
-      }
-      
-      player = calculateEnergy(player);
-      
-      const currentDate = new Date();
-      currentDate.setHours(0, 0, 0, 0);
-      if (!player.lastLoginDate || new Date(player.lastLoginDate) < currentDate) {
-          const newStreak = player.lastLoginDate && 
-                            (currentDate - new Date(player.lastLoginDate)) <= 86400000 * 2 
-                            ? player.dailyStreak + 1 : 1;
-          const reward = calculateDailyReward(newStreak);
-          player.tokens += reward;
-          player.dailyStreak = newStreak;
-          player.lastLoginDate = currentDate;
-          await player.save();
-          res.json({ success: true, message: 'Daily reward claimed successfully', reward, newStreak });
-      } else {
-          res.status(400).json({ success: false, message: 'Daily reward already claimed' });
-      }
-  } catch (error) {
-      console.error('Error claiming daily reward:', error);
-      res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
-  }
+    const { telegramId, reward } = req.body;
+    if (!telegramId || typeof reward !== 'number' || reward < 0) {
+        return res.status(400).json({ message: 'Invalid input' });
+    }
+    try {
+        const player = await Player.findOne({ telegramId });
+        if (!player) {
+            return res.status(404).json({ message: 'Player not found' });
+        }
+        player.tokens += reward;
+        player.dailyStreak += 1;
+        player.lastLoginDate = new Date();
+        await player.save();
+        res.json({ success: true, message: 'Daily reward claimed successfully' });
+    } catch (error) {
+        console.error('Error claiming daily reward:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
 });
 
+// Random gift alma endpoint'i
 app.post('/api/claimRandomGift', async (req, res) => {
-  const { telegramId } = req.body;
-  if (!telegramId) {
-    return res.status(400).json({ success: false, message: 'Invalid input' });
-  }
-  try {
-    const player = await Player.findOne({ telegramId });
-    if (!player) {
-      return res.status(404).json({ success: false, message: 'Player not found' });
+    const { telegramId } = req.body;
+    if (!telegramId) {
+        return res.status(400).json({ message: 'Invalid input' });
     }
-    if (Date.now() - player.lastGiftTime < 3 * 60 * 60 * 1000) { // 3 saatlik cooldown
-      return res.status(400).json({ success: false, message: 'Gift is on cooldown. Please wait.' });
+    try {
+        const player = await Player.findOne({ telegramId });
+        if (!player) {
+            return res.status(404).json({ message: 'Player not found' });
+        }
+        if (Date.now() - player.lastGiftTime < 3 * 60 * 60 * 1000) { // 3 saatlik cooldown
+            return res.status(400).json({ message: 'Gift is on cooldown. Please wait.' });
+        }
+        player.tokens += 100; // Random gift ödülü
+        player.lastGiftTime = Date.now();
+        await player.save();
+        res.json({ success: true, message: 'Random gift claimed successfully' });
+    } catch (error) {
+        console.error('Error claiming random gift:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
     }
-    player.tokens += 100; // Random gift ödülü
-    player.lastGiftTime = Date.now();
-    await player.save();
-    res.json({ success: true, message: 'Random gift claimed successfully' });
-  } catch (error) {
-    console.error('Error claiming random gift:', error);
-    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
-  }
+});
+
+// Routes
+app.get('/', (req, res) => {
+  res.send('DinoZen Game Backend is running!');
 });
 
 app.get('/api/player/:telegramId', async (req, res) => {
   console.log(`Fetching player data for telegramId: ${req.params.telegramId}`);
   try {
-    let player = await Player.findOne({ telegramId: req.params.telegramId });
-    if (!player) return res.status(404).json({ success: false, message: 'Player not found' });
-    
-    player = calculateEnergy(player);
-    player = checkAutoBot(player);
-    
-    await player.save();
+    const player = await Player.findOne({ telegramId: req.params.telegramId });
+    if (!player) return res.status(404).json({ message: 'Player not found' });
     res.json(player);
   } catch (error) {
     console.error('Error fetching player:', error);
-    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+    res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
 
 app.post('/api/update/:telegramId', async (req, res) => {
   console.log(`Updating player data for telegramId: ${req.params.telegramId}`);
+  console.log('Request body:', JSON.stringify(req.body));
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
       throw new Error('Request body is empty');
     }
-    let player = await Player.findOne({ telegramId: req.params.telegramId });
-    if (!player) {
-      return res.status(404).json({ success: false, message: 'Player not found' });
-    }
-    
-    player = calculateEnergy(player);
-    player = checkAutoBot(player);
-    
-    const updates = req.body;
-    for (const [key, value] of Object.entries(updates)) {
-      if (value !== undefined && player[key] !== undefined) {
-        player[key] = value;
-      }
-    }
-    
-    await player.save();
-    res.json({ success: true, player });
+    const player = await Player.findOneAndUpdate(
+      { telegramId: req.params.telegramId },
+      req.body,
+      { new: true, runValidators: true, upsert: true }
+    );
+    console.log('Updated player:', JSON.stringify(player));
+    res.json(player);
   } catch (error) {
     console.error('Error updating player:', error);
-    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+    res.status(500).json({ message: 'Internal server error', error: error.message, stack: error.stack });
   }
 });
 
+// Admin route
 app.get('/admin', async (req, res) => {
   console.log('Admin route hit');
   try {
@@ -316,23 +266,27 @@ app.get('/admin', async (req, res) => {
     console.log('Admin view rendered successfully');
   } catch (error) {
     console.error('Error in admin route:', error);
-    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+    res.status(500).json({ error: error.message, stack: error.stack });
   }
 });
 
+// Ping route to keep the app awake
 app.get('/ping', (req, res) => {
   res.status(200).send('OK');
 });
 
+// Test endpoint
 app.get('/api/test', (req, res) => {
-  res.json({ success: true, message: "API is working" });
+  res.json({ message: "API is working" });
 });
 
+// Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ success: false, message: 'An unexpected error occurred', error: err.message });
+  res.status(500).json({ message: 'An unexpected error occurred', error: err.message });
 });
 
+// Error handling for uncaught exceptions and unhandled rejections
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
@@ -341,10 +295,12 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
+// Start server
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
 
+// Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Shutting down gracefully.');
   server.close(() => {
