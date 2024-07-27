@@ -73,43 +73,38 @@ async function loadUserData() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const serverData = await response.json();
-        
-        // Sunucudan gelen verileri localStorage'a kaydet
-        localStorage.setItem('gameData', JSON.stringify(serverData));
-        
-        // Verileri uygulama durumuna yükle
-        mergeData(serverData);
-        updateUI();
+
+        if (serverData) {
+            // Sunucudan gelen verileri localStorage'a kaydet
+            localStorage.setItem('gameData', JSON.stringify(serverData));
+
+            // Verileri uygulama durumuna yükle
+            function mergeData(serverData) {
+                const mergedData = {
+                    ...localData,
+                    ...serverData,
+                    tokens: Math.max(localData.tokens || 0, serverData.tokens || 0),
+                    clicksRemaining: Math.max(localData.clicksRemaining || 0, serverData.clicksRemaining || 0),
+                    autoBotTokens: serverData.autoBotTokens || 0,
+                    autoBotActive: serverData.autoBotActive || false,
+                    autoBotPurchased: serverData.autoBotPurchased || false,
+                    lastAutoBotCheckTime: serverData.lastAutoBotCheckTime || null
+                };
+
+                Object.assign(window, mergedData);
+                localData = mergedData;
+                handleAutoBotUpdate(mergedData);
+                saveGameData();
+            }
+
+            // mergeData fonksiyonunu serverData ile çağır
+            mergeData(serverData);
+        }
     } catch (error) {
         console.error('Error loading user data:', error);
-        // Hata durumunda localStorage'dan verileri yükle
-        const savedData = localStorage.getItem('gameData');
-        if (savedData) {
-            mergeData(JSON.parse(savedData));
-            updateUI();
-        } else {
-            showMessage('Failed to load user data. Please refresh the page.');
-        }
     }
 }
 
-function mergeData(serverData) {
-    const mergedData = {
-        ...localData,
-        ...serverData,
-        tokens: Math.max(localData.tokens || 0, serverData.tokens || 0),
-        clicksRemaining: Math.max(localData.clicksRemaining || 0, serverData.clicksRemaining || 0),
-        autoBotTokens: serverData.autoBotTokens || 0,
-        autoBotActive: serverData.autoBotActive || false,
-        autoBotPurchased: serverData.autoBotPurchased || false,
-        lastAutoBotCheckTime: serverData.lastAutoBotCheckTime || null
-    };
-
-    Object.assign(window, mergedData);
-    localData = mergedData;
-    handleAutoBotUpdate(mergedData);
-    saveGameData();
-}
 
 async function syncWithServer() {
     const currentTime = Date.now();
@@ -123,37 +118,43 @@ async function syncWithServer() {
             },
             body: JSON.stringify(localData),
         });
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
+
         const serverData = await response.json();
-        
-        mergeData(serverData.player);
-        saveGameData();
-        
-        lastSyncTime = currentTime;
+        if (serverData.success) {
+            mergeData(serverData.player);
+            saveGameData();
+            lastSyncTime = currentTime;
+        } else {
+            console.error('Error from server:', serverData.message);
+        }
     } catch (error) {
         console.error('Error syncing with server:', error);
     }
 }
 
+
 function handleAutoBotUpdate(serverData) {
     if (serverData.autoBotTokens > autoBotTokens) {
         const newTokens = serverData.autoBotTokens - autoBotTokens;
         autoBotTokens = serverData.autoBotTokens;
-        
+
         if (newTokens > 0 && !autoBotShownThisSession) {
             showAutoBotEarnings(newTokens);
             autoBotShownThisSession = true;
         }
     }
-    
+
     autoBotActive = serverData.autoBotActive;
     autoBotPurchased = serverData.autoBotPurchased;
     lastAutoBotCheckTime = new Date(serverData.lastAutoBotCheckTime);
-    
+
     updateUI();
 }
+
 
 function startGame() {
     showLoading();
@@ -173,9 +174,9 @@ function startGame() {
         checkAutoBotOnStartup();
         updateTaskButtons();
         updateEnergyRefillRate();
-        
+
         setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
-        
+
         requestAnimationFrame(gameLoop);
         hideLoading();
     }).catch(error => {
@@ -183,6 +184,7 @@ function startGame() {
         showMessage("Failed to start the game. Please refresh the page.");
     });
 }
+
 
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
@@ -945,7 +947,7 @@ function showLoginStreakModal(reward, nextStreak) {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ telegramId }),
+                    body: JSON.stringify({ telegramId }), // Bu satırın doğru olduğunu kontrol edin
                 });
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -971,6 +973,7 @@ function showLoginStreakModal(reward, nextStreak) {
         };
     }
 }
+
 
 function updateDailyRewardDisplay() {
     if (dailyRewardDisplay) {
@@ -1016,6 +1019,12 @@ function updateEnergyRefillRate() {
 function checkAutoBotOnStartup() {
     if (autoBotPurchased) {
         const currentTime = Date.now();
+
+        // lastAutoBotCheckTime'in undefined olup olmadığını kontrol et
+        if (!lastAutoBotCheckTime) {
+            lastAutoBotCheckTime = currentTime;
+        }
+
         const timeSinceLastCheck = (currentTime - lastAutoBotCheckTime) / 1000; // saniye cinsinden
         const maxEarningTime = 12 * 60 * 60; // 12 saat saniye cinsinden
 
@@ -1026,12 +1035,13 @@ function checkAutoBotOnStartup() {
         if (newTokens > 0) {
             autoBotTokens += newTokens;
             lastAutoBotCheckTime = currentTime;
-            
+
             updateLocalData({ autoBotTokens, lastAutoBotCheckTime });
             showAutoBotEarnings(newTokens);
         }
     }
 }
+
 
 function showAutoBotEarnings(newTokens) {
     if (autoBotTokensCollected) {
