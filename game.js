@@ -355,29 +355,27 @@ function drawDino() {
     }
 }
 
+let lastTouchTime = 0;
+const TOUCH_DELAY = 100; // milisaniye cinsinden minimum dokunma aralığı
+
 function setupClickHandler() {
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 }
 
 function handleTouchStart(event) {
     event.preventDefault();
-    const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
-    isClicking = true;
+    const currentTime = Date.now();
+    if (currentTime - lastTouchTime > TOUCH_DELAY) {
+        const touch = event.touches[0];
+        handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+        lastTouchTime = currentTime;
+    }
 }
 
 function handleTouchEnd(event) {
     event.preventDefault();
-    isClicking = false;
-}
-
-function handleTouchMove(event) {
-    event.preventDefault();
-    const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleClick(event) {
@@ -409,6 +407,13 @@ function handleClick(event) {
             saveUserData();
         }
     }
+}
+
+// Mobil cihazlar için ek kontroller
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+if (isMobile) {
+    document.body.style.touchAction = 'none';
 }
 
 function createClickEffect(x, y, amount) {
