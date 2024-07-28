@@ -371,6 +371,7 @@ function handleTouchStart(event) {
         const touch = event.touches[0];
         handleClick({ clientX: touch.clientX, clientY: touch.clientY });
         lastTouchTime = currentTime;
+        isClicking = true; //
     }
 }
 
