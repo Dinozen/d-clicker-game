@@ -58,9 +58,6 @@ const FRAME_RATE = 30; // Saniyede 30 kare
 let lastAutoCheckTime = 0;
 const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 
-const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-console.log("Is mobile device:", isMobile);
-
 async function loadUserData() {
     try {
         console.log("Loading user data for Telegram ID:", telegramId);
