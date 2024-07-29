@@ -28,7 +28,6 @@ let energyRefillRate = 1 / 3; // Başlangıçta 3 saniyede 1
 let autoBotPurchaseTime = 0;
 let lastAutoBotCheckTime = 0;
 let lastPlayerActivityTime = Date.now();
-let lastClickIncreaseTime = Date.now();
 let autoBotShownThisSession = false;
 let lastTouchTime = 0;
 const TOUCH_DELAY = 100;
@@ -83,7 +82,6 @@ async function loadUserData() {
         maxEnergy = data.maxEnergy || 3;
         clicksRemaining = data.clicksRemaining || getMaxClicksForLevel();
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime || Date.now());
-        lastClickIncreaseTime = new Date(data.lastClickIncreaseTime || Date.now()).getTime();
         dailyStreak = data.dailyStreak || 0;
         lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
         completedTasks = data.completedTasks || [];
@@ -114,7 +112,6 @@ async function saveUserData() {
                 maxEnergy,
                 clicksRemaining,
                 lastEnergyRefillTime,
-                lastClickIncreaseTime,
                 dailyStreak,
                 lastLoginDate,
                 completedTasks,
@@ -141,7 +138,10 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
     if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
-        increaseClicks(); // Her frame'de increaseClicks'i çağır
+        if (currentTime - lastClickIncreaseTime > 1000) {
+            increaseClicks();
+            lastClickIncreaseTime = currentTime;
+        }
         
         if (currentTime - lastCooldownUpdateTime > 1000) {
             updateGiftCooldownDisplay();
@@ -177,14 +177,8 @@ function startGame() {
         updateTaskButtons();
         updateEnergyRefillRate();
         
-        // Her saniye enerji kontrolü
-        setInterval(increaseEnergy, 1000);
-        
-        // Her 5 saniyede bir verileri kaydet
-        saveInterval = setInterval(saveUserData, 5000);
-        
-        // Son click artış zamanını şu anki zaman olarak ayarla
-        lastClickIncreaseTime = Date.now();
+        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
+        saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
         
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
@@ -370,18 +364,13 @@ function drawDino() {
 function setupClickHandler() {
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 }
 
 function handleTouchStart(event) {
     event.preventDefault();
-    const currentTime = Date.now();
-    if (currentTime - lastClickTime > CLICK_DELAY) {
-        const touch = event.touches[0];
-        handleClick({ clientX: touch.clientX, clientY: touch.clientY });
-        lastClickTime = currentTime;
-    }
+    const touch = event.touches[0];
+    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleTouchEnd(event) {
@@ -390,37 +379,34 @@ function handleTouchEnd(event) {
 }
 
 function handleClick(event) {
-    const currentTime = Date.now();
-    if (currentTime - lastClickTime > CLICK_DELAY) {
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
 
-        if (x >= dinoX && x <= dinoX + dinoWidth &&
-            y >= dinoY && y <= dinoY + dinoHeight) {
-            let tokenGain = 1 * getLevelMultiplier();
-            if (isDoubleTokensActive) {
-                tokenGain *= 2;
-            }
-
-            createClickEffect(event.clientX, event.clientY, tokenGain);
-            clickScale = 1.1;
-            requestAnimationFrame(animateDino);
-
-            if (clicksRemaining > 0) {
-                tokens += tokenGain;
-                clicksRemaining--;
-                updateUI();
-                checkLevelUp();
-                saveUserData();
-            } else if (energy > 0) {
-                energy--;
-                clicksRemaining = getMaxClicksForLevel();
-                updateUI();
-                saveUserData();
-            }
+    if (x >= dinoX && x <= dinoX + dinoWidth &&
+        y >= dinoY && y <= dinoY + dinoHeight) {
+        let tokenGain = 1 * getLevelMultiplier();
+        if (isDoubleTokensActive) {
+            tokenGain *= 2;
         }
-        lastClickTime = currentTime;
+
+        createClickEffect(event.clientX, event.clientY, tokenGain);
+        isClicking = true;
+        clickScale = 1.1;
+        requestAnimationFrame(animateDino);
+
+        if (clicksRemaining > 0) {
+            tokens += tokenGain;
+            clicksRemaining--;
+            updateUI();
+            checkLevelUp();
+            saveUserData();
+        } else if (energy > 0) {
+            energy--;
+            clicksRemaining = getMaxClicksForLevel();
+            updateUI();
+            saveUserData();
+        }
     }
 }
 
@@ -1030,14 +1016,11 @@ function updateDailyRewardDisplay() {
 }
 
 function increaseClicks() {
-    const currentTime = Date.now();
-    const timePassed = (currentTime - lastClickIncreaseTime) / 1000; // Geçen süreyi saniye cinsinden hesapla
-    lastClickIncreaseTime = currentTime;
-
     const maxClicks = getMaxClicksForLevel();
     if (clicksRemaining < maxClicks) {
-        const increase = getClickIncreaseRate() * timePassed;
+        const increase = getClickIncreaseRate();
         clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
+        console.log(`Clicks increased by ${increase}. New value: ${clicksRemaining}`);
         updateUI();
     }
 }
