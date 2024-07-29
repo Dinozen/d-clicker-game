@@ -61,7 +61,10 @@ let lastAutoCheckTime = 0;
 const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-console.log("Is mobile device:", isMobile);
+
+if (isMobile) {
+    document.body.style.touchAction = 'none';
+}
 
 async function loadUserData() {
     try {
