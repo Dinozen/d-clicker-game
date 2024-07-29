@@ -58,9 +58,6 @@ const FRAME_RATE = 30; // Saniyede 30 kare
 let lastAutoCheckTime = 0;
 const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 
-const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-console.log("Is mobile device:", isMobile);
-
 async function loadUserData() {
     try {
         console.log("Loading user data for Telegram ID:", telegramId);
@@ -70,10 +67,9 @@ async function loadUserData() {
         }
         const data = await response.json();
         console.log("Loaded user data:", data);
-        // Oyuncu verilerini güncelle
         tokens = data.tokens || 0;
         level = data.level || 1;
-        energy = data.energy || 3;
+        energy = Math.min(Math.max(data.energy || 0, 0), maxEnergy);
         maxEnergy = data.maxEnergy || 3;
         clicksRemaining = data.clicksRemaining || getMaxClicksForLevel();
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime || Date.now());
@@ -172,7 +168,7 @@ function startGame() {
         updateTaskButtons();
         updateEnergyRefillRate();
         
-        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
+        
         saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
         
         requestAnimationFrame(gameLoop);
@@ -250,7 +246,6 @@ function initializeDOM() {
 
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 
     if (document.getElementById('closeBoostersModal')) {
@@ -356,12 +351,15 @@ function drawDino() {
     }
 }
 
+let lastTouchTime = 0;
+const TOUCH_DELAY = 100; // milisaniye cinsinden minimum dokunma aralığı
+
 function setupClickHandler() {
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 }
+
 
 function handleTouchStart(event) {
     event.preventDefault();
@@ -372,12 +370,6 @@ function handleTouchStart(event) {
 function handleTouchEnd(event) {
     event.preventDefault();
     isClicking = false;
-}
-
-function handleTouchMove(event) {
-    event.preventDefault();
-    const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleClick(event) {
@@ -410,6 +402,13 @@ function handleClick(event) {
             saveUserData();
         }
     }
+}
+
+// Mobil cihazlar için ek kontroller
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+if (isMobile) {
+    document.body.style.touchAction = 'none';
 }
 
 function createClickEffect(x, y, amount) {
@@ -841,6 +840,14 @@ function showReferralLink() {
     }
 }
 
+    const closeReferralModal = document.getElementById('closeReferralModal');
+    if (closeReferralModal) {
+        closeReferralModal.onclick = function () {
+            referralModal.style.display = 'none';
+        };
+    }
+}
+
 function getLevelMultiplier() {
     return 1 + (level - 1) * 0.25;
 }
@@ -1024,6 +1031,14 @@ function increaseClicks() {
         clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
         console.log(`Clicks increased by ${increase}. New value: ${clicksRemaining}`);
         updateUI();
+
+        // Eğer clicks maksimuma ulaştıysa ve enerji tam değilse, enerjiyi bir birim artır ve clicks'i sıfırla
+        if (clicksRemaining === maxClicks && energy < maxEnergy) {
+            energy = Math.min(energy + 1, maxEnergy);
+            clicksRemaining = 0;
+            saveUserData();
+            updateUI();
+        }
     }
 }
 
@@ -1295,18 +1310,6 @@ function toggleRewardPage() {
     }
 }
 
-function increaseEnergy() {
-    const now = Date.now();
-    const timePassed = now - lastEnergyRefillTime;
-    const energyToAdd = Math.floor(timePassed / (5 * 60 * 1000)); // Her 5 dakikada 1 enerji
-
-    if (energyToAdd > 0) {
-        energy = Math.min(energy + energyToAdd, maxEnergy);
-        lastEnergyRefillTime = now;
-        saveUserData();
-        updateUI();
-    }
-}
 
 window.addEventListener('resize', resizeCanvas);
 
