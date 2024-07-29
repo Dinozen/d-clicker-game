@@ -61,10 +61,7 @@ let lastAutoCheckTime = 0;
 const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-if (isMobile) {
-    document.body.style.touchAction = 'none';
-}
+console.log("Is mobile device:", isMobile);
 
 async function loadUserData() {
     try {
@@ -364,17 +361,17 @@ function drawDino() {
 function setupClickHandler() {
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 }
 
 function handleTouchStart(event) {
     event.preventDefault();
     const currentTime = Date.now();
-    if (currentTime - lastClickTime > CLICK_DELAY) {
+    if (currentTime - lastTouchTime > TOUCH_DELAY) {
         const touch = event.touches[0];
         handleClick({ clientX: touch.clientX, clientY: touch.clientY });
-        lastClickTime = currentTime;
+        lastTouchTime = currentTime;
+        isClicking = true;
     }
 }
 
@@ -383,38 +380,40 @@ function handleTouchEnd(event) {
     isClicking = false;
 }
 
+function handleTouchMove(event) {
+    event.preventDefault();
+    const touch = event.touches[0];
+    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+}
+
 function handleClick(event) {
-    const currentTime = Date.now();
-    if (currentTime - lastClickTime > CLICK_DELAY) {
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
 
-        if (x >= dinoX && x <= dinoX + dinoWidth &&
-            y >= dinoY && y <= dinoY + dinoHeight) {
-            let tokenGain = 1 * getLevelMultiplier();
-            if (isDoubleTokensActive) {
-                tokenGain *= 2;
-            }
-
-            createClickEffect(event.clientX, event.clientY, tokenGain);
-            clickScale = 1.1;
-            requestAnimationFrame(animateDino);
-
-            if (clicksRemaining > 0) {
-                tokens += tokenGain;
-                clicksRemaining--;
-                updateUI();
-                checkLevelUp();
-                saveUserData();
-            } else if (energy > 0) {
-                energy--;
-                clicksRemaining = getMaxClicksForLevel();
-                updateUI();
-                saveUserData();
-            }
+    if (x >= dinoX && x <= dinoX + dinoWidth &&
+        y >= dinoY && y <= dinoY + dinoHeight) {
+        let tokenGain = 1 * getLevelMultiplier();
+        if (isDoubleTokensActive) {
+            tokenGain *= 2;
         }
-        lastClickTime = currentTime;
+
+        createClickEffect(event.clientX, event.clientY, tokenGain);
+        clickScale = 1.1;
+        requestAnimationFrame(animateDino);
+
+        if (clicksRemaining > 0) {
+            tokens += tokenGain;
+            clicksRemaining--;
+            updateUI();
+            checkLevelUp();
+            saveUserData();
+        } else if (energy > 0) {
+            energy--;
+            clicksRemaining = getMaxClicksForLevel();
+            updateUI();
+            saveUserData();
+        }
     }
 }
 
