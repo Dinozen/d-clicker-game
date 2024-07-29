@@ -69,7 +69,7 @@ async function loadUserData() {
         console.log("Loaded user data:", data);
         tokens = data.tokens || 0;
         level = data.level || 1;
-        energy = Math.min(data.energy || maxEnergy, maxEnergy);
+        energy = Math.min(Math.max(data.energy || 0, 0), maxEnergy);
         maxEnergy = data.maxEnergy || 3;
         clicksRemaining = data.clicksRemaining || getMaxClicksForLevel();
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime || Date.now());
@@ -169,7 +169,7 @@ function startGame() {
         updateEnergyRefillRate();
         
         setInterval(increaseEnergy, 1000); // Her saniye enerji kontrolü
-        saveInterval = setInterval(saveUserData, 1000); // Her 5 yerine 1 saniyede bir verileri kaydet
+        saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
         
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
@@ -397,9 +397,10 @@ function handleClick(event) {
             updateUI();
             checkLevelUp();
             saveUserData();
-        } else if (energy > 0) {
-            energy--;
+        } else if (energy >= 1) {
+            energy = Math.max(0, energy - 1);
             clicksRemaining = getMaxClicksForLevel();
+            lastEnergyRefillTime = Date.now(); // Enerji kullanıldığında son doldurma zamanını güncelle
             saveUserData();
             updateUI();
         }
@@ -1300,9 +1301,17 @@ function increaseEnergy() {
     const timePassed = (now - lastEnergyRefillTime) / 1000; // saniye cinsinden geçen süre
     const energyToAdd = timePassed * energyRefillRate;
 
-    if (energyToAdd >= 1) {
-        energy = Math.min(energy + Math.floor(energyToAdd), maxEnergy);
-        lastEnergyRefillTime = now - (energyToAdd % 1) * 1000; // Kalan zamanı sakla
+    if (energyToAdd >= 0.01) { // Çok küçük artışları göz ardı et
+        energy = Math.min(energy + energyToAdd, maxEnergy);
+        lastEnergyRefillTime = now;
+        
+        // Enerji tam sayıya yuvarla
+        energy = Math.floor(energy * 100) / 100;
+        
+        if (energy > maxEnergy) {
+            energy = maxEnergy;
+        }
+        
         saveUserData();
         updateUI();
     }
