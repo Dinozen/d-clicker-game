@@ -367,8 +367,13 @@ function handleTouchStart(event) {
         const touch = event.touches[0];
         handleClick({ clientX: touch.clientX, clientY: touch.clientY });
         lastTouchTime = currentTime;
-        isClicking = true; //
+        isClicking = true;
     }
+}
+
+function handleTouchEnd(event) {
+    event.preventDefault();
+    isClicking = false;
 }
 
 function handleClick(event) {
@@ -388,17 +393,17 @@ function handleClick(event) {
         requestAnimationFrame(animateDino);
 
         if (clicksRemaining > 0) {
-        tokens += tokenGain;
-        clicksRemaining--;
-        updateUI();
-        checkLevelUp();
-        saveUserData();
-    } else if (energy > 0) {
-        energy--;
-        clicksRemaining = getMaxClicksForLevel();
-        saveUserData();
-        updateUI();
-    }
+            tokens += tokenGain;
+            clicksRemaining--;
+            updateUI();
+            checkLevelUp();
+            saveUserData();
+        } else if (energy > 0) {
+            energy--;
+            clicksRemaining = getMaxClicksForLevel();
+            saveUserData();
+            updateUI();
+        }
     }
 }
 
