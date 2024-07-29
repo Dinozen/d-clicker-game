@@ -363,13 +363,8 @@ function setupClickHandler() {
 
 function handleTouchStart(event) {
     event.preventDefault();
-    const currentTime = Date.now();
-    if (currentTime - lastTouchTime > TOUCH_DELAY) {
-        const touch = event.touches[0];
-        handleClick({ clientX: touch.clientX, clientY: touch.clientY });
-        lastTouchTime = currentTime;
-        isClicking = true;
-    }
+    const touch = event.touches[0];
+    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleTouchEnd(event) {
@@ -390,6 +385,7 @@ function handleClick(event) {
         }
 
         createClickEffect(event.clientX, event.clientY, tokenGain);
+        isClicking = true;
         clickScale = 1.1;
         requestAnimationFrame(animateDino);
 
