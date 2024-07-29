@@ -180,7 +180,6 @@ function startGame() {
         setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
         saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
         
-        
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
         hideLoading();
