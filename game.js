@@ -28,7 +28,6 @@ let energyRefillRate = 1 / 3; // Başlangıçta 3 saniyede 1
 let autoBotPurchaseTime = 0;
 let lastAutoBotCheckTime = 0;
 let lastPlayerActivityTime = Date.now();
-let lastClickIncreaseTime = Date.now();
 let autoBotShownThisSession = false;
 let lastTouchTime = 0;
 const TOUCH_DELAY = 100;
