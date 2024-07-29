@@ -89,7 +89,7 @@ async function loadUserData() {
         lastGiftTime = data.lastGiftTime || 0;
         lastClickIncreaseTime = data.lastClickIncreaseTime || Date.now();
         lastClickUpdateTime = data.lastClickUpdateTime || Date.now(); // Yeni eklenen satır
-        increaseClicksInBackground();
+        increaseClicksInBackground(); // Arka planda click artışı
         updateUI();
     } catch (error) {
         console.error('Error loading user data:', error);
