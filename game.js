@@ -369,13 +369,24 @@ function setupClickHandler() {
 
 function handleTouchStart(event) {
     event.preventDefault();
-    const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+    const currentTime = Date.now();
+    if (currentTime - lastTouchTime > TOUCH_DELAY) {
+        const touch = event.touches[0];
+        handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+        lastTouchTime = currentTime;
+        isClicking = true;
+    }
 }
 
 function handleTouchEnd(event) {
     event.preventDefault();
     isClicking = false;
+}
+
+function handleTouchMove(event) {
+    event.preventDefault();
+    const touch = event.touches[0];
+    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleClick(event) {
@@ -391,7 +402,6 @@ function handleClick(event) {
         }
 
         createClickEffect(event.clientX, event.clientY, tokenGain);
-        isClicking = true;
         clickScale = 1.1;
         requestAnimationFrame(animateDino);
 
