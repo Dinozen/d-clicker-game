@@ -29,6 +29,7 @@ let autoBotPurchaseTime = 0;
 let lastAutoBotCheckTime = 0;
 let lastPlayerActivityTime = Date.now();
 let autoBotShownThisSession = false;
+let lastClickUpdateTime = Date.now();
 
 // Level gereksinimleri
 const levelRequirements = [0, 30000, 80000, 300000, 1000000];
@@ -48,7 +49,6 @@ let clickScale = 1;
 
 let lastTime = 0;
 let resizeTimeout;
-let lastClickIncreaseTime = 0;
 let lastCooldownUpdateTime = 0;
 let cachedTokens = 0;
 
@@ -86,6 +86,7 @@ async function loadUserData() {
         autoBotTokens = data.autoBotTokens || 0;
         lastAutoBotCheckTime = data.lastAutoBotCheckTime ? new Date(data.lastAutoBotCheckTime) : null;
         lastGiftTime = data.lastGiftTime || 0;
+        lastClickUpdateTime = data.lastClickUpdateTime || Date.now(); // Yeni eklenen satır
         updateUI();
     } catch (error) {
         console.error('Error loading user data:', error);
@@ -115,7 +116,8 @@ async function saveUserData() {
                 autoBotPurchased,
                 autoBotTokens,
                 lastAutoBotCheckTime,
-                lastGiftTime
+                lastGiftTime,
+                lastClickUpdateTime // Yeni eklenen satır
             }),
         });
         if (!response.ok) {
@@ -133,10 +135,7 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
     if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
-        if (currentTime - lastClickIncreaseTime > 1000) {
-            increaseClicks();
-            lastClickIncreaseTime = currentTime;
-        }
+        updateClicksInBackground();
         
         if (currentTime - lastCooldownUpdateTime > 1000) {
             updateGiftCooldownDisplay();
@@ -164,7 +163,6 @@ function startGame() {
     loadUserData().then(() => {
         loadDinoImages();
         resizeCanvas();
-        setupClickHandler();
         setupResizeHandler();
         preloadImages();
         checkDailyLogin();
@@ -251,7 +249,7 @@ function initializeDOM() {
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-    canvas.addEventListener('click', handleClick);
+    canvas.addEventListener('click', handleSingleTap);
 
     if (document.getElementById('closeBoostersModal')) {
         document.getElementById('closeBoostersModal').addEventListener('click', () => {
@@ -356,31 +354,23 @@ function drawDino() {
     }
 }
 
-function setupClickHandler() {
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-    canvas.addEventListener('click', handleClick);
-}
 
 function handleTouchStart(event) {
     event.preventDefault();
     const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+    handleSingleTap({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleTouchEnd(event) {
     event.preventDefault();
-    isClicking = false;
 }
 
 function handleTouchMove(event) {
     event.preventDefault();
-    const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
-function handleClick(event) {
+// Tek tıklama için yeni fonksiyon
+function handleSingleTap(event) {
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
@@ -423,6 +413,20 @@ function createClickEffect(x, y, amount) {
     setTimeout(() => {
         clickEffect.remove();
     }, 1000);
+}
+
+function updateClicksInBackground() {
+    const now = Date.now();
+    const timePassed = (now - lastClickUpdateTime) / 1000; // Saniye cinsinden geçen süre
+    const clickIncrease = timePassed * getClickIncreaseRate();
+    
+    if (clicksRemaining < getMaxClicksForLevel()) {
+        clicksRemaining = Math.min(clicksRemaining + clickIncrease, getMaxClicksForLevel());
+        lastClickUpdateTime = now;
+        
+        saveUserData(); // Değişiklikleri kaydet
+        updateUI(); // UI'ı güncelle
+    }
 }
 
 function formatNumber(number) {
@@ -1017,15 +1021,6 @@ function updateDailyRewardDisplay() {
     }
 }
 
-function increaseClicks() {
-    const maxClicks = getMaxClicksForLevel();
-    if (clicksRemaining < maxClicks) {
-        const increase = getClickIncreaseRate();
-        clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
-        console.log(`Clicks increased by ${increase}. New value: ${clicksRemaining}`);
-        updateUI();
-    }
-}
 
 function getClickIncreaseRate() {
     switch (level) {
