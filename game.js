@@ -28,6 +28,7 @@ let energyRefillRate = 1 / 3; // Başlangıçta 3 saniyede 1
 let autoBotPurchaseTime = 0;
 let lastAutoBotCheckTime = 0;
 let lastPlayerActivityTime = Date.now();
+let lastClickIncreaseTime = Date.now();
 let autoBotShownThisSession = false;
 let lastTouchTime = 0;
 const TOUCH_DELAY = 100;
@@ -61,7 +62,10 @@ let lastAutoCheckTime = 0;
 const AUTO_CHECK_INTERVAL = 5000; // 5 saniye
 
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-console.log("Is mobile device:", isMobile);
+
+if (isMobile) {
+    document.body.style.touchAction = 'none';
+}
 
 async function loadUserData() {
     try {
@@ -79,6 +83,7 @@ async function loadUserData() {
         maxEnergy = data.maxEnergy || 3;
         clicksRemaining = data.clicksRemaining || getMaxClicksForLevel();
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime || Date.now());
+        lastClickIncreaseTime = new Date(data.lastClickIncreaseTime || Date.now()).getTime();
         dailyStreak = data.dailyStreak || 0;
         lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
         completedTasks = data.completedTasks || [];
@@ -109,6 +114,7 @@ async function saveUserData() {
                 maxEnergy,
                 clicksRemaining,
                 lastEnergyRefillTime,
+                lastClickIncreaseTime,
                 dailyStreak,
                 lastLoginDate,
                 completedTasks,
@@ -135,10 +141,7 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
     if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
-        if (currentTime - lastClickIncreaseTime > 1000) {
-            increaseClicks();
-            lastClickIncreaseTime = currentTime;
-        }
+        increaseClicks(); // Her frame'de increaseClicks'i çağır
         
         if (currentTime - lastCooldownUpdateTime > 1000) {
             updateGiftCooldownDisplay();
@@ -174,8 +177,14 @@ function startGame() {
         updateTaskButtons();
         updateEnergyRefillRate();
         
-        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
-        saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
+        // Her saniye enerji kontrolü
+        setInterval(increaseEnergy, 1000);
+        
+        // Her 5 saniyede bir verileri kaydet
+        saveInterval = setInterval(saveUserData, 5000);
+        
+        // Son click artış zamanını şu anki zaman olarak ayarla
+        lastClickIncreaseTime = Date.now();
         
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
@@ -361,17 +370,17 @@ function drawDino() {
 function setupClickHandler() {
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 }
 
 function handleTouchStart(event) {
     event.preventDefault();
     const currentTime = Date.now();
-    if (currentTime - lastTouchTime > TOUCH_DELAY) {
+    if (currentTime - lastClickTime > CLICK_DELAY) {
         const touch = event.touches[0];
         handleClick({ clientX: touch.clientX, clientY: touch.clientY });
-        lastTouchTime = currentTime;
-        isClicking = true;
+        lastClickTime = currentTime;
     }
 }
 
@@ -380,40 +389,38 @@ function handleTouchEnd(event) {
     isClicking = false;
 }
 
-function handleTouchMove(event) {
-    event.preventDefault();
-    const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
-}
-
 function handleClick(event) {
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const currentTime = Date.now();
+    if (currentTime - lastClickTime > CLICK_DELAY) {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
 
-    if (x >= dinoX && x <= dinoX + dinoWidth &&
-        y >= dinoY && y <= dinoY + dinoHeight) {
-        let tokenGain = 1 * getLevelMultiplier();
-        if (isDoubleTokensActive) {
-            tokenGain *= 2;
+        if (x >= dinoX && x <= dinoX + dinoWidth &&
+            y >= dinoY && y <= dinoY + dinoHeight) {
+            let tokenGain = 1 * getLevelMultiplier();
+            if (isDoubleTokensActive) {
+                tokenGain *= 2;
+            }
+
+            createClickEffect(event.clientX, event.clientY, tokenGain);
+            clickScale = 1.1;
+            requestAnimationFrame(animateDino);
+
+            if (clicksRemaining > 0) {
+                tokens += tokenGain;
+                clicksRemaining--;
+                updateUI();
+                checkLevelUp();
+                saveUserData();
+            } else if (energy > 0) {
+                energy--;
+                clicksRemaining = getMaxClicksForLevel();
+                updateUI();
+                saveUserData();
+            }
         }
-
-        createClickEffect(event.clientX, event.clientY, tokenGain);
-        clickScale = 1.1;
-        requestAnimationFrame(animateDino);
-
-        if (clicksRemaining > 0) {
-            tokens += tokenGain;
-            clicksRemaining--;
-            updateUI();
-            checkLevelUp();
-            saveUserData();
-        } else if (energy > 0) {
-            energy--;
-            clicksRemaining = getMaxClicksForLevel();
-            updateUI();
-            saveUserData();
-        }
+        lastClickTime = currentTime;
     }
 }
 
@@ -1023,11 +1030,14 @@ function updateDailyRewardDisplay() {
 }
 
 function increaseClicks() {
+    const currentTime = Date.now();
+    const timePassed = (currentTime - lastClickIncreaseTime) / 1000; // Geçen süreyi saniye cinsinden hesapla
+    lastClickIncreaseTime = currentTime;
+
     const maxClicks = getMaxClicksForLevel();
     if (clicksRemaining < maxClicks) {
-        const increase = getClickIncreaseRate();
+        const increase = getClickIncreaseRate() * timePassed;
         clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
-        console.log(`Clicks increased by ${increase}. New value: ${clicksRemaining}`);
         updateUI();
     }
 }
