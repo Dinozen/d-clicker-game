@@ -89,6 +89,7 @@ async function loadUserData() {
         lastGiftTime = data.lastGiftTime || 0;
         lastClickIncreaseTime = data.lastClickIncreaseTime || Date.now();
         lastClickUpdateTime = data.lastClickUpdateTime || Date.now(); // Yeni eklenen satır
+        increaseClicksInBackground();
         updateUI();
     } catch (error) {
         console.error('Error loading user data:', error);
@@ -133,6 +134,19 @@ async function saveUserData() {
         showMessage('Failed to save game progress. Please check your internet connection.');
     }
 }
+
+function increaseClicksInBackground() {
+    const currentTime = Date.now();
+    const timeSinceLastCheck = (currentTime - lastClickUpdateTime) / 1000; // Saniye cinsinden
+    const clickIncreaseRate = getClickIncreaseRate(); // Her saniyedeki click artış oranı
+
+    if (timeSinceLastCheck > 0) {
+        const clickIncrease = clickIncreaseRate * timeSinceLastCheck; // Geçen süre boyunca click artışı
+        clicksRemaining = Math.min(clicksRemaining + clickIncrease, getMaxClicksForLevel());
+        lastClickUpdateTime = currentTime;
+    }
+}
+
 
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
@@ -1306,6 +1320,7 @@ function increaseClicks() {
         updateUI();
     }
 }
+
 
 window.addEventListener('resize', resizeCanvas);
 
