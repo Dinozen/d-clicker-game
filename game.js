@@ -168,7 +168,7 @@ function startGame() {
         updateTaskButtons();
         updateEnergyRefillRate();
         
-        setInterval(increaseEnergy, 1000); // Her saniye enerji kontrolü
+        
         saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
         
         requestAnimationFrame(gameLoop);
@@ -371,10 +371,6 @@ function handleTouchStart(event) {
     }
 }
 
-function handleTouchEnd(event) {
-    event.preventDefault();
-}
-
 function handleClick(event) {
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -392,18 +388,17 @@ function handleClick(event) {
         requestAnimationFrame(animateDino);
 
         if (clicksRemaining > 0) {
-            tokens += tokenGain;
-            clicksRemaining--;
-            updateUI();
-            checkLevelUp();
-            saveUserData();
-        } else if (energy >= 1) {
-            energy = Math.max(0, energy - 1);
-            clicksRemaining = getMaxClicksForLevel();
-            lastEnergyRefillTime = Date.now(); // Enerji kullanıldığında son doldurma zamanını güncelle
-            saveUserData();
-            updateUI();
-        }
+        tokens += tokenGain;
+        clicksRemaining--;
+        updateUI();
+        checkLevelUp();
+        saveUserData();
+    } else if (energy > 0) {
+        energy--;
+        clicksRemaining = getMaxClicksForLevel();
+        saveUserData();
+        updateUI();
+    }
     }
 }
 
@@ -1025,6 +1020,14 @@ function increaseClicks() {
         clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
         console.log(`Clicks increased by ${increase}. New value: ${clicksRemaining}`);
         updateUI();
+
+        // Eğer clicks maksimuma ulaştıysa ve enerji tam değilse, enerjiyi bir birim artır ve clicks'i sıfırla
+        if (clicksRemaining === maxClicks && energy < maxEnergy) {
+            energy = Math.min(energy + 1, maxEnergy);
+            clicksRemaining = 0;
+            saveUserData();
+            updateUI();
+        }
     }
 }
 
@@ -1296,26 +1299,6 @@ function toggleRewardPage() {
     }
 }
 
-function increaseEnergy() {
-    const now = Date.now();
-    const timePassed = (now - lastEnergyRefillTime) / 1000; // saniye cinsinden geçen süre
-    const energyToAdd = timePassed * energyRefillRate;
-
-    if (energyToAdd >= 0.01) { // Çok küçük artışları göz ardı et
-        energy = Math.min(energy + energyToAdd, maxEnergy);
-        lastEnergyRefillTime = now;
-        
-        // Enerji tam sayıya yuvarla
-        energy = Math.floor(energy * 100) / 100;
-        
-        if (energy > maxEnergy) {
-            energy = maxEnergy;
-        }
-        
-        saveUserData();
-        updateUI();
-    }
-}
 
 window.addEventListener('resize', resizeCanvas);
 
