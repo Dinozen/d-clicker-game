@@ -364,13 +364,18 @@ function drawDino() {
 function setupClickHandler() {
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 }
 
 function handleTouchStart(event) {
     event.preventDefault();
-    const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+    const currentTime = Date.now();
+    if (currentTime - lastClickTime > CLICK_DELAY) {
+        const touch = event.touches[0];
+        handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+        lastClickTime = currentTime;
+    }
 }
 
 function handleTouchEnd(event) {
@@ -379,34 +384,37 @@ function handleTouchEnd(event) {
 }
 
 function handleClick(event) {
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const currentTime = Date.now();
+    if (currentTime - lastClickTime > CLICK_DELAY) {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
 
-    if (x >= dinoX && x <= dinoX + dinoWidth &&
-        y >= dinoY && y <= dinoY + dinoHeight) {
-        let tokenGain = 1 * getLevelMultiplier();
-        if (isDoubleTokensActive) {
-            tokenGain *= 2;
+        if (x >= dinoX && x <= dinoX + dinoWidth &&
+            y >= dinoY && y <= dinoY + dinoHeight) {
+            let tokenGain = 1 * getLevelMultiplier();
+            if (isDoubleTokensActive) {
+                tokenGain *= 2;
+            }
+
+            createClickEffect(event.clientX, event.clientY, tokenGain);
+            clickScale = 1.1;
+            requestAnimationFrame(animateDino);
+
+            if (clicksRemaining > 0) {
+                tokens += tokenGain;
+                clicksRemaining--;
+                updateUI();
+                checkLevelUp();
+                saveUserData();
+            } else if (energy > 0) {
+                energy--;
+                clicksRemaining = getMaxClicksForLevel();
+                updateUI();
+                saveUserData();
+            }
         }
-
-        createClickEffect(event.clientX, event.clientY, tokenGain);
-        isClicking = true;
-        clickScale = 1.1;
-        requestAnimationFrame(animateDino);
-
-        if (clicksRemaining > 0) {
-            tokens += tokenGain;
-            clicksRemaining--;
-            updateUI();
-            checkLevelUp();
-            saveUserData();
-        } else if (energy > 0) {
-            energy--;
-            clicksRemaining = getMaxClicksForLevel();
-            updateUI();
-            saveUserData();
-        }
+        lastClickTime = currentTime;
     }
 }
 
