@@ -179,7 +179,7 @@ function startGame() {
         
         setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
         saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
-        setInterval(updateClicksInBackground, 5000); // Her dakika yerine 5 saniye clicks kontrolü
+        
         
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
@@ -421,19 +421,6 @@ function createClickEffect(x, y, amount) {
     setTimeout(() => {
         clickEffect.remove();
     }, 1000);
-}
-
-function updateClicksInBackground() {
-    const now = Date.now();
-    const timePassed = (now - lastClickIncreaseTime) / 1000; // Saniye cinsinden geçen süre
-    const clickIncrease = timePassed * getClickIncreaseRate();
-    
-    const maxClicks = getMaxClicksForLevel();
-    if (clicksRemaining < maxClicks) {
-        clicksRemaining = Math.min(clicksRemaining + clickIncrease, maxClicks);
-        lastClickIncreaseTime = now;
-        saveUserData();
-    }
 }
 
 function formatNumber(number) {
