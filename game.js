@@ -168,8 +168,8 @@ function startGame() {
         updateTaskButtons();
         updateEnergyRefillRate();
         
-        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
-        saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
+        setInterval(increaseEnergy, 1000); // Her saniye enerji kontrolü
+        saveInterval = setInterval(saveUserData, 1000); // Her 5 yerine 1 saniyede bir verileri kaydet
         
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
@@ -1297,12 +1297,12 @@ function toggleRewardPage() {
 
 function increaseEnergy() {
     const now = Date.now();
-    const timePassed = now - lastEnergyRefillTime;
-    const energyToAdd = Math.floor(timePassed / (5 * 60 * 1000)); // Her 5 dakikada 1 enerji
+    const timePassed = (now - lastEnergyRefillTime) / 1000; // saniye cinsinden geçen süre
+    const energyToAdd = timePassed * energyRefillRate;
 
-    if (energyToAdd > 0) {
-        energy = Math.min(energy + energyToAdd, maxEnergy);
-        lastEnergyRefillTime = now;
+    if (energyToAdd >= 1) {
+        energy = Math.min(energy + Math.floor(energyToAdd), maxEnergy);
+        lastEnergyRefillTime = now - (energyToAdd % 1) * 1000; // Kalan zamanı sakla
         saveUserData();
         updateUI();
     }
