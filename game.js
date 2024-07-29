@@ -67,10 +67,9 @@ async function loadUserData() {
         }
         const data = await response.json();
         console.log("Loaded user data:", data);
-        // Oyuncu verilerini güncelle
         tokens = data.tokens || 0;
         level = data.level || 1;
-        energy = data.energy || 3;
+        energy = Math.min(data.energy || maxEnergy, maxEnergy);
         maxEnergy = data.maxEnergy || 3;
         clicksRemaining = data.clicksRemaining || getMaxClicksForLevel();
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime || Date.now());
@@ -401,8 +400,8 @@ function handleClick(event) {
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
-            updateUI();
             saveUserData();
+            updateUI();
         }
     }
 }
