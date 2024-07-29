@@ -360,6 +360,7 @@ function setupClickHandler() {
     canvas.addEventListener('click', handleClick);
 }
 
+
 function handleTouchStart(event) {
     event.preventDefault();
     const currentTime = Date.now();
