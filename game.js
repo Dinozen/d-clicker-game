@@ -813,8 +813,9 @@ function showReferralLink() {
 
     const referralLink = document.getElementById('referralLink');
     if (referralLink) {
-        referralLink.value = `https://t.me/Dinozen_bot?start=${telegramId}`;
-        console.log("Generated referral link:", referralLink.value);
+        const inviteMessage = `🌟 In Dinozen, the future is bright, and the past is exciting! Start with 5000 bonus tokens and multiply your $DINOZ. Join now: https://t.me/Dinozen_bot?start=${telegramId} Let's grow together! 🦖🚀`;
+        referralLink.value = inviteMessage;
+        console.log("Generated referral message:", referralLink.value);
     }
 
     const copyButton = document.getElementById('copyButton');
@@ -830,6 +831,14 @@ function showReferralLink() {
             }
         };
     }
+
+    const closeReferralModal = document.getElementById('closeReferralModal');
+    if (closeReferralModal) {
+        closeReferralModal.onclick = function () {
+            referralModal.style.display = 'none';
+        };
+    }
+}
 
     const closeReferralModal = document.getElementById('closeReferralModal');
     if (closeReferralModal) {
