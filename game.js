@@ -30,6 +30,7 @@ let lastAutoBotCheckTime = 0;
 let lastPlayerActivityTime = Date.now();
 let autoBotShownThisSession = false;
 let lastClickUpdateTime = Date.now();
+let lastClickIncreaseTime = Date.now();
 
 // Level gereksinimleri
 const levelRequirements = [0, 30000, 80000, 300000, 1000000];
@@ -86,6 +87,7 @@ async function loadUserData() {
         autoBotTokens = data.autoBotTokens || 0;
         lastAutoBotCheckTime = data.lastAutoBotCheckTime ? new Date(data.lastAutoBotCheckTime) : null;
         lastGiftTime = data.lastGiftTime || 0;
+        lastClickIncreaseTime = data.lastClickIncreaseTime || Date.now();
         lastClickUpdateTime = data.lastClickUpdateTime || Date.now(); // Yeni eklenen satır
         updateUI();
     } catch (error) {
@@ -109,6 +111,7 @@ async function saveUserData() {
                 clicksRemaining,
                 lastEnergyRefillTime,
                 dailyStreak,
+                lastClickIncreaseTime,
                 lastLoginDate,
                 completedTasks,
                 referralCount,
@@ -135,7 +138,11 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
     if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
-        updateClicksInBackground();
+        const now = Date.now();
+        if (now - lastClickIncreaseTime >= 1000) { // Her saniye kontrol et
+            increaseClicks();
+            lastClickIncreaseTime = now;
+        }
         
         if (currentTime - lastCooldownUpdateTime > 1000) {
             updateGiftCooldownDisplay();
@@ -172,6 +179,7 @@ function startGame() {
         
         setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
         saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
+        setInterval(updateClicksInBackground, 5000); // Her dakika yerine 5 saniye clicks kontrolü
         
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
@@ -417,15 +425,14 @@ function createClickEffect(x, y, amount) {
 
 function updateClicksInBackground() {
     const now = Date.now();
-    const timePassed = (now - lastClickUpdateTime) / 1000; // Saniye cinsinden geçen süre
+    const timePassed = (now - lastClickIncreaseTime) / 1000; // Saniye cinsinden geçen süre
     const clickIncrease = timePassed * getClickIncreaseRate();
     
-    if (clicksRemaining < getMaxClicksForLevel()) {
-        clicksRemaining = Math.min(clicksRemaining + clickIncrease, getMaxClicksForLevel());
-        lastClickUpdateTime = now;
-        
-        saveUserData(); // Değişiklikleri kaydet
-        updateUI(); // UI'ı güncelle
+    const maxClicks = getMaxClicksForLevel();
+    if (clicksRemaining < maxClicks) {
+        clicksRemaining = Math.min(clicksRemaining + clickIncrease, maxClicks);
+        lastClickIncreaseTime = now;
+        saveUserData();
     }
 }
 
@@ -1298,6 +1305,17 @@ function increaseEnergy() {
     if (energyToAdd > 0) {
         energy = Math.min(energy + energyToAdd, maxEnergy);
         lastEnergyRefillTime = now;
+        saveUserData();
+        updateUI();
+    }
+}
+
+function increaseClicks() {
+    const maxClicks = getMaxClicksForLevel();
+    if (clicksRemaining < maxClicks) {
+        const increase = getClickIncreaseRate();
+        clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
+        console.log(`Clicks increased by ${increase}. New value: ${clicksRemaining}`);
         saveUserData();
         updateUI();
     }
