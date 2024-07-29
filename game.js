@@ -29,6 +29,8 @@ let autoBotPurchaseTime = 0;
 let lastAutoBotCheckTime = 0;
 let lastPlayerActivityTime = Date.now();
 let autoBotShownThisSession = false;
+let lastTouchTime = 0;
+const TOUCH_DELAY = 100;
 
 // Level gereksinimleri
 const levelRequirements = [0, 30000, 80000, 300000, 1000000];
@@ -359,14 +361,18 @@ function drawDino() {
 function setupClickHandler() {
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('click', handleClick);
 }
 
 function handleTouchStart(event) {
     event.preventDefault();
-    const touch = event.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+    const currentTime = Date.now();
+    if (currentTime - lastTouchTime > TOUCH_DELAY) {
+        const touch = event.touches[0];
+        handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+        lastTouchTime = currentTime;
+        isClicking = true;
+    }
 }
 
 function handleTouchEnd(event) {
@@ -393,7 +399,6 @@ function handleClick(event) {
         }
 
         createClickEffect(event.clientX, event.clientY, tokenGain);
-        isClicking = true;
         clickScale = 1.1;
         requestAnimationFrame(animateDino);
 
