@@ -402,8 +402,8 @@ function handleClick(event) {
         } else if (energy > 0) {
             energy--;
             clicksRemaining = getMaxClicksForLevel();
-            saveUserData();
             updateUI();
+            saveUserData();
         }
     }
 }
