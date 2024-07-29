@@ -28,6 +28,7 @@ let energyRefillRate = 1 / 3; // Başlangıçta 3 saniyede 1
 let autoBotPurchaseTime = 0;
 let lastAutoBotCheckTime = 0;
 let lastPlayerActivityTime = Date.now();
+let lastClickIncreaseTime = Date.now();
 let autoBotShownThisSession = false;
 let lastTouchTime = 0;
 const TOUCH_DELAY = 100;
@@ -82,6 +83,7 @@ async function loadUserData() {
         maxEnergy = data.maxEnergy || 3;
         clicksRemaining = data.clicksRemaining || getMaxClicksForLevel();
         lastEnergyRefillTime = new Date(data.lastEnergyRefillTime || Date.now());
+        lastClickIncreaseTime = new Date(data.lastClickIncreaseTime || Date.now()).getTime();
         dailyStreak = data.dailyStreak || 0;
         lastLoginDate = data.lastLoginDate ? new Date(data.lastLoginDate) : null;
         completedTasks = data.completedTasks || [];
@@ -112,6 +114,7 @@ async function saveUserData() {
                 maxEnergy,
                 clicksRemaining,
                 lastEnergyRefillTime,
+                lastClickIncreaseTime,
                 dailyStreak,
                 lastLoginDate,
                 completedTasks,
@@ -138,10 +141,7 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
     if (currentTime - lastDrawTime > 1000 / FRAME_RATE) {
-        if (currentTime - lastClickIncreaseTime > 1000) {
-            increaseClicks();
-            lastClickIncreaseTime = currentTime;
-        }
+        increaseClicks(); // Her frame'de increaseClicks'i çağır
         
         if (currentTime - lastCooldownUpdateTime > 1000) {
             updateGiftCooldownDisplay();
@@ -177,8 +177,14 @@ function startGame() {
         updateTaskButtons();
         updateEnergyRefillRate();
         
-        setInterval(increaseEnergy, 60 * 1000); // Her dakika enerji kontrolü
-        saveInterval = setInterval(saveUserData, 5000); // Her 5 saniyede bir verileri kaydet
+        // Her saniye enerji kontrolü
+        setInterval(increaseEnergy, 1000);
+        
+        // Her 5 saniyede bir verileri kaydet
+        saveInterval = setInterval(saveUserData, 5000);
+        
+        // Son click artış zamanını şu anki zaman olarak ayarla
+        lastClickIncreaseTime = Date.now();
         
         requestAnimationFrame(gameLoop);
         console.log("Game loop started");
@@ -1024,11 +1030,14 @@ function updateDailyRewardDisplay() {
 }
 
 function increaseClicks() {
+    const currentTime = Date.now();
+    const timePassed = (currentTime - lastClickIncreaseTime) / 1000; // Geçen süreyi saniye cinsinden hesapla
+    lastClickIncreaseTime = currentTime;
+
     const maxClicks = getMaxClicksForLevel();
     if (clicksRemaining < maxClicks) {
-        const increase = getClickIncreaseRate();
+        const increase = getClickIncreaseRate() * timePassed;
         clicksRemaining = Math.min(clicksRemaining + increase, maxClicks);
-        console.log(`Clicks increased by ${increase}. New value: ${clicksRemaining}`);
         updateUI();
     }
 }
