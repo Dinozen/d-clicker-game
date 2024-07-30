@@ -360,6 +360,17 @@ function initializeDOM() {
         });
     }
 
+ function setupResizeHandler() {
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            resizeCanvas(); // Bu fonksiyonun tanımlı olduğundan emin olun
+            drawDino(); // Bu fonksiyonun tanımlı olduğundan emin olun
+        }, 250);
+    });
+}
+
+function setupActivityListeners() {
     document.addEventListener('click', () => {
         lastPlayerActivityTime = Date.now();
     });
@@ -370,16 +381,6 @@ function initializeDOM() {
 
     document.addEventListener('mousemove', () => {
         lastPlayerActivityTime = Date.now();
-    });
-}
-
-function setupResizeHandler() {
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(function() {
-            resizeCanvas();
-            drawDino();
-        }, 250);
     });
 }
 
