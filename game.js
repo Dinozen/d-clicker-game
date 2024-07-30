@@ -40,7 +40,8 @@ const clickLimits = [300, 500, 1000, 1500, 2000];
 
 // DOM elementleri
 let canvas, ctx, earnButton, tasksButton, boostButton, dailyRewardsButton, menuModal, dailyRewardDisplay, boostersModal, tasksModal, rewardTableModal;
-let autoBotSuccessModal, autoBotEarningsModal, loginStreakModal, loginStreakMessage, claimRewardButton, autoBotTokensCollected, claimAutoBotTokens;
+let autoBotSuccessModal, autoBotEarningsModal, loginStreakModal, loginStreakMessage, autoBotTokensCollected, claimAutoBotTokens;
+
 
 // Dinozor resimleri
 const dinoImages = [];
