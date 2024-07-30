@@ -1,5 +1,3 @@
-// game.js
-
 console.log("Game script loaded");
 
 const BACKEND_URL = 'https://dino-game-backend-913ad8a618a0.herokuapp.com';
@@ -40,8 +38,7 @@ const clickLimits = [300, 500, 1000, 1500, 2000];
 
 // DOM elementleri
 let canvas, ctx, earnButton, tasksButton, boostButton, dailyRewardsButton, menuModal, dailyRewardDisplay, boostersModal, tasksModal, rewardTableModal;
-let autoBotSuccessModal, autoBotEarningsModal, loginStreakModal, loginStreakMessage, autoBotTokensCollected, claimAutoBotTokens;
-
+let autoBotSuccessModal, autoBotEarningsModal, loginStreakModal, loginStreakMessage, claimRewardButton, autoBotTokensCollected, claimAutoBotTokens;
 
 // Dinozor resimleri
 const dinoImages = [];
@@ -103,38 +100,30 @@ async function loadUserData() {
 async function saveUserData() {
     try {
         console.log("Saving user data for Telegram ID:", telegramId);
-
-        const userData = {
-            telegramId,
-            tokens,
-            level,
-            energy,
-            maxEnergy,
-            clicksRemaining,
-            lastEnergyRefillTime: lastEnergyRefillTime.toISOString(),
-            dailyStreak,
-            lastLoginDate: lastLoginDate ? lastLoginDate.toISOString() : null,
-            completedTasks,
-            referralCount,
-            autoBotActive,
-            autoBotPurchased,
-            autoBotTokens,
-            lastAutoBotCheckTime: lastAutoBotCheckTime ? lastAutoBotCheckTime.toISOString() : null,
-            lastGiftTime,
-            lastClickUpdateTime,
-            lastClickIncreaseTime
-        };
-        
-        // LocalStorage'a kaydet
-        localStorage.setItem('userData', JSON.stringify(userData));
-
-        // Backend'e kaydet
         const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(userData),
+            body: JSON.stringify({
+                telegramId,
+                tokens,
+                level,
+                energy,
+                maxEnergy,
+                clicksRemaining,
+                lastEnergyRefillTime,
+                dailyStreak,
+                lastClickIncreaseTime,
+                lastLoginDate,
+                completedTasks,
+                referralCount,
+                autoBotActive,
+                autoBotPurchased,
+                autoBotTokens,
+                lastAutoBotCheckTime,
+                lastGiftTime,
+                lastClickUpdateTime // Yeni eklenen satır
+            }),
         });
-
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -157,6 +146,7 @@ function increaseClicksInBackground() {
         lastClickUpdateTime = currentTime;
     }
 }
+
 
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
@@ -238,46 +228,9 @@ function initializeDOM() {
     autoBotEarningsModal = document.getElementById('autoBotEarningsModal');
     loginStreakModal = document.getElementById('loginStreakModal');
     loginStreakMessage = document.getElementById('loginStreakMessage');
+    claimRewardButton = document.getElementById('claimDailyReward');
     autoBotTokensCollected = document.getElementById('autoBotTokensCollected');
     claimAutoBotTokens = document.getElementById('claimAutoBotTokens');
-
-    // claimRewardButton değişkeni let ile tanımlanmalı
-    let claimRewardButton = document.getElementById('claimDailyReward');
-    if (claimRewardButton) {
-        claimRewardButton.disabled = false;
-        claimRewardButton.textContent = 'Claim Reward';
-        claimRewardButton.onclick = async function() {
-            try {
-                this.disabled = true;
-                this.textContent = 'Claiming...';
-                
-                const response = await fetch(`${BACKEND_URL}/api/claimDailyReward`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ telegramId, reward }),
-                });
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const result = await response.json();
-                tokens += reward;
-                dailyStreak += 1;
-                lastLoginDate = new Date();
-                updateUI();
-                saveUserData();
-                showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
-                loginStreakModal.style.display = 'none';
-                this.textContent = 'Claimed';
-            } catch (error) {
-                console.error('Error claiming daily reward:', error);
-                showMessage('Failed to claim daily reward. Please try again later.');
-            } finally {
-                this.disabled = false;
-            }
-        };
-    }
 
     if (earnButton) {
         earnButton.addEventListener('click', toggleMenu);
@@ -308,16 +261,11 @@ function initializeDOM() {
     if (document.getElementById('visitWebsiteButton')) {
         document.getElementById('visitWebsiteButton').addEventListener('click', () => startTask('visitWebsite'));
     }
-    if (document.getElementById('joinTelegramButton')) {
-        document.getElementById('joinTelegramButton').addEventListener('click', () => startTask('joinTelegram'));
-    }
     if (document.getElementById('closeTasksModal')) {
         document.getElementById('closeTasksModal').addEventListener('click', () => {
             tasksModal.style.display = 'none';
         });
     }
-}
-
 
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -360,17 +308,6 @@ function initializeDOM() {
         });
     }
 
- function setupResizeHandler() {
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(function() {
-            resizeCanvas(); // Bu fonksiyonun tanımlı olduğundan emin olun
-            drawDino(); // Bu fonksiyonun tanımlı olduğundan emin olun
-        }, 250);
-    });
-}
-
-function setupActivityListeners() {
     document.addEventListener('click', () => {
         lastPlayerActivityTime = Date.now();
     });
@@ -381,6 +318,16 @@ function setupActivityListeners() {
 
     document.addEventListener('mousemove', () => {
         lastPlayerActivityTime = Date.now();
+    });
+}
+
+function setupResizeHandler() {
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            resizeCanvas();
+            drawDino();
+        }, 250);
     });
 }
 
@@ -427,6 +374,7 @@ function drawDino() {
         ctx.fillRect(window.innerWidth / 2 - 50, window.innerHeight / 2 - 50, 100, 100);
     }
 }
+
 
 function handleTouchStart(event) {
     event.preventDefault();
@@ -1039,43 +987,39 @@ function showLoginStreakModal(reward) {
     if (loginStreakModal) {
         loginStreakModal.style.display = 'block';
     }
-}
     
-let claimRewardButton = document.getElementById('claimDailyReward');
-if (claimRewardButton) {
-    claimRewardButton.disabled = false;
-    claimRewardButton.textContent = 'Claim Reward';
-    claimRewardButton.onclick = async function() {
-        try {
-            this.disabled = true;
-            this.textContent = 'Claiming...';
-            
-            const response = await fetch(`${BACKEND_URL}/api/claimDailyReward`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ telegramId, reward }),
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+    const claimRewardButton = document.getElementById('claimDailyReward');
+    if (claimRewardButton) {
+        claimRewardButton.disabled = false;
+        claimRewardButton.textContent = 'Claim Reward';
+        claimRewardButton.onclick = async function() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/claimDailyReward`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ telegramId, reward }),
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                tokens += reward;
+                dailyStreak += 1;
+                lastLoginDate = new Date();
+                updateUI();
+                saveUserData();
+                showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
+                loginStreakModal.style.display = 'none';
+                this.disabled = true;
+                this.textContent = 'Claimed';
+            } catch (error) {
+                console.error('Error claiming daily reward:', error);
+                showMessage('Failed to claim daily reward. Please try again later.');
             }
-            const result = await response.json();
-            tokens += reward;
-            dailyStreak += 1;
-            lastLoginDate = new Date();
-            updateUI();
-            saveUserData();
-            showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
-            loginStreakModal.style.display = 'none';
-            this.textContent = 'Claimed';
-        } catch (error) {
-            console.error('Error claiming daily reward:', error);
-            showMessage('Failed to claim daily reward. Please try again later.');
-        } finally {
-            this.disabled = false;
-        }
-    };
+        };
+    }
 }
 
 function updateDailyRewardDisplay() {
@@ -1083,6 +1027,7 @@ function updateDailyRewardDisplay() {
         dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
     }
 }
+
 
 function getClickIncreaseRate() {
     switch (level) {
@@ -1230,7 +1175,6 @@ function showTasks() {
 function updateTaskButtons() {
     const followUsButton = document.getElementById('followUsButton');
     const visitWebsiteButton = document.getElementById('visitWebsiteButton');
-    const joinTelegramButton = document.getElementById('joinTelegramButton');
 
     if (followUsButton) {
         if (completedTasks.includes('followX')) {
@@ -1251,16 +1195,6 @@ function updateTaskButtons() {
             visitWebsiteButton.disabled = false;
         }
     }
-
-    if (joinTelegramButton) {
-        if (completedTasks.includes('joinTelegram')) {
-            joinTelegramButton.textContent = 'COMPLETED';
-            joinTelegramButton.disabled = true;
-        } else {
-            joinTelegramButton.textContent = 'START';
-            joinTelegramButton.disabled = false;
-        }
-    }
 }
 
 function startTask(taskType) {
@@ -1277,9 +1211,6 @@ function startTask(taskType) {
     } else if (taskType === 'visitWebsite') {
         url = 'https://www.dinozen.online/';
         buttonId = 'visitWebsiteButton';
-    } else if (taskType === 'joinTelegram') {
-        url = 'https://t.me/dinozenn';
-        buttonId = 'joinTelegramButton';
     }
 
     const taskWindow = window.open(url, '_blank');
@@ -1390,7 +1321,11 @@ function increaseClicks() {
     }
 }
 
+
 window.addEventListener('resize', resizeCanvas);
+
+// Düzenli Veri Kaydetme (her saniye)
+setInterval(saveUserData, 5000);
 
 window.addEventListener('DOMContentLoaded', function () {
     showLoading(); // Sayfa yüklenirken yükleme ekranını göster
