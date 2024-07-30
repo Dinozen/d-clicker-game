@@ -424,6 +424,56 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-20px); }
         }
+        .task-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: rgba(0, 0, 0, 0.7);
+        border-radius: 5px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .task-description {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .task-reward {
+        font-size: 0.8em;
+        color: #61dafb;
+    }
+
+    .task-button {
+        padding: 5px 10px;
+        background-color: #61dafb;
+        color: #000;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .task-button:hover {
+        background-color: #21a1f1;
+    }
+
+    .task-button:disabled {
+        background-color: #999;
+        cursor: not-allowed;
+    }
+
+    .referral-bonus {
+        margin-top: 15px;
+        font-weight: bold;
+        color: #4CAF50;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 5px;
+        border-radius: 5px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
     </style>
 </head>
 <body>
@@ -463,19 +513,36 @@
     </div>
 
     <div id="tasksModal" class="modal">
-        <div class="modal-content">
-            <h3>Tasks</h3>
-            <div class="task-item">
-                <p>1. Follow us on X!</p>
-                <button id="followUsButton" class="button">START</button>
+    <div class="modal-content">
+        <h3>Tasks</h3>
+        
+        <div class="task-item">
+            <div class="task-description">
+                <span>1. Follow us on X!</span>
+                <span class="task-reward">Reward: 1000 tokens</span>
             </div>
-            <div class="task-item">
-                <p>2. Visit our official website!</p>
-                <button id="visitWebsiteButton" class="button">START</button>
-            </div>
-            <button id="closeTasksModal" class="close-btn">×</button>
+            <button id="followUsButton" class="task-button">START</button>
         </div>
+        
+        <div class="task-item">
+            <div class="task-description">
+                <span>2. Visit our official website!</span>
+                <span class="task-reward">Reward: 1000 tokens</span>
+            </div>
+            <button id="visitWebsiteButton" class="task-button">START</button>
+        </div>
+        
+        <div class="task-item">
+            <div class="task-description">
+                <span>3. Join our Telegram community!</span>
+                <span class="task-reward">Reward: 1000 tokens</span>
+            </div>
+            <button id="joinTelegramButton" class="task-button">START</button>
+        </div>
+        
+        <button id="closeTasksModal" class="close-btn">×</button>
     </div>
+</div>
 
     <div id="rewardTableModal" class="modal">
         <div class="modal-content daily-streak">
@@ -526,27 +593,28 @@
         </div>
     </div>
 
-    <div id="referralModal" class="modal">
-        <div class="modal-content">
-            <h3>Your Referral Link</h3>
-            <div class="referral-link-container">
-                <input type="text" id="referralLink" readonly>
-                <button id="copyButton" class="button">Copy</button>
-            </div>
-            <div id="referralRewards">
-                <h4>Referral Rewards:</h4>
-                <p>1 Referral: 3,000 tokens</p>
-                <p>5 Referrals: 15,000 tokens</p>
-                <p>10 Referrals: 30,000 tokens</p>
-                <p>20 Referrals: 75,000 tokens</p>
-                <p>50 Referrals: 300,000 tokens</p>
-                <p>100 Referrals: 600,000 tokens</p>
-                <p>500 Referrals: 3M tokens</p>
-                <p>1000 Referrals: 10M tokens</p>
-            </div>
-            <button id="closeReferralModal" class="close-btn">×</button>
+   <div id="referralModal" class="modal">
+    <div class="modal-content">
+        <h3>Your Referral Link</h3>
+        <div class="referral-link-container">
+            <input type="text" id="referralLink" readonly>
+            <button id="copyButton" class="button">Copy</button>
         </div>
+        <div id="referralRewards">
+            <h4>Referral Rewards:</h4>
+            <p>1 Referral: 3,000 tokens</p>
+            <p>5 Referrals: 15,000 tokens</p>
+            <p>10 Referrals: 30,000 tokens</p>
+            <p>20 Referrals: 75,000 tokens</p>
+            <p>50 Referrals: 300,000 tokens</p>
+            <p>100 Referrals: 600,000 tokens</p>
+            <p>500 Referrals: 3M tokens</p>
+            <p>1000 Referrals: 10M tokens</p>
+        </div>
+        <p class="referral-bonus">New players get 5000 bonus tokens when using your referral link!</p>
+        <button id="closeReferralModal" class="close-btn">×</button>
     </div>
+</div>
 
     <div id="loginStreakModal" class="modal">
         <div class="modal-content">
