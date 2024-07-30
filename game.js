@@ -1466,4 +1466,3 @@ function preloadImages() {
         img.src = src;
     });
 }
-})();
