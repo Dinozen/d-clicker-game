@@ -327,16 +327,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-function setupResizeHandler() {
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(function() {
-            resizeCanvas();
-            drawDino();
-        }, 250);
-    });
-}
-
 function resizeCanvas() {
     const scale = window.devicePixelRatio;
     canvas.width = window.innerWidth * scale;
@@ -345,6 +335,16 @@ function resizeCanvas() {
     canvas.style.height = `${window.innerHeight}px`;
     ctx.scale(scale, scale);
     drawDino();
+}
+
+function setupResizeHandler() {
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            resizeCanvas();
+            drawDino();
+        }, 250);
+    });
 }
 
 function drawDino() {
