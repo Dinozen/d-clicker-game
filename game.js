@@ -263,6 +263,10 @@ function initializeDOM() {
     if (document.getElementById('closeTasksModal')) {
         document.getElementById('closeTasksModal').addEventListener('click', () => {
             tasksModal.style.display = 'none';
+            const joinTelegramButton = document.getElementById('joinTelegramButton');
+    if (joinTelegramButton) {
+        joinTelegramButton.addEventListener('click', () => startTask('joinTelegram'));
+    }
         });
     }
 
@@ -1255,7 +1259,7 @@ function startTask(taskType) {
         url = 'https://www.dinozen.online/';
         buttonId = 'visitWebsiteButton';
     } else if (taskType === 'joinTelegram') {
-        url = 'https://t.me/dinozenn';  // Telegram davet linkini buraya koyun
+        url = 'https://t.me/dinozenn';
         buttonId = 'joinTelegramButton';
     }
 
@@ -1279,6 +1283,7 @@ function startTask(taskType) {
         }
     }, 5000);
 }
+
 
 function completeTask(taskType) {
     if (!completedTasks.includes(taskType)) {
