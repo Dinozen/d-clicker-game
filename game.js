@@ -1,4 +1,3 @@
-(function() {
 console.log("Game script loaded");
 
 const BACKEND_URL = 'https://dino-game-backend-913ad8a618a0.herokuapp.com';
