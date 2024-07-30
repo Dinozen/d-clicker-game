@@ -776,22 +776,6 @@ function updateEnergyBoostCooldownDisplay() {
         }
     }
 }
-
-// Telegram grubuna katılma görevi için yeni fonksiyon
-function joinTelegramGroup() {
-    if (completedTasks.includes('joinTelegram')) {
-        showMessage('You have already completed this task!');
-        return;
-    }
-
-    const telegramGroupUrl = 'https://t.me/your_telegram_group'; // Telegram grup bağlantınızı buraya ekleyin
-    const taskWindow = window.open(telegramGroupUrl, '_blank');
-    const button = document.getElementById('joinTelegramButton');
-    if (button) {
-        button.textContent = 'CHECKING...';
-        button.disabled = true;
-    }
-
     setTimeout(() => {
         if (taskWindow && !taskWindow.closed) {
             completeTask('joinTelegram');
