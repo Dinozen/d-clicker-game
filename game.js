@@ -997,8 +997,8 @@ function showLoginStreakModal(reward) {
     }
     if (loginStreakModal) {
         loginStreakModal.style.display = 'block';
-        };
     }
+}
     
     const claimRewardButton = document.getElementById('claimDailyReward');
 if (claimRewardButton) {
@@ -1238,7 +1238,7 @@ function startTask(taskType) {
         url = 'https://www.dinozen.online/';
         buttonId = 'visitWebsiteButton';
     } else if (taskType === 'joinTelegram') {
-        url = 'https://t.me/dinozenn'; // Telegram grup bağlantısı
+        url = 'https://t.me/dinozenn';
         buttonId = 'joinTelegramButton';
     }
 
