@@ -147,7 +147,6 @@ function increaseClicksInBackground() {
     }
 }
 
-
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 
@@ -308,33 +307,24 @@ function initializeDOM() {
         });
     }
 
-document.addEventListener('click', () => {
-    lastPlayerActivityTime = Date.now();
-});
+    document.addEventListener('click', () => {
+        lastPlayerActivityTime = Date.now();
+    });
 
-document.addEventListener('keydown', () => {
-    lastPlayerActivityTime = Date.now();
-});
+    document.addEventListener('keydown', () => {
+        lastPlayerActivityTime = Date.now();
+    });
 
-document.addEventListener('mousemove', () => {
-    lastPlayerActivityTime = Date.now();
-});
+    document.addEventListener('mousemove', () => {
+        lastPlayerActivityTime = Date.now();
+    });
 
-document.addEventListener('DOMContentLoaded', function() {
-    const joinTelegramButton = document.getElementById('joinTelegramButton');
-    if (joinTelegramButton) {
-        joinTelegramButton.addEventListener('click', joinTelegramGroup);
-    }
-});
-
-function resizeCanvas() {
-    const scale = window.devicePixelRatio;
-    canvas.width = window.innerWidth * scale;
-    canvas.height = window.innerHeight * scale;
-    canvas.style.width = `${window.innerWidth}px`;
-    canvas.style.height = `${window.innerHeight}px`;
-    ctx.scale(scale, scale);
-    drawDino();
+    document.addEventListener('DOMContentLoaded', function() {
+        const joinTelegramButton = document.getElementById('joinTelegramButton');
+        if (joinTelegramButton) {
+            joinTelegramButton.addEventListener('click', joinTelegramGroup);
+        }
+    });
 }
 
 function setupResizeHandler() {
@@ -345,6 +335,16 @@ function setupResizeHandler() {
             drawDino();
         }, 250);
     });
+}
+
+function resizeCanvas() {
+    const scale = window.devicePixelRatio;
+    canvas.width = window.innerWidth * scale;
+    canvas.height = window.innerHeight * scale;
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+    ctx.scale(scale, scale);
+    drawDino();
 }
 
 function drawDino() {
@@ -380,7 +380,6 @@ function drawDino() {
         ctx.fillRect(window.innerWidth / 2 - 50, window.innerHeight / 2 - 50, 100, 100);
     }
 }
-
 
 function handleTouchStart(event) {
     event.preventDefault();
@@ -556,9 +555,8 @@ function joinTelegramGroup() {
             }
             showMessage('Please keep the Telegram group window open for at least 5 seconds to complete the task.');
         }
-    }, 3000);
+    }, 5000);
 }
-
 
 function animateDino() {
     if (isClicking) {
@@ -774,19 +772,6 @@ function updateEnergyBoostCooldownDisplay() {
             energyBoostButton.classList.remove('disabled');
         }
     }
-}
-    setTimeout(() => {
-        if (taskWindow && !taskWindow.closed) {
-            completeTask('joinTelegram');
-            taskWindow.close();
-        } else {
-            if (button) {
-                button.textContent = 'START';
-                button.disabled = false;
-            }
-            showMessage('Please keep the Telegram group window open for at least 5 seconds to complete the task.');
-        }
-    }, 5000);
 }
 
 function showMessage(message) {
@@ -1076,7 +1061,6 @@ function updateDailyRewardDisplay() {
     }
 }
 
-
 function getClickIncreaseRate() {
     switch (level) {
         case 1: return 1 / 3; // Saniyede 0.33 click
@@ -1256,7 +1240,6 @@ function updateTaskButtons() {
     }
 }
 
-
 function startTask(taskType) {
     if (completedTasks.includes(taskType)) {
         showMessage('You have already completed this task!');
@@ -1297,7 +1280,6 @@ function startTask(taskType) {
     }, 5000);
 }
 
-
 function completeTask(taskType) {
     if (!completedTasks.includes(taskType)) {
         completedTasks.push(taskType);
@@ -1308,7 +1290,6 @@ function completeTask(taskType) {
         updateTaskButtons();
     }
 }
-
 
 function showDailyStreaks() {
     populateRewardPages();
@@ -1385,7 +1366,6 @@ function increaseClicks() {
         updateUI();
     }
 }
-
 
 window.addEventListener('resize', resizeCanvas);
 
