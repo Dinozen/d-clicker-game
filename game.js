@@ -264,9 +264,9 @@ function initializeDOM() {
         document.getElementById('closeTasksModal').addEventListener('click', () => {
             tasksModal.style.display = 'none';
             const joinTelegramButton = document.getElementById('joinTelegramButton');
-    if (joinTelegramButton) {
-        joinTelegramButton.addEventListener('click', () => startTask('joinTelegram'));
-    }
+            if (joinTelegramButton) {
+                joinTelegramButton.addEventListener('click', () => startTask('joinTelegram'));
+            }
         });
     }
 
@@ -1283,7 +1283,6 @@ function startTask(taskType) {
         }
     }, 5000);
 }
-
 
 function completeTask(taskType) {
     if (!completedTasks.includes(taskType)) {
