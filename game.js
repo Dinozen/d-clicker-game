@@ -308,6 +308,13 @@ function initializeDOM() {
         });
     }
 
+document.addEventListener('DOMContentLoaded', function() {
+    const joinTelegramButton = document.getElementById('joinTelegramButton');
+    if (joinTelegramButton) {
+        joinTelegramButton.addEventListener('click', joinTelegramGroup);
+    }
+});
+    
     document.addEventListener('click', () => {
         lastPlayerActivityTime = Date.now();
     });
