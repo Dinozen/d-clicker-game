@@ -308,25 +308,24 @@ function initializeDOM() {
         });
     }
 
+document.addEventListener('click', () => {
+    lastPlayerActivityTime = Date.now();
+});
+
+document.addEventListener('keydown', () => {
+    lastPlayerActivityTime = Date.now();
+});
+
+document.addEventListener('mousemove', () => {
+    lastPlayerActivityTime = Date.now();
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     const joinTelegramButton = document.getElementById('joinTelegramButton');
     if (joinTelegramButton) {
         joinTelegramButton.addEventListener('click', joinTelegramGroup);
     }
 });
-    
-    document.addEventListener('click', () => {
-        lastPlayerActivityTime = Date.now();
-    });
-
-    document.addEventListener('keydown', () => {
-        lastPlayerActivityTime = Date.now();
-    });
-
-    document.addEventListener('mousemove', () => {
-        lastPlayerActivityTime = Date.now();
-    });
-}
 
 function setupResizeHandler() {
     window.addEventListener('resize', function() {
@@ -531,6 +530,35 @@ function updateGiftCooldownDisplay() {
         }
     }
 }
+
+function joinTelegramGroup() {
+    if (completedTasks.includes('joinTelegram')) {
+        showMessage('You have already completed this task!');
+        return;
+    }
+
+    const telegramGroupUrl = 'https://t.me/dinozenn';
+    const taskWindow = window.open(telegramGroupUrl, '_blank');
+    const button = document.getElementById('joinTelegramButton');
+    if (button) {
+        button.textContent = 'CHECKING...';
+        button.disabled = true;
+    }
+
+    setTimeout(() => {
+        if (taskWindow && !taskWindow.closed) {
+            completeTask('joinTelegram');
+            taskWindow.close();
+        } else {
+            if (button) {
+                button.textContent = 'START';
+                button.disabled = false;
+            }
+            showMessage('Please keep the Telegram group window open for at least 5 seconds to complete the task.');
+        }
+    }, 3000);
+}
+
 
 function animateDino() {
     if (isClicking) {
