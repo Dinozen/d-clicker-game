@@ -261,6 +261,9 @@ function initializeDOM() {
     if (document.getElementById('visitWebsiteButton')) {
         document.getElementById('visitWebsiteButton').addEventListener('click', () => startTask('visitWebsite'));
     }
+    if (document.getElementById('joinTelegramButton')) {
+        document.getElementById('joinTelegramButton').addEventListener('click', () => startTask('joinTelegram'));
+    }
     if (document.getElementById('closeTasksModal')) {
         document.getElementById('closeTasksModal').addEventListener('click', () => {
             tasksModal.style.display = 'none';
@@ -472,6 +475,20 @@ function updateLevelInfo() {
             nextLevelElement.innerHTML = 'Max Level Reached!';
         }
     }
+}
+
+    setTimeout(() => {
+        if (taskWindow && !taskWindow.closed) {
+            completeTask('joinTelegram');
+            taskWindow.close();
+        } else {
+            if (button) {
+                button.textContent = 'START';
+                button.disabled = false;
+            }
+            showMessage('Please keep the Telegram group window open for at least 5 seconds to complete the task.');
+        }
+    }, 5000);
 }
 
 function updateUI() {
@@ -1175,6 +1192,7 @@ function showTasks() {
 function updateTaskButtons() {
     const followUsButton = document.getElementById('followUsButton');
     const visitWebsiteButton = document.getElementById('visitWebsiteButton');
+    const joinTelegramButton = document.getElementById('joinTelegramButton');
 
     if (followUsButton) {
         if (completedTasks.includes('followX')) {
@@ -1195,6 +1213,16 @@ function updateTaskButtons() {
             visitWebsiteButton.disabled = false;
         }
     }
+
+    if (joinTelegramButton) {
+        if (completedTasks.includes('joinTelegram')) {
+            joinTelegramButton.textContent = 'COMPLETED';
+            joinTelegramButton.disabled = true;
+        } else {
+            joinTelegramButton.textContent = 'START';
+            joinTelegramButton.disabled = false;
+        }
+    }
 }
 
 function startTask(taskType) {
@@ -1211,6 +1239,9 @@ function startTask(taskType) {
     } else if (taskType === 'visitWebsite') {
         url = 'https://www.dinozen.online/';
         buttonId = 'visitWebsiteButton';
+    } else if (taskType === 'joinTelegram') {
+        url = 'https://t.me/dinozenn'; // Telegram grup bağlantısı
+        buttonId = 'joinTelegramButton';
     }
 
     const taskWindow = window.open(url, '_blank');
