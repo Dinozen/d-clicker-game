@@ -477,20 +477,6 @@ function updateLevelInfo() {
     }
 }
 
-    setTimeout(() => {
-        if (taskWindow && !taskWindow.closed) {
-            completeTask('joinTelegram');
-            taskWindow.close();
-        } else {
-            if (button) {
-                button.textContent = 'START';
-                button.disabled = false;
-            }
-            showMessage('Please keep the Telegram group window open for at least 5 seconds to complete the task.');
-        }
-    }, 5000);
-}
-
 function updateUI() {
     if (tokens !== cachedTokens) {
         const tokenDisplay = document.getElementById('tokenDisplay');
@@ -1006,37 +992,40 @@ function showLoginStreakModal(reward) {
     }
     
     const claimRewardButton = document.getElementById('claimDailyReward');
-    if (claimRewardButton) {
-        claimRewardButton.disabled = false;
-        claimRewardButton.textContent = 'Claim Reward';
-        claimRewardButton.onclick = async function() {
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/claimDailyReward`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ telegramId, reward }),
-                });
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const result = await response.json();
-                tokens += reward;
-                dailyStreak += 1;
-                lastLoginDate = new Date();
-                updateUI();
-                saveUserData();
-                showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
-                loginStreakModal.style.display = 'none';
-                this.disabled = true;
-                this.textContent = 'Claimed';
-            } catch (error) {
-                console.error('Error claiming daily reward:', error);
-                showMessage('Failed to claim daily reward. Please try again later.');
+if (claimRewardButton) {
+    claimRewardButton.disabled = false;
+    claimRewardButton.textContent = 'Claim Reward';
+    claimRewardButton.onclick = async function() {
+        try {
+            this.disabled = true;
+            this.textContent = 'Claiming...';
+            
+            const response = await fetch(`${BACKEND_URL}/api/claimDailyReward`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ telegramId, reward }),
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        };
-    }
+            const result = await response.json();
+            tokens += reward;
+            dailyStreak += 1;
+            lastLoginDate = new Date();
+            updateUI();
+            saveUserData();
+            showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
+            loginStreakModal.style.display = 'none';
+            this.textContent = 'Claimed';
+        } catch (error) {
+            console.error('Error claiming daily reward:', error);
+            showMessage('Failed to claim daily reward. Please try again later.');
+        } finally {
+            this.disabled = false;
+        }
+    };
 }
 
 function updateDailyRewardDisplay() {
@@ -1226,6 +1215,7 @@ function updateTaskButtons() {
 }
 
 function startTask(taskType) {
+    let taskWindow;
     if (completedTasks.includes(taskType)) {
         showMessage('You have already completed this task!');
         return;
