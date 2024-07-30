@@ -1,3 +1,5 @@
+// game.js
+
 console.log("Game script loaded");
 
 const BACKEND_URL = 'https://dino-game-backend-913ad8a618a0.herokuapp.com';
@@ -154,7 +156,6 @@ function increaseClicksInBackground() {
         lastClickUpdateTime = currentTime;
     }
 }
-
 
 function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
@@ -385,7 +386,6 @@ function drawDino() {
         ctx.fillRect(window.innerWidth / 2 - 50, window.innerHeight / 2 - 50, 100, 100);
     }
 }
-
 
 function handleTouchStart(event) {
     event.preventDefault();
@@ -1000,7 +1000,7 @@ function showLoginStreakModal(reward) {
     }
 }
     
-    const claimRewardButton = document.getElementById('claimDailyReward');
+const claimRewardButton = document.getElementById('claimDailyReward');
 if (claimRewardButton) {
     claimRewardButton.disabled = false;
     claimRewardButton.textContent = 'Claim Reward';
@@ -1042,7 +1042,6 @@ function updateDailyRewardDisplay() {
         dailyRewardDisplay.textContent = `Daily Streak: ${dailyStreak} days`;
     }
 }
-
 
 function getClickIncreaseRate() {
     switch (level) {
@@ -1350,11 +1349,7 @@ function increaseClicks() {
     }
 }
 
-
 window.addEventListener('resize', resizeCanvas);
-
-// Düzenli Veri Kaydetme (her saniye)
-setInterval(saveUserData, 5000);
 
 window.addEventListener('DOMContentLoaded', function () {
     showLoading(); // Sayfa yüklenirken yükleme ekranını göster
