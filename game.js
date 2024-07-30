@@ -238,9 +238,46 @@ function initializeDOM() {
     autoBotEarningsModal = document.getElementById('autoBotEarningsModal');
     loginStreakModal = document.getElementById('loginStreakModal');
     loginStreakMessage = document.getElementById('loginStreakMessage');
-    claimRewardButton = document.getElementById('claimDailyReward');
     autoBotTokensCollected = document.getElementById('autoBotTokensCollected');
     claimAutoBotTokens = document.getElementById('claimAutoBotTokens');
+
+    // claimRewardButton değişkeni let ile tanımlanmalı
+    let claimRewardButton = document.getElementById('claimDailyReward');
+    if (claimRewardButton) {
+        claimRewardButton.disabled = false;
+        claimRewardButton.textContent = 'Claim Reward';
+        claimRewardButton.onclick = async function() {
+            try {
+                this.disabled = true;
+                this.textContent = 'Claiming...';
+                
+                const response = await fetch(`${BACKEND_URL}/api/claimDailyReward`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ telegramId, reward }),
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                tokens += reward;
+                dailyStreak += 1;
+                lastLoginDate = new Date();
+                updateUI();
+                saveUserData();
+                showMessage(`You claimed your daily reward of ${formatNumber(reward)} tokens!`);
+                loginStreakModal.style.display = 'none';
+                this.textContent = 'Claimed';
+            } catch (error) {
+                console.error('Error claiming daily reward:', error);
+                showMessage('Failed to claim daily reward. Please try again later.');
+            } finally {
+                this.disabled = false;
+            }
+        };
+    }
 
     if (earnButton) {
         earnButton.addEventListener('click', toggleMenu);
@@ -279,6 +316,8 @@ function initializeDOM() {
             tasksModal.style.display = 'none';
         });
     }
+}
+
 
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -1001,7 +1040,7 @@ function showLoginStreakModal(reward) {
     }
 }
     
-const claimRewardButton = document.getElementById('claimDailyReward');
+let claimRewardButton = document.getElementById('claimDailyReward');
 if (claimRewardButton) {
     claimRewardButton.disabled = false;
     claimRewardButton.textContent = 'Claim Reward';
