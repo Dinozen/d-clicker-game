@@ -100,30 +100,38 @@ async function loadUserData() {
 async function saveUserData() {
     try {
         console.log("Saving user data for Telegram ID:", telegramId);
+
+        const userData = {
+            telegramId,
+            tokens,
+            level,
+            energy,
+            maxEnergy,
+            clicksRemaining,
+            lastEnergyRefillTime: lastEnergyRefillTime.toISOString(),
+            dailyStreak,
+            lastLoginDate: lastLoginDate ? lastLoginDate.toISOString() : null,
+            completedTasks,
+            referralCount,
+            autoBotActive,
+            autoBotPurchased,
+            autoBotTokens,
+            lastAutoBotCheckTime: lastAutoBotCheckTime ? lastAutoBotCheckTime.toISOString() : null,
+            lastGiftTime,
+            lastClickUpdateTime,
+            lastClickIncreaseTime
+        };
+        
+        // LocalStorage'a kaydet
+        localStorage.setItem('userData', JSON.stringify(userData));
+
+        // Backend'e kaydet
         const response = await fetch(`${BACKEND_URL}/api/update/${telegramId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                telegramId,
-                tokens,
-                level,
-                energy,
-                maxEnergy,
-                clicksRemaining,
-                lastEnergyRefillTime,
-                dailyStreak,
-                lastClickIncreaseTime,
-                lastLoginDate,
-                completedTasks,
-                referralCount,
-                autoBotActive,
-                autoBotPurchased,
-                autoBotTokens,
-                lastAutoBotCheckTime,
-                lastGiftTime,
-                lastClickUpdateTime // Yeni eklenen satır
-            }),
+            body: JSON.stringify(userData),
         });
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -989,6 +997,7 @@ function showLoginStreakModal(reward) {
     }
     if (loginStreakModal) {
         loginStreakModal.style.display = 'block';
+        };
     }
     
     const claimRewardButton = document.getElementById('claimDailyReward');
@@ -1215,7 +1224,6 @@ function updateTaskButtons() {
 }
 
 function startTask(taskType) {
-    let taskWindow;
     if (completedTasks.includes(taskType)) {
         showMessage('You have already completed this task!');
         return;
