@@ -741,6 +741,35 @@ function updateEnergyBoostCooldownDisplay() {
     }
 }
 
+// Telegram grubuna katılma görevi için yeni fonksiyon
+function joinTelegramGroup() {
+    if (completedTasks.includes('joinTelegram')) {
+        showMessage('You have already completed this task!');
+        return;
+    }
+
+    const telegramGroupUrl = 'https://t.me/your_telegram_group'; // Telegram grup bağlantınızı buraya ekleyin
+    const taskWindow = window.open(telegramGroupUrl, '_blank');
+    const button = document.getElementById('joinTelegramButton');
+    if (button) {
+        button.textContent = 'CHECKING...';
+        button.disabled = true;
+    }
+
+    setTimeout(() => {
+        if (taskWindow && !taskWindow.closed) {
+            completeTask('joinTelegram');
+            taskWindow.close();
+        } else {
+            if (button) {
+                button.textContent = 'START';
+                button.disabled = false;
+            }
+            showMessage('Please keep the Telegram group window open for at least 5 seconds to complete the task.');
+        }
+    }, 5000);
+}
+
 function showMessage(message) {
     const messageModal = document.getElementById('messageModal');
     const messageModalText = document.getElementById('messageModalText');
@@ -1175,6 +1204,7 @@ function showTasks() {
 function updateTaskButtons() {
     const followUsButton = document.getElementById('followUsButton');
     const visitWebsiteButton = document.getElementById('visitWebsiteButton');
+    const joinTelegramButton = document.getElementById('joinTelegramButton');
 
     if (followUsButton) {
         if (completedTasks.includes('followX')) {
@@ -1195,7 +1225,18 @@ function updateTaskButtons() {
             visitWebsiteButton.disabled = false;
         }
     }
+
+    if (joinTelegramButton) {
+        if (completedTasks.includes('joinTelegram')) {
+            joinTelegramButton.textContent = 'COMPLETED';
+            joinTelegramButton.disabled = true;
+        } else {
+            joinTelegramButton.textContent = 'START';
+            joinTelegramButton.disabled = false;
+        }
+    }
 }
+
 
 function startTask(taskType) {
     if (completedTasks.includes(taskType)) {
@@ -1211,6 +1252,9 @@ function startTask(taskType) {
     } else if (taskType === 'visitWebsite') {
         url = 'https://www.dinozen.online/';
         buttonId = 'visitWebsiteButton';
+    } else if (taskType === 'joinTelegram') {
+        url = 'https://t.me/dinozenn';  // Telegram davet linkini buraya koyun
+        buttonId = 'joinTelegramButton';
     }
 
     const taskWindow = window.open(url, '_blank');
@@ -1234,6 +1278,7 @@ function startTask(taskType) {
     }, 5000);
 }
 
+
 function completeTask(taskType) {
     if (!completedTasks.includes(taskType)) {
         completedTasks.push(taskType);
@@ -1244,6 +1289,7 @@ function completeTask(taskType) {
         updateTaskButtons();
     }
 }
+
 
 function showDailyStreaks() {
     populateRewardPages();
